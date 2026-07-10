@@ -1,0 +1,8 @@
+# Project-scoped Codex subagent configuration.
+# Agent files intentionally omit model settings so they inherit the parent
+# session's selected model and reasoning/intelligence level.
+
+[agents]
+max_threads = 6
+max_depth = 1
+interrupt_message = true
