@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "status": "WAITING_HUMAN",
+  "active_phase": "V00",
+  "active_slice": null,
+  "gate_decision": "Revise",
+  "last_completed_action": "Created and independently rereviewed the V00 symmetric demand-sampling protocol and privacy-safe external-evidence request package; no new candidate evidence was collected.",
+  "next_action": "After the V00 decision owner supplies the signed sampling/sufficiency rule, practitioner-qualification rule, and stakeholder cost boundary, validate them and run one newly dated symmetric public-demand collection for all four candidates.",
+  "stop_reason": "Awaiting the V00 demand-sufficiency decision, practitioner-qualification rule, and expected-cost acceptance boundary.",
+  "external_blockers": [
+    "Two qualified practitioner availability and validation confirmations",
+    "A confirmed channel owner able to reach 20-50 eligible adults",
+    "An approved expected-cost acceptance boundary"
+  ],
+  "human_decisions_required": [
+    "Approve the demand-sufficiency rule before a future V00 rerun can claim sufficient demand",
+    "Approve the practitioner-qualification rule before availability can satisfy the V00 gate",
+    "Approve the expected-cost acceptance boundary"
+  ],
+  "last_verified_commit": "dcb9630313d6cb155bcad1b823c3febfd19d219f",
+  "authoritative_file_hashes": {
+    "AGENTS.md": "d7a3a4309183f42f05fa336e8283270b3cda204a159c827e8ee44783de2ca820",
+    "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
+    "specs/mission.md": "955bb67629921c200199ba5e66b009c84504250abf67b47a541a2682ac8df5a6",
+    "specs/tech-stack.md": "b15abb17ce919a3e4413091033d410b39fffa9ba0bfcd66c7276075f0f5c275f",
+    "specs/roadmap.md": "469f613135b9ca55c8c9b77b90d161c2becec34ac90e55ec99315e0e97a6c558",
+    "plans/V00-candidate-role-evidence.md": "e8c0cba1aa32c676afe1a0bcb2e8bf96af6f72e384451baac708c5c3f3ef1b07",
+    "docs/validation/V00-candidate-role-evidence.md": "fa4563e988ebbe97c7ed2bf4185574a81880cdca5be7ebe43e5174459dfdf069"
+  },
+  "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "run_number": 1,
+  "last_run_started_at": "2026-07-12T08:05:34.2349158Z",
+  "last_run_completed_at": "2026-07-12T08:28:32.0822353Z"
+}

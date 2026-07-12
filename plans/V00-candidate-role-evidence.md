@@ -74,6 +74,9 @@ All specialist reviews were read-only.
 
 - `plans/V00-candidate-role-evidence.md`: this self-contained execution plan.
 - `docs/validation/V00-candidate-role-evidence.md`: the phase evidence dossier and gate decision.
+- `docs/validation/V00-demand-sampling-protocol.md`: draft symmetric public-demand collection controls.
+- `docs/validation/V00-external-evidence-request-package.md`: draft privacy-safe external evidence controls.
+- `docs/validation/inbox/README.md`: privacy-safe intake boundary for later V00 evidence.
 
 No existing specification, strategy file, agent definition, or application component is modified.
 
@@ -155,7 +158,7 @@ Before a rerun can claim `Continue`, the team must preregister a current-demand 
 
 ## Rollback Strategy
 
-Rollback is removal of the two new Markdown files. No runtime, schema, dependency, or constitutional state changes. Evidence corrections should normally be additive and dated; material reinterpretation requires a new review entry rather than erasing the original basis.
+For V00-EA-01, rollback removes the two draft evidence-acquisition documents and inbox README while retaining the pre-existing dossier and this plan. No runtime, schema, dependency, or constitutional state changes exist. Evidence corrections should normally be additive and dated; material reinterpretation requires a new review entry rather than erasing the original basis.
 
 ## Decision Rule
 
@@ -176,4 +179,6 @@ The evidence dossier confirms `Revise`: public sources support candidate feasibi
 - Independent read-only verification found no blocking defect and confirmed the `Revise` gate.
 - The verifier's high finding on mutable source freshness and medium finding on asymmetric ranking were reproduced and repaired.
 - The low finding on stale execution status was repaired here.
+- An independent V00-EA-01 review found freshness-counting and candidate-binding defects; both were corrected and the corrected artifacts passed re-review with no high or medium findings.
+- V00-EA-01 adds no candidate evidence and leaves the gate at `Revise`.
 - Final validation results are reported in the task completion response.
