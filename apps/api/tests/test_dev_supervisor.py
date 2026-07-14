@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import io
 import os
 import shutil
@@ -324,14 +325,42 @@ def test_windows_launch_preserves_resume_error_when_job_close_also_fails(
     assert process.kill_calls == 1
 
 
-def test_windows_job_wrapper_and_api_failures() -> None:
+def test_windows_ctypes_adapters_validate_and_delegate(monkeypatch: pytest.MonkeyPatch) -> None:
+    kernel32 = object()
+    load_calls: list[tuple[str, bool]] = []
+
+    def load_library(name: str, *, use_last_error: bool) -> object:
+        load_calls.append((name, use_last_error))
+        return kernel32
+
+    monkeypatch.setattr(ctypes, "WinDLL", load_library, raising=False)
+    monkeypatch.setattr(ctypes, "get_last_error", lambda: 123, raising=False)
+
+    assert dev_supervisor._load_windows_kernel32() is kernel32
+    assert dev_supervisor._windows_last_error() == 123
+    assert load_calls == [("kernel32", True)]
+
+    monkeypatch.setattr(ctypes, "WinDLL", None)
+    with pytest.raises(OSError, match="Windows ctypes API WinDLL is unavailable"):
+        dev_supervisor._load_windows_kernel32()
+
+    monkeypatch.setattr(ctypes, "get_last_error", None)
+    with pytest.raises(OSError, match="Windows ctypes API get_last_error is unavailable"):
+        dev_supervisor._windows_last_error()
+
+
+def test_windows_job_wrapper_and_api_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(dev_supervisor, "_windows_last_error", lambda: 5)
+
     query_failure = dev_supervisor._WindowsJob(1, FakeKernel32(query_result=0))
-    with pytest.raises(OSError, match="inspect Windows Job Object"):
+    with pytest.raises(OSError, match="inspect Windows Job Object") as query_error:
         query_failure.active_process_count()
+    assert query_error.value.errno == 5
 
     close_failure = dev_supervisor._WindowsJob(2, FakeKernel32(close_result=0))
-    with pytest.raises(OSError, match="close Windows Job Object"):
+    with pytest.raises(OSError, match="close Windows Job Object") as close_error:
         close_failure.close()
+    assert close_error.value.errno == 5
 
     close_success = dev_supervisor._WindowsJob(3, FakeKernel32())
     close_success.close()

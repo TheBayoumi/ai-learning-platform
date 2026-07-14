@@ -109,3 +109,20 @@ regressions. Forty-four focused and 126 full API tests pass at 98% smoke and 97%
 total coverage; all affected gates and the live Windows smoke pass. F01 remains
 `WAITING_EXTERNAL`, V00 remains `WAITING_HUMAN / Revise`, and V01 stays locked.
 No commit or push occurred; exact-revision Ubuntu CI remains required.
+
+## Run 11 — 2026-07-14
+
+Pushed revision `25994d214ed5b39d4b6c73ba0e075b10ee4a5a66`
+reached Ubuntu CI, but API quality failed at strict mypy because Linux typeshed
+does not expose Windows-only `ctypes.WinDLL` or `ctypes.get_last_error`. Replaced
+the ten direct references with one typed, runtime-checked private adapter and
+added delegation, explicit-unavailability, and preserved-errno regressions.
+Native, Linux-targeted, and Windows-targeted strict mypy pass all 23 files; 82
+focused and 127 full API tests pass at 97% total coverage; locked sync, Ruff,
+both canonical contract checks, and a real Windows smoke pass with 204 ms
+shutdown and closed ports. Independent verification found no code, scope,
+secret, or constitutional defect. F01 is `FAILED_RETRYABLE / Revise` until the
+repair is committed, pushed, and passes exact-revision Ubuntu API, web,
+runtime-smoke, and resource gates. V00 remains `WAITING_HUMAN / Revise`; V01
+remains locked. No commit or push occurred. The pre-existing tracked 66,312,302
+byte archive remains untouched and is recorded as a repository/CI cost risk.

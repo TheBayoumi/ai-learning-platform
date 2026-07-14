@@ -1,8 +1,8 @@
 # Implementation Inventory
 
-Generated from the repository on 2026-07-12 at commit
-`b69648193ab420d0f7e7a2fccb2a66296a8ec57b` plus the uncommitted, locally
-verified F00 and F01-01 through F01-06 slices. The machine-readable record is
+Generated from the repository on 2026-07-14 at pushed commit
+`25994d214ed5b39d4b6c73ba0e075b10ee4a5a66` plus the uncommitted, locally
+verified two-file Linux mypy portability repair. The machine-readable record is
 `plans/implementation-inventory.json`. Roadmap prose is not counted as runtime
 implementation.
 
@@ -34,8 +34,23 @@ implementation.
   cross-process smoke: 44 focused and 126 full API tests pass at 98% smoke and
   97% total coverage; all 74 web tests, the API-absent dynamic build, the exact
   Windows live smoke, cleanup, confidentiality scan, and complete local gates
-  pass. F01 is `BLOCKED_EXTERNAL`, not passed, because the uncommitted revision
-  has no successful supported-Ubuntu CI run or Linux resource observation.
+  pass. The pushed revision reached Ubuntu CI, where API quality failed because
+  Linux typeshed omits Windows-only `ctypes.WinDLL` and `ctypes.get_last_error`.
+  A typed, runtime-checked adapter repair now passes native, Linux-targeted, and
+  Windows-targeted strict mypy, 82 focused tests, 127 full API tests at 97%
+  coverage, and a real Windows smoke. F01 is `FAILED_RETRYABLE`, not passed,
+  until that repair has a successful exact-revision supported-Ubuntu run and
+  Linux resource observation. Independent verification reproduced the three
+  mypy targets, 38 supervisor tests including real lifecycle cases, the full
+  suite and coverage, contracts, lock validity, native DLL access, and scope
+  hygiene without finding a code defect.
+- The externally created commit also tracks the unrelated 66,312,302-byte
+  `ai-learning-platform.7z`. This repair does not modify it; its repository and
+  CI-checkout cost remains an explicit scope risk.
+- Four protected V00 Markdown working copies remain mixed-EOL locally while
+  their index blobs are LF and Git reports no content diff. This API repair does
+  not rewrite validation evidence; a clean Linux checkout retains the indexed
+  LF form.
 - V01-V22 and the Q2-Q4 horizons have no runtime implementation. Each is locked
   by failed prerequisite evidence recorded in the JSON inventory.
 
@@ -44,7 +59,7 @@ implementation.
 | Phase | Lane | Status | Entry result / next action |
 | --- | --- | --- | --- |
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
-| F01 | Foundation | `BLOCKED_EXTERNAL` | Local exit gate passes; exact-revision Ubuntu CI evidence remains |
+| F01 | Foundation | `FAILED_RETRYABLE` | Linux mypy repair passes locally; exact-revision Ubuntu CI rerun remains |
 | V00 | Validation | `BLOCKED_HUMAN` | Entry passed; human rules and external evidence block its exit gate |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -94,7 +109,7 @@ lifecycle, jobs, telemetry backend, or deployment.
 ## Next Inventory Update
 
 Recompute only entries affected by new roadmap definitions, controlled V00
-evidence, executable changes, or exact-revision CI evidence. F01-06 adds no
-readiness, client state, or domain behavior. The sole next action is to obtain
-explicit authorization to commit and push the intended F00/F01 files, then
-require a successful current-revision Ubuntu CI run before passing F01.
+evidence, executable changes, or exact-revision CI evidence. The portability
+repair adds no readiness, client state, or domain behavior. The sole next action
+is to commit and push the verified two-file repair so the exact-revision Ubuntu
+workflow can rerun before F01 is considered for passage.

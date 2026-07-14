@@ -19,11 +19,13 @@ surface, owned process-tree supervision, and one identical local/CI smoke comman
 are implemented and locally verified. None adds learner, role, mastery, evidence,
 or readiness state.
 
-F01 is not phase-passed. Its exit gate still requires a successful GitHub
-Actions run for the exact intended revision on the supported Ubuntu runner,
-including Linux lifecycle, smoke, and resource observations. The work is
-uncommitted and commit/push is not authorized, so the foundation lane is
-`WAITING_EXTERNAL` until authorization and that remote evidence exist.
+F01 is not phase-passed. Pushed revision
+`25994d214ed5b39d4b6c73ba0e075b10ee4a5a66` reached GitHub Actions, but API
+quality failed because Linux strict mypy rejected direct references to
+Windows-only `ctypes` APIs. A typed, runtime-checked two-file repair is locally
+verified and uncommitted. The foundation lane is `FAILED_RETRYABLE / Revise`
+until that repair is authorized for publication and the exact repaired revision
+passes the supported Ubuntu lifecycle, smoke, and resource gates.
 
 The controller writes only on the dedicated local branch
 `automation/v00-phase-loop`, never commits unless explicitly authorized, and

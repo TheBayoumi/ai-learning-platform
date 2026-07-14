@@ -2,7 +2,7 @@
 
 **Phase:** `F01 - Local Runtime Integration and API Contract Baseline`
 **Class:** Technical foundation
-**Status:** Locally complete through `F01-06`; blocked on exact-revision Ubuntu CI (`Waiting External`)
+**Status:** Locally repaired after the Ubuntu mypy failure; exact-revision CI rerun pending (`Revise`)
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_HUMAN` / `Revise`; `V01` is locked.
 
@@ -565,6 +565,17 @@ development.
   Forty-four focused tests at 98% smoke coverage, 126 full API tests at 97%, all
   affected quality/contract gates, and a live Windows smoke pass. F01 remains
   externally blocked until the exact intended revision succeeds on Ubuntu CI.
+- `2026-07-14`: Pushed revision
+  `25994d214ed5b39d4b6c73ba0e075b10ee4a5a66` reached Ubuntu CI, where API
+  quality failed before tests because Linux typeshed omits the Windows-only
+  `ctypes.WinDLL` and `ctypes.get_last_error` attributes named directly by the
+  supervisor. The retryable repair moves both behind one typed, runtime-checked
+  private adapter, preserves native last-error values, and adds delegation,
+  unavailability, and error-provenance regressions. Native, Linux-targeted, and
+  Windows-targeted strict mypy pass all 23 files; 82 focused tests and 127 full
+  API tests pass at 97% total coverage; a real Windows smoke still leaves both
+  ports closed. F01 remains `Revise` until the repaired exact revision passes
+  Ubuntu API, web, lifecycle, runtime-smoke, and resource gates.
 
 ## Gate Decision Rules
 

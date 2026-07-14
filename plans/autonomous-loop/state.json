@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
-  "status": "WAITING_EXTERNAL",
+  "status": "FAILED_RETRYABLE",
   "active_phase": "F01",
-  "active_slice": "F01-06 locally complete; exact-revision Ubuntu CI evidence pending",
-  "gate_decision": "Waiting External",
-  "last_completed_action": "Locally implemented and independently verified F01-06: identical local/CI bounded cross-process smoke with owned-tree cleanup.",
-  "next_action": "Obtain explicit authorization to commit and push the intended F00/F01 files, then require successful exact-revision Ubuntu API, web, lifecycle, and runtime-smoke jobs.",
-  "stop_reason": "F01 cannot pass without successful exact-revision evidence from the supported Ubuntu GitHub Actions runner.",
+  "active_slice": "F01 exit-gate repair: Linux mypy portability locally verified; exact-revision Ubuntu CI rerun pending",
+  "gate_decision": "Revise",
+  "last_completed_action": "Reproduced the Ubuntu strict-mypy failure and locally verified a typed, runtime-checked Windows ctypes boundary with regression coverage.",
+  "next_action": "Commit and push the verified two-file ctypes portability repair so exact-revision Ubuntu CI can rerun.",
+  "stop_reason": "Pushed revision 25994d214ed5b39d4b6c73ba0e075b10ee4a5a66 failed API quality at strict mypy; the local repair has not run on Ubuntu CI.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_HUMAN",
@@ -20,13 +20,13 @@
   },
   "foundation_track": {
     "active_phase": "F01",
-    "status": "WAITING_EXTERNAL",
-    "gate_decision": "Waiting External",
-    "next_action": "Authorize commit/push and require exact-revision Ubuntu CI success"
+    "status": "FAILED_RETRYABLE",
+    "gate_decision": "Revise",
+    "next_action": "Publish the verified two-file portability repair for exact-revision Ubuntu CI"
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-13T01:05:07.867Z"
+    "generated_at": "2026-07-14T18:39:28.684Z"
   },
   "external_blockers": [
     "Two qualified practitioner availability and validation confirmations",
@@ -38,9 +38,9 @@
     "Approve the demand-sufficiency rule before a future V00 rerun can claim sufficient demand",
     "Approve the practitioner-qualification rule before availability can satisfy the V00 gate",
     "Approve the expected-cost acceptance boundary",
-    "Authorize committing and pushing the intended F00/F01 files so exact-revision Ubuntu CI can run"
+    "Authorize committing and pushing the two-file ctypes portability repair so exact-revision Ubuntu CI can rerun"
   ],
-  "last_verified_commit": "b69648193ab420d0f7e7a2fccb2a66296a8ec57b",
+  "last_verified_commit": "25994d214ed5b39d4b6c73ba0e075b10ee4a5a66",
   "authoritative_file_hashes": {
     "AGENTS.md": "d7a3a4309183f42f05fa336e8283270b3cda204a159c827e8ee44783de2ca820",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
@@ -48,15 +48,15 @@
     "specs/tech-stack.md": "b15abb17ce919a3e4413091033d410b39fffa9ba0bfcd66c7276075f0f5c275f",
     "specs/roadmap.md": "936cdc11c749e9d872ead1d0d45c0fc8d712869b677150fe0a8de5fcaaf8ce21",
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
-    "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "6b2fd8976c76f67966a5e8548adcc74003acfb3c6b74fa83f2bc871174f9e442",
-    "plans/implementation-inventory.json": "b13a843e1d4a7b98dc64c1373c911bc9abac4710e0ffacd4ed546ae351d228af",
+    "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "dc91770486e90d4001c6fd78121e2b25e226ca4533aa76915264c88ee4cfad63",
+    "plans/implementation-inventory.json": "2e70db8cafa944419f0ad5af6562fb75f83cd3e1decf31af370ad3838feef7a3",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "e8c0cba1aa32c676afe1a0bcb2e8bf96af6f72e384451baac708c5c3f3ef1b07",
     "docs/validation/V00-candidate-role-evidence.md": "fa4563e988ebbe97c7ed2bf4185574a81880cdca5be7ebe43e5174459dfdf069"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 10,
-  "last_run_started_at": "2026-07-13T00:57:31.9627933Z",
-  "last_run_completed_at": "2026-07-13T01:10:43.979Z"
+  "run_number": 11,
+  "last_run_started_at": "2026-07-14T18:39:28.684Z",
+  "last_run_completed_at": "2026-07-14T18:45:45.683Z"
 }

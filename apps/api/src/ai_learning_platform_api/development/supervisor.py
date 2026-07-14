@@ -64,6 +64,29 @@ class WindowsJobHandle(Protocol):
     def close(self) -> None: ...
 
 
+def _require_windows_ctypes_callable(name: str) -> Callable[..., Any]:
+    """Resolve one Windows-only ctypes API without coupling Linux type checking to it."""
+
+    candidate = getattr(ctypes, name, None)
+    if not callable(candidate):
+        raise OSError(f"Windows ctypes API {name} is unavailable")
+    return cast(Callable[..., Any], candidate)
+
+
+def _load_windows_kernel32() -> Any:
+    """Load kernel32 with last-error tracking when Windows APIs are available."""
+
+    loader = _require_windows_ctypes_callable("WinDLL")
+    return loader("kernel32", use_last_error=True)
+
+
+def _windows_last_error() -> int:
+    """Read the calling thread's Windows last-error value."""
+
+    get_last_error = _require_windows_ctypes_callable("get_last_error")
+    return int(get_last_error())
+
+
 class _JobObjectBasicLimitInformation(ctypes.Structure):
     _fields_ = [
         ("PerProcessUserTimeLimit", ctypes.c_int64),
@@ -143,7 +166,7 @@ class _WindowsJob:
             None,
         )
         if not succeeded:
-            raise OSError(ctypes.get_last_error(), "could not inspect Windows Job Object")
+            raise OSError(_windows_last_error(), "could not inspect Windows Job Object")
         return int(information.ActiveProcesses)
 
     def terminate(self) -> bool:
@@ -152,7 +175,7 @@ class _WindowsJob:
     def close(self) -> None:
         if not self._closed:
             if not self._kernel32.CloseHandle(self._handle):
-                raise OSError(ctypes.get_last_error(), "could not close Windows Job Object")
+                raise OSError(_windows_last_error(), "could not close Windows Job Object")
             self._closed = True
 
 
@@ -324,7 +347,7 @@ def build_service_specs(
 def _create_windows_job(process_handle: int) -> WindowsJobHandle:
     """Assign one direct child to a kill-on-close Windows Job Object."""
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = _load_windows_kernel32()
     kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p]
     kernel32.CreateJobObjectW.restype = ctypes.c_void_p
     kernel32.SetInformationJobObject.argtypes = [
@@ -351,7 +374,7 @@ def _create_windows_job(process_handle: int) -> WindowsJobHandle:
 
     job_handle = kernel32.CreateJobObjectW(None, None)
     if not job_handle:
-        raise OSError(ctypes.get_last_error(), "could not create Windows Job Object")
+        raise OSError(_windows_last_error(), "could not create Windows Job Object")
 
     job = _WindowsJob(int(job_handle), kernel32)
     try:
@@ -364,13 +387,13 @@ def _create_windows_job(process_handle: int) -> WindowsJobHandle:
             ctypes.sizeof(limits),
         ):
             raise OSError(
-                ctypes.get_last_error(),
+                _windows_last_error(),
                 "could not configure Windows Job Object",
             )
 
         if not kernel32.AssignProcessToJobObject(job_handle, process_handle):
             raise OSError(
-                ctypes.get_last_error(),
+                _windows_last_error(),
                 "could not assign child process to Windows Job Object",
             )
     except BaseException:
@@ -382,7 +405,7 @@ def _create_windows_job(process_handle: int) -> WindowsJobHandle:
 def _resume_windows_process(process_id: int) -> None:
     """Resume the single initial thread of a newly created suspended child."""
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = _load_windows_kernel32()
     kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
     kernel32.CreateToolhelp32Snapshot.restype = ctypes.c_void_p
     kernel32.Thread32First.argtypes = [ctypes.c_void_p, ctypes.POINTER(_ThreadEntry32)]
@@ -399,7 +422,7 @@ def _resume_windows_process(process_id: int) -> None:
     snapshot = kernel32.CreateToolhelp32Snapshot(_TH32CS_SNAPTHREAD, 0)
     invalid_handle = ctypes.c_void_p(-1).value
     if not snapshot or snapshot == invalid_handle:
-        raise OSError(ctypes.get_last_error(), "could not inspect suspended child thread")
+        raise OSError(_windows_last_error(), "could not inspect suspended child thread")
 
     thread_id: int | None = None
     try:
@@ -419,11 +442,11 @@ def _resume_windows_process(process_id: int) -> None:
 
     thread_handle = kernel32.OpenThread(_THREAD_SUSPEND_RESUME, False, thread_id)
     if not thread_handle:
-        raise OSError(ctypes.get_last_error(), "could not open suspended child thread")
+        raise OSError(_windows_last_error(), "could not open suspended child thread")
     try:
         previous_suspend_count = int(kernel32.ResumeThread(thread_handle))
         if previous_suspend_count == int(wintypes.DWORD(-1).value):
-            raise OSError(ctypes.get_last_error(), "could not resume owned child process")
+            raise OSError(_windows_last_error(), "could not resume owned child process")
     finally:
         kernel32.CloseHandle(thread_handle)
 

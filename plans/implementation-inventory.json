@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-13T01:05:07.867Z",
+  "generated_at": "2026-07-14T18:39:28.684Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "b69648193ab420d0f7e7a2fccb2a66296a8ec57b",
-    "working_tree": "F00 and F01-01 through F01-06 are locally verified but uncommitted; ai-learning-platform.7z is unrelated and excluded",
+    "head": "25994d214ed5b39d4b6c73ba0e075b10ee4a5a66",
+    "working_tree": "HEAD externally committed and pushed F00/F01 plus tracked ai-learning-platform.7z; the local two-file Linux mypy portability repair is verified but uncommitted, the archive is untouched, and four protected V00 Markdown working copies have mixed EOL without content diffs",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -94,7 +94,7 @@
       "id": "F01",
       "name": "Local Runtime Integration and API Contract Baseline",
       "lane": "foundation",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "FAILED_RETRYABLE",
       "entry_conditions": [
         {
           "condition": "F00 passes",
@@ -183,19 +183,24 @@
         "actual Windows cross-process smoke: API live in 1,426 ms; all assertions in 3,614 ms; shutdown in 204 ms; both ports closed",
         "browser assets contain no API environment name, loopback origin, or health path; no dependency, lockfile, migration, application storage, external API, or model call changed",
         "local and CI use the exact command uv run --project apps/api --locked python scripts/smoke.py",
-        "independent verification accepted F01-06 after cache-diagnostic and shared-deadline repairs; V00/V01 protection remains intact"
+        "independent verification accepted F01-06 after cache-diagnostic and shared-deadline repairs; V00/V01 protection remains intact",
+        "exact pushed revision 25994d214ed5b39d4b6c73ba0e075b10ee4a5a66 reached Ubuntu CI but API quality failed at strict mypy with 10 Windows-only ctypes attribute errors",
+        "local portability repair: native, --platform linux, and --platform win32 strict mypy each pass 23 source files without ignores",
+        "local repair validation: 82 focused supervisor/smoke tests and 127 full API tests pass; total line and branch coverage remains 97%",
+        "post-repair Windows smoke: API live in 2,265 ms; all assertions in 7,742 ms; shutdown in 204 ms; both ports closed",
+        "independent verification reproduced 38 supervisor tests including three real Windows lifecycle cases, 127 full API tests, 97% coverage, both contracts, lock validity, all three mypy targets, native Windows DLL/error access, scope boundaries, and secret hygiene; no code defect found"
       ],
       "missing_outputs": [
         "successful exact-revision Ubuntu GitHub Actions API, web, lifecycle, and runtime-smoke jobs",
         "Linux process-count and resident-memory observations from that exact CI run"
       ],
       "external_blockers": [
-        "the uncommitted F00/F01 revision cannot run on the supported Ubuntu GitHub Actions runner"
+        "the local portability repair has not run on the supported Ubuntu GitHub Actions runner"
       ],
       "human_decisions": [
-        "explicit authorization to commit and push the intended F00/F01 files"
+        "explicit authorization to commit and push the two-file CI portability repair"
       ],
-      "next_smallest_action": "Obtain explicit authorization to commit and push the intended F00/F01 files, then require a successful current-revision Ubuntu CI run"
+      "next_smallest_action": "Commit and push the verified two-file ctypes portability repair so exact-revision Ubuntu CI can rerun"
     },
     {
       "id": "V00",
