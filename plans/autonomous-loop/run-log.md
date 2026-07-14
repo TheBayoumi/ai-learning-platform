@@ -126,3 +126,23 @@ repair is committed, pushed, and passes exact-revision Ubuntu API, web,
 runtime-smoke, and resource gates. V00 remains `WAITING_HUMAN / Revise`; V01
 remains locked. No commit or push occurred. The pre-existing tracked 66,312,302
 byte archive remains untouched and is recorded as a repository/CI cost risk.
+
+## Run 12 — 2026-07-14
+
+Pushed revision `34fe4465e567a562f22b7c63bd6d5df29fdef09a`
+repaired Linux strict mypy. Exact GitHub Actions run `29359471181` then passed
+API synchronization, both contracts, Ruff, strict mypy, and all 127 API tests in
+2.05 seconds, but failed the 95% coverage gate at 92% total and 84% supervisor;
+the Windows Job Object and suspended-thread helpers had no cross-platform test
+execution. Web quality passed 6 files and 74 tests, while runtime smoke was
+skipped by the API dependency. Added behavior-driven fake-kernel success and
+failure coverage for both helpers, including structure configuration, process
+assignment, thread selection, error provenance, and handle cleanup. Forty-seven
+focused tests pass in 17.79 seconds and 136 full API tests pass in 18.96 seconds
+at 99% supervisor and total coverage without exclusions; native and Linux mypy
+and focused Ruff also pass. A read-only reviewer accepted the matrix as the
+smallest meaningful repair and retained real Windows lifecycle tests. The user
+gave Codex standing authorization to commit and push bounded verified repairs
+on this branch and use each exact GitHub Actions run as the gated review. F01
+remains `FAILED_RETRYABLE / Revise` pending that exact rerun; V00 remains
+`WAITING_HUMAN / Revise`, and V01 remains locked.

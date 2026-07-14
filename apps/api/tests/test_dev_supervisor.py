@@ -11,8 +11,9 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable, Sequence
+from ctypes import wintypes
 from pathlib import Path
-from typing import TextIO, cast
+from typing import Any, TextIO, cast
 
 import pytest
 
@@ -80,6 +81,122 @@ class FakeKernel32:
 
     def CloseHandle(self, *_args: object) -> int:
         return self.close_result
+
+
+class FakeWindowsFunction:
+    def __init__(self, implementation: Callable[..., int]) -> None:
+        self._implementation = implementation
+        self.argtypes: list[object] | None = None
+        self.restype: object | None = None
+
+    def __call__(self, *args: object) -> int:
+        return self._implementation(*args)
+
+
+class FakeNativeKernel32:
+    def __init__(
+        self,
+        *,
+        job_handle: int = 101,
+        set_information_result: int = 1,
+        assign_result: int = 1,
+        active_processes: int = 2,
+        snapshot_handle: int = 201,
+        thread_entries: Sequence[tuple[int, int]] = (),
+        open_thread_handle: int = 301,
+        resume_result: int = 1,
+    ) -> None:
+        self.job_handle = job_handle
+        self.set_information_result = set_information_result
+        self.assign_result = assign_result
+        self.active_processes = active_processes
+        self.snapshot_handle = snapshot_handle
+        self._thread_entries = iter(thread_entries)
+        self.open_thread_handle = open_thread_handle
+        self.resume_result = resume_result
+        self.limit_flags: list[int] = []
+        self.set_information_classes: list[int] = []
+        self.set_information_sizes: list[int] = []
+        self.assigned_job_handles: list[int] = []
+        self.assigned_process_handles: list[int] = []
+        self.open_thread_arguments: list[tuple[int, bool, int]] = []
+        self.opened_thread_ids: list[int] = []
+        self.resumed_thread_handles: list[int] = []
+        self.closed_handles: list[int] = []
+
+        self.CreateJobObjectW = FakeWindowsFunction(lambda *_args: self.job_handle)
+        self.SetInformationJobObject = FakeWindowsFunction(self._set_information_job_object)
+        self.AssignProcessToJobObject = FakeWindowsFunction(self._assign_process_to_job_object)
+        self.QueryInformationJobObject = FakeWindowsFunction(self._query_information_job_object)
+        self.TerminateJobObject = FakeWindowsFunction(lambda *_args: 1)
+        self.CloseHandle = FakeWindowsFunction(self._close_handle)
+        self.CreateToolhelp32Snapshot = FakeWindowsFunction(lambda *_args: self.snapshot_handle)
+        self.Thread32First = FakeWindowsFunction(self._write_thread_entry)
+        self.Thread32Next = FakeWindowsFunction(self._write_thread_entry)
+        self.OpenThread = FakeWindowsFunction(self._open_thread)
+        self.ResumeThread = FakeWindowsFunction(self._resume_thread)
+
+    def _set_information_job_object(
+        self,
+        _job_handle: Any,
+        information_class: Any,
+        information_pointer: Any,
+        information_size: Any,
+    ) -> int:
+        information = ctypes.cast(
+            information_pointer,
+            ctypes.POINTER(dev_supervisor._JobObjectExtendedLimitInformation),
+        ).contents
+        self.limit_flags.append(int(information.BasicLimitInformation.LimitFlags))
+        self.set_information_classes.append(int(information_class))
+        self.set_information_sizes.append(int(information_size))
+        return self.set_information_result
+
+    def _assign_process_to_job_object(self, job_handle: Any, process_handle: Any) -> int:
+        self.assigned_job_handles.append(int(job_handle))
+        self.assigned_process_handles.append(int(process_handle))
+        return self.assign_result
+
+    def _query_information_job_object(
+        self,
+        _job_handle: Any,
+        _information_class: Any,
+        information_pointer: Any,
+        _information_size: Any,
+        _return_length: Any,
+    ) -> int:
+        information = ctypes.cast(
+            information_pointer,
+            ctypes.POINTER(dev_supervisor._JobObjectBasicAccountingInformation),
+        ).contents
+        information.ActiveProcesses = self.active_processes
+        return 1
+
+    def _write_thread_entry(self, _snapshot: Any, entry_pointer: Any) -> int:
+        try:
+            owner_process_id, thread_id = next(self._thread_entries)
+        except StopIteration:
+            return 0
+        entry = ctypes.cast(
+            entry_pointer,
+            ctypes.POINTER(dev_supervisor._ThreadEntry32),
+        ).contents
+        entry.th32OwnerProcessID = owner_process_id
+        entry.th32ThreadID = thread_id
+        return 1
+
+    def _open_thread(self, access: Any, inherit: Any, thread_id: Any) -> int:
+        self.open_thread_arguments.append((int(access), bool(inherit), int(thread_id)))
+        self.opened_thread_ids.append(int(thread_id))
+        return self.open_thread_handle
+
+    def _resume_thread(self, thread_handle: Any) -> int:
+        self.resumed_thread_handles.append(int(thread_handle))
+        return self.resume_result
+
+    def _close_handle(self, handle: Any) -> int:
+        self.closed_handles.append(int(handle))
+        return 1
 
 
 class SequencedProcess(FakeProcess):
@@ -347,6 +464,118 @@ def test_windows_ctypes_adapters_validate_and_delegate(monkeypatch: pytest.Monke
     monkeypatch.setattr(ctypes, "get_last_error", None)
     with pytest.raises(OSError, match="Windows ctypes API get_last_error is unavailable"):
         dev_supervisor._windows_last_error()
+
+
+def test_create_windows_job_configures_assigns_and_owns_handle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    kernel32 = FakeNativeKernel32()
+    monkeypatch.setattr(dev_supervisor, "_load_windows_kernel32", lambda: kernel32)
+
+    job = dev_supervisor._create_windows_job(444)
+
+    assert kernel32.limit_flags == [dev_supervisor._JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE]
+    assert kernel32.set_information_classes == [
+        dev_supervisor._JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS
+    ]
+    assert kernel32.set_information_sizes == [
+        ctypes.sizeof(dev_supervisor._JobObjectExtendedLimitInformation)
+    ]
+    assert kernel32.assigned_job_handles == [kernel32.job_handle]
+    assert kernel32.assigned_process_handles == [444]
+    assert kernel32.CreateJobObjectW.argtypes is not None
+    assert kernel32.CloseHandle.restype is not None
+    assert job.active_process_count() == 2
+    assert job.terminate()
+    job.close()
+    assert kernel32.closed_handles == [kernel32.job_handle]
+
+
+@pytest.mark.parametrize(
+    ("kernel32", "message", "expected_closed_handles"),
+    [
+        (FakeNativeKernel32(job_handle=0), "create Windows Job Object", []),
+        (
+            FakeNativeKernel32(set_information_result=0),
+            "configure Windows Job Object",
+            [101],
+        ),
+        (
+            FakeNativeKernel32(assign_result=0),
+            "assign child process to Windows Job Object",
+            [101],
+        ),
+    ],
+)
+def test_create_windows_job_failure_paths_close_owned_handle(
+    monkeypatch: pytest.MonkeyPatch,
+    kernel32: FakeNativeKernel32,
+    message: str,
+    expected_closed_handles: list[int],
+) -> None:
+    monkeypatch.setattr(dev_supervisor, "_load_windows_kernel32", lambda: kernel32)
+    monkeypatch.setattr(dev_supervisor, "_windows_last_error", lambda: 7)
+
+    with pytest.raises(OSError, match=message) as error:
+        dev_supervisor._create_windows_job(444)
+
+    assert error.value.errno == 7
+    assert kernel32.closed_handles == expected_closed_handles
+
+
+def test_resume_windows_process_finds_owned_thread_and_closes_handles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    kernel32 = FakeNativeKernel32(thread_entries=((999, 41), (444, 42)))
+    monkeypatch.setattr(dev_supervisor, "_load_windows_kernel32", lambda: kernel32)
+
+    dev_supervisor._resume_windows_process(444)
+
+    assert kernel32.open_thread_arguments == [(dev_supervisor._THREAD_SUSPEND_RESUME, False, 42)]
+    assert kernel32.opened_thread_ids == [42]
+    assert kernel32.resumed_thread_handles == [kernel32.open_thread_handle]
+    assert kernel32.closed_handles == [kernel32.snapshot_handle, kernel32.open_thread_handle]
+    assert kernel32.CreateToolhelp32Snapshot.argtypes is not None
+    assert kernel32.ResumeThread.restype is not None
+
+
+@pytest.mark.parametrize(
+    ("kernel32", "message", "expected_closed_handles"),
+    [
+        (FakeNativeKernel32(snapshot_handle=0), "inspect suspended child thread", []),
+        (
+            FakeNativeKernel32(thread_entries=()),
+            "find suspended child thread",
+            [201],
+        ),
+        (
+            FakeNativeKernel32(thread_entries=((444, 42),), open_thread_handle=0),
+            "open suspended child thread",
+            [201],
+        ),
+        (
+            FakeNativeKernel32(
+                thread_entries=((444, 42),),
+                resume_result=int(wintypes.DWORD(-1).value),
+            ),
+            "resume owned child process",
+            [201, 301],
+        ),
+    ],
+)
+def test_resume_windows_process_failure_paths_close_acquired_handles(
+    monkeypatch: pytest.MonkeyPatch,
+    kernel32: FakeNativeKernel32,
+    message: str,
+    expected_closed_handles: list[int],
+) -> None:
+    monkeypatch.setattr(dev_supervisor, "_load_windows_kernel32", lambda: kernel32)
+    monkeypatch.setattr(dev_supervisor, "_windows_last_error", lambda: 9)
+
+    with pytest.raises(OSError, match=message):
+        dev_supervisor._resume_windows_process(444)
+
+    assert kernel32.closed_handles == expected_closed_handles
 
 
 def test_windows_job_wrapper_and_api_failures(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,10 +1,10 @@
 # Implementation Inventory
 
 Generated from the repository on 2026-07-14 at pushed commit
-`25994d214ed5b39d4b6c73ba0e075b10ee4a5a66` plus the uncommitted, locally
-verified two-file Linux mypy portability repair. The machine-readable record is
-`plans/implementation-inventory.json`. Roadmap prose is not counted as runtime
-implementation.
+`34fe4465e567a562f22b7c63bd6d5df29fdef09a` plus the uncommitted, locally
+verified cross-platform Windows-helper coverage tests. The machine-readable
+record is `plans/implementation-inventory.json`. Roadmap prose is not counted as
+runtime implementation.
 
 ## Current Evidence
 
@@ -34,16 +34,18 @@ implementation.
   cross-process smoke: 44 focused and 126 full API tests pass at 98% smoke and
   97% total coverage; all 74 web tests, the API-absent dynamic build, the exact
   Windows live smoke, cleanup, confidentiality scan, and complete local gates
-  pass. The pushed revision reached Ubuntu CI, where API quality failed because
-  Linux typeshed omits Windows-only `ctypes.WinDLL` and `ctypes.get_last_error`.
-  A typed, runtime-checked adapter repair now passes native, Linux-targeted, and
-  Windows-targeted strict mypy, 82 focused tests, 127 full API tests at 97%
-  coverage, and a real Windows smoke. F01 is `FAILED_RETRYABLE`, not passed,
-  until that repair has a successful exact-revision supported-Ubuntu run and
-  Linux resource observation. Independent verification reproduced the three
-  mypy targets, 38 supervisor tests including real lifecycle cases, the full
-  suite and coverage, contracts, lock validity, native DLL access, and scope
-  hygiene without finding a code defect.
+  pass. Pushed revision `34fe4465e567a562f22b7c63bd6d5df29fdef09a`
+  repaired Linux mypy. Exact Actions run `29359471181` passed API sync, both
+  contract checks, Ruff, strict mypy, and all 127 tests in 2.05 seconds, then
+  failed coverage at 92% total and 84% supervisor because Ubuntu did not execute
+  the Windows Job Object and suspended-thread helper branches. Web quality
+  passed 6 files and 74 tests; runtime smoke was skipped by the failed API
+  dependency. Behavior-driven fake-kernel coverage now passes 47 focused and
+  136 full API tests locally at 99% coverage without exclusions. F01 is
+  `FAILED_RETRYABLE`, not passed, until that repair has a successful
+  exact-revision supported-Ubuntu run and Linux resource observation. Read-only
+  review accepted this as the smallest meaningful cross-platform test repair;
+  real Windows lifecycle coverage remains in place.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This repair does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -59,7 +61,7 @@ implementation.
 | Phase | Lane | Status | Entry result / next action |
 | --- | --- | --- | --- |
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
-| F01 | Foundation | `FAILED_RETRYABLE` | Linux mypy repair passes locally; exact-revision Ubuntu CI rerun remains |
+| F01 | Foundation | `FAILED_RETRYABLE` | Coverage repair passes locally; exact-revision Ubuntu CI rerun remains |
 | V00 | Validation | `BLOCKED_HUMAN` | Entry passed; human rules and external evidence block its exit gate |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -109,7 +111,7 @@ lifecycle, jobs, telemetry backend, or deployment.
 ## Next Inventory Update
 
 Recompute only entries affected by new roadmap definitions, controlled V00
-evidence, executable changes, or exact-revision CI evidence. The portability
-repair adds no readiness, client state, or domain behavior. The sole next action
-is to commit and push the verified two-file repair so the exact-revision Ubuntu
-workflow can rerun before F01 is considered for passage.
+evidence, executable changes, or exact-revision CI evidence. The coverage repair
+adds no readiness, client state, or domain behavior. Codex is authorized to
+commit and push this bounded verified repair and must monitor the exact-revision
+Ubuntu workflow as the gated review before F01 is considered for passage.

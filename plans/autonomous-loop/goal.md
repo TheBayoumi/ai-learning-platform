@@ -20,13 +20,21 @@ are implemented and locally verified. None adds learner, role, mastery, evidence
 or readiness state.
 
 F01 is not phase-passed. Pushed revision
-`25994d214ed5b39d4b6c73ba0e075b10ee4a5a66` reached GitHub Actions, but API
-quality failed because Linux strict mypy rejected direct references to
-Windows-only `ctypes` APIs. A typed, runtime-checked two-file repair is locally
-verified and uncommitted. The foundation lane is `FAILED_RETRYABLE / Revise`
-until that repair is authorized for publication and the exact repaired revision
-passes the supported Ubuntu lifecycle, smoke, and resource gates.
+`34fe4465e567a562f22b7c63bd6d5df29fdef09a` repaired Linux strict mypy, and
+GitHub Actions run `29359471181` passed API synchronization, contract, Ruff, and
+typing gates plus all 127 API tests. API quality then failed the 95% coverage
+gate at 92% because the Ubuntu suite did not execute the Windows Job Object and
+suspended-thread helper branches; web quality passed and runtime smoke was
+skipped by the failed dependency. Cross-platform fake-kernel regression tests
+now pass locally with 136 API tests and 99% total coverage. The foundation lane
+remains `FAILED_RETRYABLE / Revise` until the exact repaired revision passes the
+supported Ubuntu API, web, lifecycle, smoke, and resource gates.
 
-The controller writes only on the dedicated local branch
-`automation/v00-phase-loop`, never commits unless explicitly authorized, and
-never pushes without explicit authorization.
+The controller writes only on the dedicated branch
+`automation/v00-phase-loop`. The user's standing authorization of 2026-07-14
+allows Codex to stage, commit, and push bounded, role-neutral implementation-loop
+slices and gate repairs after local validation and independent read-only review.
+Codex must not wait for the user to perform or separately approve those commits;
+the exact pushed revision's GitHub Actions run is the gated review. This
+authorization does not permit changing V00 evidence, unlocking V01, broadening a
+phase, publishing secrets, or including unrelated working-tree changes.

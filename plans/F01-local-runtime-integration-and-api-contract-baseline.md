@@ -2,7 +2,7 @@
 
 **Phase:** `F01 - Local Runtime Integration and API Contract Baseline`
 **Class:** Technical foundation
-**Status:** Locally repaired after the Ubuntu mypy failure; exact-revision CI rerun pending (`Revise`)
+**Status:** Locally repaired after the Ubuntu coverage failure; exact-revision CI rerun pending (`Revise`)
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_HUMAN` / `Revise`; `V01` is locked.
 
@@ -576,6 +576,20 @@ development.
   API tests pass at 97% total coverage; a real Windows smoke still leaves both
   ports closed. F01 remains `Revise` until the repaired exact revision passes
   Ubuntu API, web, lifecycle, runtime-smoke, and resource gates.
+- `2026-07-14`: Pushed revision
+  `34fe4465e567a562f22b7c63bd6d5df29fdef09a` repaired Linux mypy. Exact
+  GitHub Actions run `29359471181` passed API synchronization, both canonical
+  contract checks, Ruff, strict mypy, and all 127 API tests in 2.05 seconds, then
+  failed the 95% coverage gate at 92% total and 84% supervisor because the
+  Windows Job Object and suspended-thread helpers were unexercised on Ubuntu.
+  Web quality passed 6 files and 74 tests; runtime smoke was skipped by the
+  failed API dependency. Cross-platform fake-kernel success and failure tests
+  now execute those production helpers without exclusions: 47 focused tests
+  pass in 17.79 seconds and 136 full API tests pass in 18.96 seconds at 99%
+  supervisor and total coverage. Read-only review accepted this behavior-driven
+  matrix while retaining real Windows lifecycle coverage. The user authorized
+  Codex to commit and push bounded verified repairs and to use the exact pushed
+  revision's Actions run as the gate. F01 remains `Revise` pending that run.
 
 ## Gate Decision Rules
 

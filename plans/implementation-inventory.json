@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T18:39:28.684Z",
+  "generated_at": "2026-07-14T19:05:41.496Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "25994d214ed5b39d4b6c73ba0e075b10ee4a5a66",
-    "working_tree": "HEAD externally committed and pushed F00/F01 plus tracked ai-learning-platform.7z; the local two-file Linux mypy portability repair is verified but uncommitted, the archive is untouched, and four protected V00 Markdown working copies have mixed EOL without content diffs",
+    "head": "34fe4465e567a562f22b7c63bd6d5df29fdef09a",
+    "working_tree": "HEAD contains the pushed Linux mypy portability repair plus tracked ai-learning-platform.7z; cross-platform Windows-helper coverage tests and controller records are locally verified but uncommitted, the archive is untouched, and four protected V00 Markdown working copies have mixed EOL without content diffs",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -188,19 +188,22 @@
         "local portability repair: native, --platform linux, and --platform win32 strict mypy each pass 23 source files without ignores",
         "local repair validation: 82 focused supervisor/smoke tests and 127 full API tests pass; total line and branch coverage remains 97%",
         "post-repair Windows smoke: API live in 2,265 ms; all assertions in 7,742 ms; shutdown in 204 ms; both ports closed",
-        "independent verification reproduced 38 supervisor tests including three real Windows lifecycle cases, 127 full API tests, 97% coverage, both contracts, lock validity, all three mypy targets, native Windows DLL/error access, scope boundaries, and secret hygiene; no code defect found"
+        "independent verification reproduced 38 supervisor tests including three real Windows lifecycle cases, 127 full API tests, 97% coverage, both contracts, lock validity, all three mypy targets, native Windows DLL/error access, scope boundaries, and secret hygiene; no code defect found",
+        "exact GitHub Actions run 29359471181 at revision 34fe4465e567a562f22b7c63bd6d5df29fdef09a: API sync, both contracts, Ruff, strict mypy, and 127 tests passed in 2.05 seconds, then coverage failed at 92% total and 84% supervisor",
+        "the same exact run passed web quality with 6 files and 74 tests; runtime smoke was skipped by the failed API dependency",
+        "local coverage-portability repair: 47 focused supervisor tests pass in 17.79 seconds; 136 full API tests pass in 18.96 seconds at 99% supervisor and total coverage without exclusions",
+        "local locked sync, both canonical checks, Ruff format and lint, lock validation, and native, --platform linux, and --platform win32 strict mypy pass",
+        "read-only coverage review accepted the behavior-driven fake-kernel success/failure matrix as the smallest meaningful repair while retaining real Windows lifecycle coverage"
       ],
       "missing_outputs": [
         "successful exact-revision Ubuntu GitHub Actions API, web, lifecycle, and runtime-smoke jobs",
         "Linux process-count and resident-memory observations from that exact CI run"
       ],
       "external_blockers": [
-        "the local portability repair has not run on the supported Ubuntu GitHub Actions runner"
+        "the local cross-platform coverage repair has not run on the supported Ubuntu GitHub Actions runner"
       ],
-      "human_decisions": [
-        "explicit authorization to commit and push the two-file CI portability repair"
-      ],
-      "next_smallest_action": "Commit and push the verified two-file ctypes portability repair so exact-revision Ubuntu CI can rerun"
+      "human_decisions": [],
+      "next_smallest_action": "Codex commits and pushes the independently verified coverage-portability repair, then monitors its exact GitHub Actions run"
     },
     {
       "id": "V00",
