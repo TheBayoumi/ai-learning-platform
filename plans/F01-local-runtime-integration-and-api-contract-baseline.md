@@ -2,7 +2,7 @@
 
 **Phase:** `F01 - Local Runtime Integration and API Contract Baseline`
 **Class:** Technical foundation
-**Status:** Locally repaired after the Ubuntu coverage failure; exact-revision CI rerun pending (`Revise`)
+**Status:** Phase passed (`Continue`)
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_HUMAN` / `Revise`; `V01` is locked.
 
@@ -326,8 +326,10 @@ bytes. The smoke production sources total 17,706 bytes and focused tests total
 27,452 bytes. Windows process memory remains the F01-05 observed 370,302,976-byte
 working set because the dependency-free `/proc` observer reports unsupported
 host measurements as null. No application data, migration, external service,
-model call, or additional dependency is introduced. Live Ubuntu process and
-resident-memory observations remain external evidence.
+model call, or additional dependency is introduced. The exact Ubuntu smoke
+observed 4 owned processes and 714,330,112 resident bytes, reached API liveness
+in 2,541 ms, completed in 6,359 ms, and shut down in 251 ms with both ports
+closed. These are development-run observations, not production budgets.
 
 ## Acceptance Criteria
 
@@ -590,6 +592,25 @@ development.
   matrix while retaining real Windows lifecycle coverage. The user authorized
   Codex to commit and push bounded verified repairs and to use the exact pushed
   revision's Actions run as the gate. F01 remains `Revise` pending that run.
+- `2026-07-14`: Exact revision
+  `2bc6dfa392725ea725dda6915a7d6ab68a246251` completed GitHub Actions run
+  `29363263721` successfully on Ubuntu 24.04. API quality passed both canonical
+  contracts, Ruff, strict mypy, repository line endings, and 136 tests in 2.18
+  seconds at 99% total and supervisor coverage. Web quality passed lint, strict
+  typecheck, 74 tests in 1.22 seconds, and the dynamic production build, which
+  compiled in 3.6 seconds. The identical runtime smoke reached API liveness in
+  2,541 ms, observed 4 owned processes and 714,330,112 resident bytes, completed
+  all assertions in 6,359 ms, shut down in 251 ms, and closed both ports.
+  Independent review accepted the repair and constitutional scope. F01 passes
+  its phase exit gate with `Continue`; V00 remains `WAITING_HUMAN / Revise`,
+  V01 remains locked, and no next phase starts in this invocation.
+
+## Phase Gate Decision
+
+**Gate decision:** `Continue`. F01 passes as a role-neutral local runtime and API
+contract foundation. The decision is limited to the named F01 contract and exact
+revision evidence above; it is not role, learner, mastery, readiness, deployment,
+or beta evidence and does not satisfy any V00 condition.
 
 ## Gate Decision Rules
 

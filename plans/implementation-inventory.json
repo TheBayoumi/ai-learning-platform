@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T19:05:41.496Z",
+  "generated_at": "2026-07-14T19:56:24.471Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "34fe4465e567a562f22b7c63bd6d5df29fdef09a",
-    "working_tree": "HEAD contains the pushed Linux mypy portability repair plus tracked ai-learning-platform.7z; cross-platform Windows-helper coverage tests and controller records are locally verified but uncommitted, the archive is untouched, and four protected V00 Markdown working copies have mixed EOL without content diffs",
+    "head": "2bc6dfa392725ea725dda6915a7d6ab68a246251",
+    "working_tree": "This inventory is based on exact-CI-verified executable revision 2bc6dfa392725ea725dda6915a7d6ab68a246251; its enclosing controller-only finalization changes no executable content, the tracked ai-learning-platform.7z is untouched, and four protected V00 Markdown working copies have mixed EOL without content diffs",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -94,7 +94,7 @@
       "id": "F01",
       "name": "Local Runtime Integration and API Contract Baseline",
       "lane": "foundation",
-      "status": "FAILED_RETRYABLE",
+      "status": "PASSED",
       "entry_conditions": [
         {
           "condition": "F00 passes",
@@ -193,17 +193,17 @@
         "the same exact run passed web quality with 6 files and 74 tests; runtime smoke was skipped by the failed API dependency",
         "local coverage-portability repair: 47 focused supervisor tests pass in 17.79 seconds; 136 full API tests pass in 18.96 seconds at 99% supervisor and total coverage without exclusions",
         "local locked sync, both canonical checks, Ruff format and lint, lock validation, and native, --platform linux, and --platform win32 strict mypy pass",
-        "read-only coverage review accepted the behavior-driven fake-kernel success/failure matrix as the smallest meaningful repair while retaining real Windows lifecycle coverage"
+        "read-only coverage review accepted the behavior-driven fake-kernel success/failure matrix as the smallest meaningful repair while retaining real Windows lifecycle coverage",
+        "exact revision 2bc6dfa392725ea725dda6915a7d6ab68a246251 completed GitHub Actions run 29363263721 successfully on Ubuntu 24.04",
+        "exact API job 87188413086: both contracts, Ruff, strict mypy, line endings, and 136 tests in 2.18 seconds passed at 99% supervisor and total coverage",
+        "exact web job 87188412999: lint, strict typecheck, 6 files and 74 tests in 1.22 seconds, and dynamic production build passed; compile completed in 3.6 seconds",
+        "exact runtime-smoke job 87188555943: API live in 2,541 ms; 4 owned processes; 714,330,112 resident bytes; smoke completed in 6,359 ms; shutdown completed in 251 ms; both ports closed",
+        "independent final verification accepted the implementation, controller authorization, V00/V01 protection, and exact-run disposition with no blocking finding"
       ],
-      "missing_outputs": [
-        "successful exact-revision Ubuntu GitHub Actions API, web, lifecycle, and runtime-smoke jobs",
-        "Linux process-count and resident-memory observations from that exact CI run"
-      ],
-      "external_blockers": [
-        "the local cross-platform coverage repair has not run on the supported Ubuntu GitHub Actions runner"
-      ],
+      "missing_outputs": [],
+      "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Codex commits and pushes the independently verified coverage-portability repair, then monitors its exact GitHub Actions run"
+      "next_smallest_action": "No further F01 action; select a later eligible approved phase on a future invocation"
     },
     {
       "id": "V00",

@@ -19,16 +19,14 @@ surface, owned process-tree supervision, and one identical local/CI smoke comman
 are implemented and locally verified. None adds learner, role, mastery, evidence,
 or readiness state.
 
-F01 is not phase-passed. Pushed revision
-`34fe4465e567a562f22b7c63bd6d5df29fdef09a` repaired Linux strict mypy, and
-GitHub Actions run `29359471181` passed API synchronization, contract, Ruff, and
-typing gates plus all 127 API tests. API quality then failed the 95% coverage
-gate at 92% because the Ubuntu suite did not execute the Windows Job Object and
-suspended-thread helper branches; web quality passed and runtime smoke was
-skipped by the failed dependency. Cross-platform fake-kernel regression tests
-now pass locally with 136 API tests and 99% total coverage. The foundation lane
-remains `FAILED_RETRYABLE / Revise` until the exact repaired revision passes the
-supported Ubuntu API, web, lifecycle, smoke, and resource gates.
+F01 is phase-passed. Pushed revision
+`2bc6dfa392725ea725dda6915a7d6ab68a246251` completed exact GitHub Actions run
+`29363263721`: API quality passed 136 Linux tests at 99% coverage, web quality
+passed 74 tests and the production build, and the identical runtime smoke passed
+with owned-process and resident-memory observations plus clean shutdown. The
+foundation lane is `PHASE_PASSED / Continue`; no later foundation phase is
+approved in this invocation. This does not change V00, unlock V01, or establish
+any learner, role, mastery, evidence, or readiness capability.
 
 The controller writes only on the dedicated branch
 `automation/v00-phase-loop`. The user's standing authorization of 2026-07-14

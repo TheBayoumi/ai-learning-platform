@@ -143,6 +143,11 @@ at 99% supervisor and total coverage without exclusions; native and Linux mypy
 and focused Ruff also pass. A read-only reviewer accepted the matrix as the
 smallest meaningful repair and retained real Windows lifecycle tests. The user
 gave Codex standing authorization to commit and push bounded verified repairs
-on this branch and use each exact GitHub Actions run as the gated review. F01
-remains `FAILED_RETRYABLE / Revise` pending that exact rerun; V00 remains
-`WAITING_HUMAN / Revise`, and V01 remains locked.
+on this branch and use each exact GitHub Actions run as the gated review. Commit
+`2bc6dfa392725ea725dda6915a7d6ab68a246251` then completed exact run
+`29363263721` successfully: API passed 136 Linux tests in 2.18 seconds at 99%
+coverage; web passed 74 tests and the production build; runtime smoke observed 4
+owned processes and 714,330,112 resident bytes, reached API liveness in 2,541
+ms, completed in 6,359 ms, shut down in 251 ms, and closed both ports. F01 is
+`PHASE_PASSED / Continue`. V00 remains `WAITING_HUMAN / Revise`, V01 remains
+locked, and no next phase started in this invocation.
