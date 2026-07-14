@@ -6,9 +6,11 @@ document only verified evidence, and retain a compact checkpoint so a later
 scheduled run can resume without conversation history.
 
 The controller coordinates independent validation and foundation lanes. The
-validation lane remains `V00 - Candidate Role Evidence`, `WAITING_HUMAN`, with
-gate decision `Revise`; `V01` remains locked. It alone controls role approval,
-role-specific content, learning logic, and claims.
+validation lane remains `V00 - Candidate Role Evidence`, `WAITING_EXTERNAL`,
+with gate decision `Revise`; `V01` remains locked. It alone controls role
+approval, role-specific content, learning logic, and claims. Missing
+practitioner, recruitment, market, or cost evidence is an external-evidence
+dependency, not a pause for the user's review.
 
 The foundation lane may execute only an approved, role-neutral, reversible phase
 whose entry conditions pass. `F00 - Repository and Quality Foundation` and
@@ -22,22 +24,41 @@ F01 is phase-passed. Pushed revision
 `2bc6dfa392725ea725dda6915a7d6ab68a246251` completed exact GitHub Actions run
 `29363263721`: API quality passed 136 Linux tests at 99% coverage, web quality
 passed 74 tests and the production build, and the identical runtime smoke passed
-with owned-process and resident-memory observations plus clean shutdown. The
-base remains exact-CI-verified. The next foundation phase is now narrowly
-defined as `F02 - Cross-Process Correlation and Confidential Diagnostics
-Baseline`. It is `NOT_STARTED` with no phase gate decision. The amendment adds
-no source, dependency, workflow, test, runtime, exporter, telemetry backend,
-product metric, persistent diagnostic store, learner identifier, or V17A
-behavior. On a later invocation, revalidate F02 entry conditions and implement
-only `F02-01 - API diagnostic context`. This does not change V00, unlock V01,
-authorize V02/V17A, or establish learner, role, mastery, evidence, or readiness
-capability.
+with owned-process and resident-memory observations plus clean shutdown.
+Revision `6de13bba593e4b7aae30f112feb4a22a106ef7e2` then defined the next
+foundation phase as `F02 - Cross-Process Correlation and Confidential
+Diagnostics Baseline` and passed exact GitHub Actions run `29367566575` across
+API, web, and runtime-smoke jobs. F02 is `NOT_STARTED` with no phase gate
+decision. The amendment added no source, dependency, workflow, test, runtime,
+exporter, telemetry backend, product metric, persistent diagnostic store,
+learner identifier, or V17A behavior. On a later invocation, revalidate F02
+entry conditions and implement only `F02-01 - API diagnostic context`. This
+does not change V00, unlock V01, authorize V02/V17A, or establish learner, role,
+mastery, evidence, or readiness capability.
 
 The controller writes only on the dedicated branch
-`automation/v00-phase-loop`. The user's standing authorization of 2026-07-14
-allows Codex to stage, commit, and push bounded, role-neutral implementation-loop
-slices and gate repairs after local validation and independent read-only review.
-Codex must not wait for the user to perform or separately approve those commits;
-the exact pushed revision's GitHub Actions run is the gated review. This
-authorization does not permit changing V00 evidence, unlocking V01, broadening a
-phase, publishing secrets, or including unrelated working-tree changes.
+`automation/v00-phase-loop`. Under the user's standing delegation of
+2026-07-15, Codex is the decision owner for selecting and accepting the next
+eligible technical or controller action and for preregistering and applying
+internally decidable V00 rules. Codex must make those decisions from the
+constitution, specifications, verified repository evidence, independent
+read-only review, and the exact pushed revision's GitHub Actions result. It must
+continue without waiting for the user to review, commit, or separately approve
+the action.
+
+Codex may stage, commit, and push one bounded slice after local validation and
+independent review; exact GitHub Actions is the publication and acceptance gate.
+This delegation cannot fabricate or substitute for practitioner confirmation,
+recruitment-channel proof, observed demand, measured cost, or any human approval
+explicitly required by the product constitution. Such missing inputs are
+`WAITING_EXTERNAL`, not `WAITING_HUMAN`. The delegation also does not permit
+unlocking V01 without V00 evidence, broadening a phase, publishing secrets, or
+including unrelated working-tree changes.
+
+GitHub is the source, CI, environment-governance, and deployment-orchestration
+control plane for the maturity path. GitHub Pages is not a runtime target because
+it cannot host the FastAPI service or the approved server-rendered Next.js path.
+An actual staging or production deployment must be a separately gated,
+containerized managed-PaaS phase after its entry conditions pass; the PaaS,
+region, credentials, environment isolation, and exact Next.js mode remain
+provisional until that phase records evidence. F02 remains deployment-neutral.

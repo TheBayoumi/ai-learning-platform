@@ -168,3 +168,29 @@ behavior. JSON/controller/hash/scope/diff checks pass. Independent final
 verification returned `ACCEPT` with no actionable finding. Exact GitHub Actions
 verification of the pushed amendment remains the publication gate; F02-01 may
 begin only on a later invocation after entry conditions are revalidated.
+
+## Run 14 — 2026-07-15
+
+Exact F02-definition revision `6de13bba593e4b7aae30f112feb4a22a106ef7e2`
+passed GitHub Actions run `29367566575`: API quality passed synchronization,
+contract, Ruff, strict-mypy, 136-test, and 99%-coverage gates; web quality passed
+74 tests and the production build; runtime smoke passed process, resource,
+health, cleanup, and port-closure gates. The user then delegated standing
+decision ownership to Codex so the loop does not pause for user review. Updated
+only controller and inventory records: Codex now selects and accepts the next
+eligible technical/controller action, preregisters and applies internally
+decidable V00 rules, and stages, commits, and pushes bounded verified work. V00
+is reclassified from `WAITING_HUMAN` to `WAITING_EXTERNAL / Revise`; no external
+evidence is treated as supplied, V01 remains locked, and the next eligible
+implementation slice remains F02-01 on a later invocation.
+
+The user's GitHub deployment idea is recorded as a maturity objective: GitHub
+owns source, CI, environment governance, and deployment orchestration, while
+GitHub Pages is rejected as a runtime target for the FastAPI plus server-rendered
+Next.js architecture. A real containerized managed-PaaS environment remains a
+separately gated future phase because provider, region, credentials, isolation,
+rollback, and the exact Next.js mode are provisional. This authority amendment
+changes no source, dependency, lockfile, workflow, test, schema, runtime, or
+evidence artifact. Independent final verification returned `ACCEPT` with no
+actionable finding. The exact pushed revision's GitHub Actions run remains the
+publication gate.

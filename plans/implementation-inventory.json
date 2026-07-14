@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T20:36:26.536Z",
+  "generated_at": "2026-07-14T21:18:03.162Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "16eb34f86bbaeafbb70f03c2566e11d570d23a51",
-    "working_tree": "This amendment starts from exact-CI-verified controller revision 16eb34f86bbaeafbb70f03c2566e11d570d23a51 and defines F02 without executable, dependency, workflow, test, or runtime changes; the tracked ai-learning-platform.7z is untouched, and four protected V00 Markdown working copies have mixed EOL without content diffs",
+    "head": "6de13bba593e4b7aae30f112feb4a22a106ef7e2",
+    "working_tree": "This controller-only authority amendment starts from exact-CI-verified F02-definition revision 6de13bba593e4b7aae30f112feb4a22a106ef7e2; it changes no executable, dependency, workflow, test, or runtime behavior, leaves the tracked ai-learning-platform.7z untouched, and preserves four protected V00 Markdown working copies whose mixed EOL has no content diff",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -256,7 +256,7 @@
       "id": "V00",
       "name": "Candidate Role Evidence",
       "lane": "validation",
-      "status": "BLOCKED_HUMAN",
+      "status": "BLOCKED_EXTERNAL",
       "entry_conditions": [
         {
           "condition": "Adult B2C boundary and validation claim are approved",
@@ -272,23 +272,20 @@
       ],
       "tests": [],
       "missing_outputs": [
-        "approved symmetric demand-sufficiency rule and qualifying sample",
-        "approved practitioner-qualification rule and two confirmations",
+        "controller-preregistered symmetric demand-sufficiency rule and qualifying sample",
+        "controller-preregistered practitioner-qualification rule and two confirmations",
         "real 20-50 adult recruitment-channel proof",
-        "approved cost-acceptance boundary and acceptable expected-cost evidence",
+        "controller-preregistered cost-acceptance boundary and acceptable measured expected-cost evidence",
         "one candidate passing every conjunctive evidence gate"
       ],
       "external_blockers": [
+        "qualifying symmetric demand evidence",
         "two qualified practitioner confirmations",
         "real recruitment-channel confirmation",
-        "acceptable expected-cost evidence"
+        "acceptable measured expected-cost evidence"
       ],
-      "human_decisions": [
-        "demand-sufficiency rule",
-        "practitioner-qualification rule",
-        "cost-acceptance boundary"
-      ],
-      "next_smallest_action": "Validate newly supplied signed decisions or controlled inbox evidence; otherwise do not repeat V00 research"
+      "human_decisions": [],
+      "next_smallest_action": "When real evidence arrives, Codex preregisters and applies the rules, validates the conjunctive gate, and does not wait for separate user approval"
     },
     {
       "id": "V01",

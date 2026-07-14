@@ -1,11 +1,11 @@
 # Implementation Inventory
 
 Generated from exact-CI-verified executable revision
-`2bc6dfa392725ea725dda6915a7d6ab68a246251`, exact-CI-verified controller
-revision `16eb34f86bbaeafbb70f03c2566e11d570d23a51`, and the independently
-reviewed amendment that defines F02 without starting it. The machine-readable
-record is `plans/implementation-inventory.json`. Roadmap prose is not counted as
-runtime implementation.
+`2bc6dfa392725ea725dda6915a7d6ab68a246251`, exact-CI-verified F02-definition
+revision `6de13bba593e4b7aae30f112feb4a22a106ef7e2`, and this independently reviewed
+controller-authority amendment. The machine-readable record is
+`plans/implementation-inventory.json`. Roadmap prose and controller state are
+not counted as runtime implementation.
 
 ## Current Evidence
 
@@ -13,8 +13,9 @@ runtime implementation.
   coverage, 1 web test passed, both locked installs succeeded, a real API served
   live/ready/OpenAPI, and the default production build completed.
 - V00 has documentation and evidence-request artifacts, but its conjunctive gate
-  is not passed. Approved demand, practitioner, and cost rules plus external
-  practitioner/recruitment evidence remain absent.
+  is not passed. Codex now owns preregistration and application of the demand,
+  practitioner, and cost rules without separate user approval. Qualifying
+  demand, practitioner, recruitment, and measured cost evidence remain absent.
 - F01 has passed entry conditions. F01-01 now generates and byte-checks a
   canonical health-only OpenAPI artifact, with 10 focused tests and CI/local
   command parity. F01-02 now derives a dependency-free TypeScript type and
@@ -55,7 +56,13 @@ runtime implementation.
   Architecture review preferred it over PostgreSQL because it adds no external
   service or persistent metadata and selects no provisional migration tooling.
   F02 is `NOT_STARTED`: no source, dependency, workflow, test, runtime, exporter,
-  backend, product metric, learner identifier, or V17A behavior was added.
+  backend, product metric, learner identifier, or V17A behavior was added. Exact
+  revision `6de13bba593e4b7aae30f112feb4a22a106ef7e2` passed GitHub Actions run
+  `29367566575` across API, web, and runtime-smoke jobs.
+- GitHub is recorded as the source, CI, environment-governance, and deployment
+  control plane. GitHub Pages is not treated as a runtime deployment because it
+  cannot host this FastAPI plus server-rendered Next.js architecture. A real
+  containerized managed-PaaS deployment remains absent and separately gated.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This repair does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -73,7 +80,7 @@ runtime implementation.
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `NOT_STARTED` | Entry conditions pass; implement only F02-01 on a later invocation |
-| V00 | Validation | `BLOCKED_HUMAN` | Entry passed; human rules and external evidence block its exit gate |
+| V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
 | V03 | Validation | `NOT_STARTED` | V02 contracts do not exist |

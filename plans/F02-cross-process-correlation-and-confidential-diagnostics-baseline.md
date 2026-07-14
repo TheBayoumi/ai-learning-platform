@@ -4,7 +4,7 @@
 **Class:** Technical foundation
 **Status:** Not started
 **Decision owner:** Primary agent
-**Validation lane:** `V00` remains `WAITING_HUMAN` / `Revise`; `V01` is locked.
+**Validation lane:** `V00` remains `WAITING_EXTERNAL` / `Revise`; `V01` is locked.
 
 ## Objective
 
