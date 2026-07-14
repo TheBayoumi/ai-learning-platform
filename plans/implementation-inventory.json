@@ -1,15 +1,16 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T19:56:24.471Z",
+  "generated_at": "2026-07-14T20:36:26.536Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "2bc6dfa392725ea725dda6915a7d6ab68a246251",
-    "working_tree": "This inventory is based on exact-CI-verified executable revision 2bc6dfa392725ea725dda6915a7d6ab68a246251; its enclosing controller-only finalization changes no executable content, the tracked ai-learning-platform.7z is untouched, and four protected V00 Markdown working copies have mixed EOL without content diffs",
+    "head": "16eb34f86bbaeafbb70f03c2566e11d570d23a51",
+    "working_tree": "This amendment starts from exact-CI-verified controller revision 16eb34f86bbaeafbb70f03c2566e11d570d23a51 and defines F02 without executable, dependency, workflow, test, or runtime changes; the tracked ai-learning-platform.7z is untouched, and four protected V00 Markdown working copies have mixed EOL without content diffs",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
       "plans/F00-repository-quality-foundation.md",
       "plans/F01-local-runtime-integration-and-api-contract-baseline.md",
+      "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
       "apps/api/openapi/health.openapi.json",
       "apps/web/server/contracts/generated/health-response.ts",
       "apps/web/server/config/api-base.ts",
@@ -41,7 +42,8 @@
       "database schema, ORM, migrations, or persistence",
       "domain event ledger, outbox, replay, projections, or jobs",
       "authentication, authorization, tenancy, privacy lifecycle, or deletion",
-      "object storage, telemetry backend, LLM gateway, or deployment",
+      "cross-process request correlation, allowlisted diagnostic events, telemetry backend, or exporter",
+      "object storage, LLM gateway, or deployment",
       "Target or RoleProfile runtime model",
       "competency graph or Blueprint and ItemFamily runtime contracts",
       "learner model, diagnosis, curriculum, tutoring, or assessment",
@@ -88,7 +90,7 @@
       "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "No further action; F00 is passed and F01 is active"
+      "next_smallest_action": "No further action; F00 is passed"
     },
     {
       "id": "F01",
@@ -203,7 +205,52 @@
       "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "No further F01 action; select a later eligible approved phase on a future invocation"
+      "next_smallest_action": "No further F01 action; F02 is defined and remains NOT_STARTED"
+    },
+    {
+      "id": "F02",
+      "name": "Cross-Process Correlation and Confidential Diagnostics Baseline",
+      "lane": "foundation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "F01 passes",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F01-local-runtime-integration-and-api-contract-baseline.md",
+            "plans/autonomous-loop/state.json",
+            "GitHub Actions run 29364393112 at revision 16eb34f86bbaeafbb70f03c2566e11d570d23a51"
+          ]
+        },
+        {
+          "condition": "OpenTelemetry-compatible correlation and structured diagnostics are approved, role-neutral, and backend-replaceable",
+          "result": "PASSED",
+          "evidence": [
+            "specs/tech-stack.md",
+            "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+            "plans/autonomous-loop/checkpoint.md"
+          ]
+        },
+        {
+          "condition": "The phase is limited to the existing technical health transaction and needs no V00 evidence",
+          "result": "PASSED",
+          "evidence": [
+            "specs/roadmap.md",
+            "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+            "plans/autonomous-loop/checkpoint.md"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "F02-01 API W3C diagnostic context and allowlisted confidential event boundary",
+        "F02-02 server-only web-to-API context propagation and safe outcome diagnostics",
+        "F02-03 cross-process correlation, confidentiality, isolation, resource, and exact-CI exit evidence"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "On a later invocation, revalidate F02 entry conditions and implement only F02-01 API diagnostic context"
     },
     {
       "id": "V00",

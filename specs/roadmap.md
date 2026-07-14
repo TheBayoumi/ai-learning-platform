@@ -130,6 +130,66 @@ validation-lane review.
   be required. Stop if integration would constrain role selection, introduce
   domain state, select production topology, or bypass a validation gate.
 
+### F02 - Cross-Process Correlation and Confidential Diagnostics Baseline
+
+**Class:** Technical foundation. **Effort:** 2-5 engineering days.
+
+- **Objective:** Establish vendor-neutral W3C trace correlation and allowlisted
+  structured diagnostics across the existing server-rendered web-to-API health
+  transaction without adding product telemetry, persistent state, or an
+  external telemetry service.
+- **Smallest scope:** The existing Next.js server-to-FastAPI `/health/live`
+  transaction only: safe trace-context creation and propagation, isolated API
+  request context, confidential fixed-vocabulary diagnostic events, and one
+  cross-process verification gate. The browser receives no trace context or
+  diagnostic payload.
+- **Entry conditions:** `F01` passes; OpenTelemetry-compatible instrumentation
+  and structured diagnostics remain approved, role-neutral boundaries; an
+  architecture review confirms that this scope is reusable across every
+  plausible `V00` candidate; any instrumentation dependency preserves W3C
+  interoperability and a replaceable exporter boundary; and no external `V00`
+  evidence is required.
+- **Outputs:** A recorded dependency and ownership decision with requirement
+  fit, operational cost, failure behavior, and replacement path; strict W3C
+  context validation and safe root creation; API middleware with concurrency
+  isolation and cleanup; an allowlisted JSON diagnostic-event contract that
+  rejects free-form sensitive fields; server-only trace propagation and bounded
+  outcome/timing diagnostics around the existing health adapter; adversarial
+  confidentiality, malformed-context, isolation, and duplicate-instrumentation
+  tests; one identical local/CI cross-process diagnostic check; and dependency,
+  startup, shutdown, process, memory, event-volume, byte-volume, and fixed-sample
+  health-latency observations.
+- **Non-goals:** PostgreSQL, ORM, migrations, schemas, persistence, events,
+  outbox, replay, projections, jobs, authentication, authorization, domain or
+  learner identifiers, role or learning state, product analytics, audit
+  history, operational budgets, `V17A` evidence, browser or client telemetry,
+  an exporter, telemetry backend or vendor, network egress, monitoring,
+  alerting, production sampling or retention policy, deployment, LLM access, or
+  privacy/compliance approval.
+- **Exit gate:** One real F01 health transaction produces matching valid trace
+  identifiers and distinct nonzero spans in web and API diagnostics; absent or
+  malformed incoming context creates a safe new root; concurrent and completed
+  requests cannot leak context; test canaries placed in request metadata,
+  configuration, response detail, and failure text never appear in logs or
+  browser output; every emitted field belongs to the fixed allowlist and no raw
+  URL, query, header, body, exception text, or environment value is logged;
+  diagnostic event count and byte volume are bounded; no exporter, persistent
+  diagnostic store, network egress, product metric, audit claim, or domain
+  identifier exists; all F00/F01 contract, timeout, confidentiality, process,
+  cleanup, coverage, Windows, and exact Ubuntu CI gates remain green; resource
+  deltas are recorded without inventing a platform budget; and independent
+  verification finds no `V00`, `V01`, `V17A`, product, learner, evidence, or
+  readiness leakage.
+- **Dependencies:** `F01` only. F02 neither depends on nor satisfies `V00`, does
+  not unlock `V01`, does not authorize `V02` or `V17A`, and makes no privacy or
+  production-operability claim.
+- **Decision:** Continue only when every exit condition passes. Revise context,
+  confidentiality, isolation, duplication, or resource failures. Narrow back to
+  an API-only confidential-diagnostics amendment if cross-process propagation
+  would require browser telemetry, production topology, or a backend choice.
+  Stop if useful diagnostics require raw sensitive content, product/domain
+  identifiers, a vendor commitment, or a validation-gate bypass.
+
 ## Initial Validation Sequence
 
 ### V00 - Candidate Role Evidence

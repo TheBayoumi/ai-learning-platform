@@ -1,10 +1,11 @@
 # Implementation Inventory
 
 Generated from exact-CI-verified executable revision
-`2bc6dfa392725ea725dda6915a7d6ab68a246251` with controller-only F01
-phase-passage records. The machine-readable record is
-`plans/implementation-inventory.json`. Roadmap prose is not counted as runtime
-implementation.
+`2bc6dfa392725ea725dda6915a7d6ab68a246251`, exact-CI-verified controller
+revision `16eb34f86bbaeafbb70f03c2566e11d570d23a51`, and the independently
+reviewed amendment that defines F02 without starting it. The machine-readable
+record is `plans/implementation-inventory.json`. Roadmap prose is not counted as
+runtime implementation.
 
 ## Current Evidence
 
@@ -49,6 +50,12 @@ implementation.
   smoke, 251 ms shutdown, and both ports closed. Independent review accepted the
   repair and boundaries. F01 is `PASSED / Continue`; it adds no validation-lane
   evidence and does not unlock V01.
+- F02 is now formally defined as a cross-process correlation and confidential
+  diagnostics baseline around the existing server-rendered health transaction.
+  Architecture review preferred it over PostgreSQL because it adds no external
+  service or persistent metadata and selects no provisional migration tooling.
+  F02 is `NOT_STARTED`: no source, dependency, workflow, test, runtime, exporter,
+  backend, product metric, learner identifier, or V17A behavior was added.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This repair does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -65,6 +72,7 @@ implementation.
 | --- | --- | --- | --- |
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
+| F02 | Foundation | `NOT_STARTED` | Entry conditions pass; implement only F02-01 on a later invocation |
 | V00 | Validation | `BLOCKED_HUMAN` | Entry passed; human rules and external evidence block its exit gate |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -106,15 +114,16 @@ configuration, a replaceable bounded liveness adapter, a request-time
 server-rendered technical status surface with three accessible API states, a
 development-only fixed API/web supervisor with bounded owned-tree cleanup, and a
 deterministic bounded local/CI health-contract smoke.
-The repository has no persistence, authentication, learner or role
+The repository has no cross-process correlation or allowlisted confidential
+diagnostic event boundary, persistence, authentication, learner or role
 state, events/outbox/replay, competency graph, curriculum, assessment, tutoring,
 LLM access, mastery, readiness, unique work, simulation, provenance, privacy
 lifecycle, jobs, telemetry backend, or deployment.
 
 ## Next Inventory Update
 
-Recompute only entries affected by new roadmap definitions, controlled V00
-evidence, executable changes, or exact-revision CI evidence. F01 is passed and
-adds no readiness, client state, or domain behavior. On a future invocation,
-recompute both lanes and select one eligible approved phase; do not treat F01 as
-evidence for V00 or silently invent an undefined foundation phase.
+Recompute only entries affected by controlled V00 evidence, executable changes,
+or exact-revision CI evidence. F01 is passed and adds no readiness, client state,
+or domain behavior. On a later invocation, revalidate F02 entry conditions and
+implement only F02-01. Do not treat F01 or F02 as evidence for V00, and do not
+start F02-02 in the same invocation.

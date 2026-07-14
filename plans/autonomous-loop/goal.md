@@ -11,22 +11,27 @@ gate decision `Revise`; `V01` remains locked. It alone controls role approval,
 role-specific content, learning logic, and claims.
 
 The foundation lane may execute only an approved, role-neutral, reversible phase
-whose entry conditions pass. `F00 - Repository and Quality Foundation` passed.
-`F01 - Local Runtime Integration and API Contract Baseline` is locally complete
-through F01-06: canonical contract generation, a derived TypeScript validator,
-server-only loopback configuration, bounded health adapter, accessible status
-surface, owned process-tree supervision, and one identical local/CI smoke command
-are implemented and locally verified. None adds learner, role, mastery, evidence,
-or readiness state.
+whose entry conditions pass. `F00 - Repository and Quality Foundation` and
+`F01 - Local Runtime Integration and API Contract Baseline` passed. F01 provides
+canonical contract generation, a derived TypeScript validator, server-only
+loopback configuration, a bounded health adapter, accessible status states,
+owned process-tree supervision, and one identical local/CI smoke command. None
+adds learner, role, mastery, evidence, or readiness state.
 
 F01 is phase-passed. Pushed revision
 `2bc6dfa392725ea725dda6915a7d6ab68a246251` completed exact GitHub Actions run
 `29363263721`: API quality passed 136 Linux tests at 99% coverage, web quality
 passed 74 tests and the production build, and the identical runtime smoke passed
 with owned-process and resident-memory observations plus clean shutdown. The
-foundation lane is `PHASE_PASSED / Continue`; no later foundation phase is
-approved in this invocation. This does not change V00, unlock V01, or establish
-any learner, role, mastery, evidence, or readiness capability.
+base remains exact-CI-verified. The next foundation phase is now narrowly
+defined as `F02 - Cross-Process Correlation and Confidential Diagnostics
+Baseline`. It is `NOT_STARTED` with no phase gate decision. The amendment adds
+no source, dependency, workflow, test, runtime, exporter, telemetry backend,
+product metric, persistent diagnostic store, learner identifier, or V17A
+behavior. On a later invocation, revalidate F02 entry conditions and implement
+only `F02-01 - API diagnostic context`. This does not change V00, unlock V01,
+authorize V02/V17A, or establish learner, role, mastery, evidence, or readiness
+capability.
 
 The controller writes only on the dedicated branch
 `automation/v00-phase-loop`. The user's standing authorization of 2026-07-14

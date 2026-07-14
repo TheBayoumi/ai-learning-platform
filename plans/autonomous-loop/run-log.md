@@ -151,3 +151,20 @@ owned processes and 714,330,112 resident bytes, reached API liveness in 2,541
 ms, completed in 6,359 ms, shut down in 251 ms, and closed both ports. F01 is
 `PHASE_PASSED / Continue`. V00 remains `WAITING_HUMAN / Revise`, V01 remains
 locked, and no next phase started in this invocation.
+
+## Run 13 — 2026-07-14
+
+Recomputed both lanes after F01 passage. V00 remains `WAITING_HUMAN / Revise`,
+V01 and every later validation phase remain locked, and no defined phase was
+eligible. Architecture review compared PostgreSQL/migrations with correlation
+and confidential diagnostics; it selected the latter as the smaller reversible
+boundary because it reuses the F01 health transaction without an external
+service, persistent metadata, provisional migration tooling, exporter, or
+backend. Roadmap-gate review required an amendment-only invocation. Added the
+narrow F02 roadmap contract and `NOT_STARTED` ExecPlan, updated inventory and
+controller records, and added no executable, dependency, lockfile, workflow,
+test, product, learner, domain, analytics, audit, privacy-approval, or V17A
+behavior. JSON/controller/hash/scope/diff checks pass. Independent final
+verification returned `ACCEPT` with no actionable finding. Exact GitHub Actions
+verification of the pushed amendment remains the publication gate; F02-01 may
+begin only on a later invocation after entry conditions are revalidated.
