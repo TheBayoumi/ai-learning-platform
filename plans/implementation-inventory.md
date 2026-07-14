@@ -1,10 +1,9 @@
 # Implementation Inventory
 
-Generated from exact-CI-verified controller revision
-`a35e1908f2d37dfcc2932d69bfd24a7bbd55dffd` and the current locally verified
-F02-01 implementation. Exact pushed CI acceptance is still pending. The
-machine-readable record is `plans/implementation-inventory.json`. Roadmap prose
-and controller state are not counted as runtime implementation.
+Generated from exact-CI-accepted F02-01 implementation revision
+`1cd879ef9a37dc04a28c09e7fed23d40441fdb3c`. The machine-readable record is
+`plans/implementation-inventory.json`. Roadmap prose and controller state are
+not counted as runtime implementation.
 
 ## Current Evidence
 
@@ -54,16 +53,20 @@ and controller state are not counted as runtime implementation.
   diagnostics baseline around the existing server-rendered health transaction.
   Architecture review preferred it over PostgreSQL because it adds no external
   service or persistent metadata and selects no provisional migration tooling.
-  F02-01 is `IMPLEMENTED_UNVERIFIED`: exact OpenTelemetry API/SDK pins now own an
+  F02-01 is accepted: exact OpenTelemetry API/SDK pins now own an
   app-local, exporter-free provider; one pure-ASGI boundary validates W3C context
   for `GET /health/live`, creates safe roots, restores concurrent context, emits
   one fixed confidential event, suppresses raw process/access/error logs, and
   fails closed at bootstrap. Focused adversarial tests, 99% full API coverage,
   strict native/Linux/Windows typing, both contracts, and the Windows smoke pass
   locally. Independent final rereview returned `ACCEPT` with no actionable
-  finding. Exact API/web/runtime GitHub Actions remains the slice gate. F02-02,
-  F02-03, exporters, backend, product metrics, learner identifiers, and V17A
-  behavior remain absent.
+  finding. Exact revision `1cd879ef9a37dc04a28c09e7fed23d40441fdb3c`
+  then passed Actions run `29372599433`: API quality passed 186 tests in 3.00
+  seconds at 99% coverage; web quality passed 74 tests and the production build;
+  runtime smoke observed four owned processes, 716,132,352 resident bytes, 2,633
+  ms API liveness, 6,213 ms total smoke, 251 ms shutdown, and both ports closed.
+  F02-02, F02-03, exporters, backend, product metrics, learner identifiers, and
+  V17A behavior remain absent.
 - GitHub remains the source, CI, and exact-revision acceptance control plane.
   The user reports a Vercel Git connection; Vercel is the provisional deployment
   candidate because current official support includes FastAPI Python Functions
@@ -87,7 +90,7 @@ and controller state are not counted as runtime implementation.
 | --- | --- | --- | --- |
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
-| F02 | Foundation | `IMPLEMENTED_UNVERIFIED` | F02-01 passes locally; require exact pushed API/web/runtime CI before acceptance |
+| F02 | Foundation | `IN_PROGRESS` | F02-01 accepted on exact CI; implement only F02-02 on a later invocation |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -128,9 +131,9 @@ an OpenAPI-derived TypeScript health type guard, canonical server-only loopback
 configuration, a replaceable bounded liveness adapter, a request-time
 server-rendered technical status surface with three accessible API states, a
 development-only fixed API/web supervisor with bounded owned-tree cleanup, and a
-deterministic bounded local/CI health-contract smoke. F02-01 locally adds one
+deterministic bounded local/CI health-contract smoke. Accepted F02-01 adds one
 app-local W3C context/span and fixed allowlisted event for API liveness, with no
-exporter or global provider; exact CI acceptance remains pending.
+exporter or global provider.
 The repository has no web-to-API context propagation, persistent telemetry,
 authentication, learner or role state, events/outbox/replay, competency graph,
 curriculum, assessment, tutoring, LLM access, mastery, readiness, unique work,
@@ -139,7 +142,7 @@ deployment.
 
 ## Next Inventory Update
 
-Recompute after the bounded F02-01 revision is committed, pushed, and its exact
-GitHub Actions API, web, and runtime jobs finish. Accept only F02-01 if they pass;
-keep F02 `IN_PROGRESS` with a null phase gate and leave F02-02 for a later
-invocation. Do not treat F01 or F02 as evidence for V00.
+On a later invocation, revalidate F02 entry conditions and implement only F02-02
+server-to-server propagation. Keep F02 `IN_PROGRESS` with a null phase gate and
+leave F02-03 for a later invocation. Do not treat F01 or F02 as evidence for
+V00.

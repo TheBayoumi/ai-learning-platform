@@ -4,15 +4,17 @@
 
 Validation remains `V00 - Candidate Role Evidence`, `WAITING_EXTERNAL / Revise`.
 Foundation is `F02 - Cross-Process Correlation and Confidential Diagnostics
-Baseline`, `IN_PROGRESS`, with a null phase gate. Only `F02-01 - API diagnostic
-context` is implemented locally and is `IMPLEMENTED_UNVERIFIED`; V01 is locked.
+Baseline`, `IN_PROGRESS`, with a null phase gate. `F02-01 - API diagnostic
+context` is accepted; `F02-02 - Server-to-server propagation` is the next
+eligible slice on a later invocation. V01 is locked.
 
 ## Verified gate state
 
-Starting revision `a35e1908f2d37dfcc2932d69bfd24a7bbd55dffd` passed exact
-GitHub Actions run `29370109469` across API, web, and runtime-smoke jobs. F00 and
-F01 remain passed. F02 entry conditions remain met, but F02 cannot pass until all
-three slices and its exact exit gate pass.
+Implementation revision `1cd879ef9a37dc04a28c09e7fed23d40441fdb3c`
+passed exact GitHub Actions run `29372599433` across API, web, and runtime-smoke
+jobs. This accepts only F02-01. F00 and F01 remain passed. F02 entry conditions
+remain met, but F02 cannot pass until all three slices and its exact exit gate
+pass.
 
 F02-01 now owns an app-local OpenTelemetry provider and official W3C propagator,
 strict inbound resource handling, safe-root creation, one span and one fixed
@@ -27,8 +29,9 @@ not V00 evidence and does not unlock V01 or authorize V02.
 
 ## Last completed action
 
-Implemented and locally verified only F02-01. Architecture and roadmap reviews
-selected exact `opentelemetry-api==1.43.0` and
+Accepted only F02-01 after implementation, independent verification, and exact
+pushed CI. Architecture and roadmap reviews selected exact
+`opentelemetry-api==1.43.0` and
 `opentelemetry-sdk==1.43.0`, with locked
 `opentelemetry-semantic-conventions==0.64b0`, instead of a bespoke parser,
 API-only no-op spans, broad auto-instrumentation, exporters, or vendor SDKs.
@@ -40,22 +43,25 @@ proved that Uvicorn import failure bypassed the formatter and exposed raw
 Pydantic input; `main.py` now emits one fixed generic event and exits nonzero
 without a traceback. Both regressions now pass. The required dependency,
 ownership, cost, failure, upgrade, rollback, and replacement decision is recorded
-in the F02 ExecPlan.
+in the F02 ExecPlan. Exact run `29372599433` then passed every API, web, and
+runtime-smoke job for the implementation revision.
 
 ## Exact next action
 
-Complete the final read-only review and structural checks, commit and push only
-this F02-01 slice, then require the exact revision's API, web, and runtime GitHub
-Actions jobs. Do not start F02-02 before F02-01 is accepted.
+On a later invocation, revalidate F02 entry conditions and implement only
+`F02-02 - Server-to-server propagation`. Do not start F02-03 or evaluate the F02
+phase gate in that invocation.
 
 ## Changed files
 
-The F02 ExecPlan and controller/inventory records; exact API dependency and lock
-files; new diagnostic runtime, event, and pure-ASGI middleware modules; API app,
-entrypoint, logging, and supervisor wiring; focused diagnostics and adjacent app
-and supervisor tests; and the direct Uvicorn README command. No web source,
-workflow, generated health contract, schema, migration, V00 evidence, or product
-artifact changed. The tracked `ai-learning-platform.7z` remains untouched.
+The accepted implementation changed the F02 ExecPlan and controller/inventory
+records; exact API dependency and lock files; new diagnostic runtime, event, and
+pure-ASGI middleware modules; API app, entrypoint, logging, and supervisor
+wiring; focused diagnostics and adjacent app and supervisor tests; and the
+direct Uvicorn README command. This acceptance update changes only the F02
+ExecPlan and controller/inventory records. No web source, workflow, generated
+health contract, schema, migration, V00 evidence, or product artifact changed.
+The tracked `ai-learning-platform.7z` remains untouched.
 
 ## Validation results
 
@@ -74,8 +80,7 @@ artifact changed. The tracked `ai-learning-platform.7z` remains untouched.
   100% coverage without exclusions.
 - A Windows cross-process smoke passes with unchanged health/OpenAPI/web
   contracts: API liveness 1,668 ms, total 4,681 ms, and shutdown 255 ms. Local
-  process count and resident memory were unavailable; exact Ubuntu CI remains
-  the resource gate.
+  process count and resident memory were unavailable.
 - A fixed 500-request in-process sample observed 1.020 ms p50, 1.728 ms p95,
   and 2.312 ms maximum versus the pre-change 0.855/1.386/4.743 ms observations.
   Exactly 500 events were captured at 265 compact JSON bytes each.
@@ -86,6 +91,14 @@ artifact changed. The tracked `ai-learning-platform.7z` remains untouched.
   native/Linux/Windows typing, both contracts, all 186 tests and 99% coverage,
   Windows smoke, live and startup canary behavior, JSON, hashes, timestamps,
   scope, LF, secrets, and diff checks, then returned `ACCEPT` with no finding.
+- Exact GitHub Actions run `29372599433` succeeded in 1 minute 28 seconds. API
+  job `87219074832` passed locked sync, both contracts, Ruff, strict mypy, line
+  endings, and all 186 tests in 3.00 seconds at 99% coverage. Web job
+  `87219074897` passed lint, strict typecheck, all 74 tests in 1.32 seconds, and
+  the production build with zero npm vulnerabilities. Runtime-smoke job
+  `87219208633` observed API liveness in 2,633 ms, four owned processes,
+  716,132,352 aggregate resident bytes, 16,368,938 Next.js build bytes, total
+  smoke in 6,213 ms, shutdown in 251 ms, and closed both ports.
 
 ## Deployment maturity intent
 
@@ -100,32 +113,32 @@ F02.
 
 ## Unresolved findings
 
-F02-01 still needs exact pushed API/web/runtime CI acceptance. F02-02 web
-propagation and F02-03 cross-process/resource exit evidence are absent. The
-tracked 66.3 MB archive remains a repository/checkout-cost risk outside this
-slice. V00 still lacks every required external evidence group.
+F02-02 web propagation and F02-03 cross-process/resource exit evidence are
+absent. The tracked 66.3 MB archive remains a repository/checkout-cost risk
+outside this slice. V00 still lacks every required external evidence group.
 
 ## External blockers
 
-F02 has none beyond its pending exact CI publication result. V00 still requires
+F02 has none. V00 still requires
 qualifying demand evidence, two qualified practitioner confirmations, a real
 20-50-adult recruitment channel, and acceptable measured expected-cost evidence.
 
 ## Human decisions required
 
-None for F02-01 publication or acceptance. Constitutionally required human
-evidence remains external and cannot be self-certified by Codex.
+None for F02-02 selection or later bounded implementation. Constitutionally
+required human evidence remains external and cannot be self-certified by Codex.
 
 ## Rollback point
 
-`a35e1908f2d37dfcc2932d69bfd24a7bbd55dffd` on
+`1cd879ef9a37dc04a28c09e7fed23d40441fdb3c` on
 `automation/v00-phase-loop`. F02-01 has no stored telemetry, migration, or data
 rollback; removing its pins, modules, wiring, tests, and launch override restores
 the F01 runtime.
 
 ## Another run may proceed automatically
 
-No implementation run should start while this exact F02-01 publication gate is
-pending. If it passes, a controller-only acceptance update may record F02-01 and
-make F02-02 eligible for a later invocation. If it fails, repair only F02-01 and
-return `Revise`.
+Yes. On a later invocation, revalidate F02 entry conditions and implement only
+F02-02 without user review under the standing decision and commit/push
+authorization. Do not start F02-03 in that invocation, pass the F02 phase, alter
+V00/V01, introduce browser telemetry, select a backend, or treat diagnostics as
+V17A evidence.

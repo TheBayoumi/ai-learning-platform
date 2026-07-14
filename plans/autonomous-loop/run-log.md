@@ -226,9 +226,21 @@ or local link exists, the Vercel surfaces have beta/runtime constraints, and a
 later gated phase must reconcile the function topology with the approved
 container-managed-PaaS constitution. F02 remains deployment-neutral.
 
-F02 is `IN_PROGRESS` with a null phase decision; F02-01 is
-`IMPLEMENTED_UNVERIFIED` until its exact pushed API, web, and runtime GitHub
-Actions jobs pass. V00 remains `WAITING_EXTERNAL / Revise`, V01 remains locked,
-and F02-02 must not start in this invocation. Independent final rereview
-reproduced the complete local gate, canary, structure, scope, and confidentiality
-evidence and returned `ACCEPT` with no actionable finding.
+Independent final rereview reproduced the complete local gate, canary,
+structure, scope, and confidentiality evidence and returned `ACCEPT` with no
+actionable finding. Implementation revision
+`1cd879ef9a37dc04a28c09e7fed23d40441fdb3c` then completed exact GitHub Actions
+run `29372599433` successfully in 1 minute 28 seconds. API quality job
+`87219074832` passed locked synchronization, both canonical contracts, Ruff,
+strict mypy, line endings, and all 186 tests in 3.00 seconds at 99% coverage.
+Web quality job `87219074897` passed lint, strict typecheck, all 74 tests in 1.32
+seconds, and the production build with zero npm vulnerabilities. Runtime-smoke
+job `87219208633` observed API liveness in 2,633 ms, four owned processes,
+716,132,352 aggregate resident bytes, 16,368,938 Next.js build bytes, total smoke
+in 6,213 ms, shutdown in 251 ms, and closed both ports.
+
+F02-01 is accepted. F02 remains `IN_PROGRESS` with a null phase decision because
+F02-02, F02-03, and the complete exit gate are absent. Global controller state
+returns to `READY`, with F02-02 eligible only on a later invocation. V00 remains
+`WAITING_EXTERNAL / Revise`, V01 remains locked, and no V00 evidence, deployment
+configuration, or F02-02 work was added in this invocation.

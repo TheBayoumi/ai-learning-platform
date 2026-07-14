@@ -2,7 +2,7 @@
 
 **Phase:** `F02 - Cross-Process Correlation and Confidential Diagnostics Baseline`
 **Class:** Technical foundation
-**Status:** In progress - F02-01 implemented locally; exact pushed CI pending
+**Status:** In progress - F02-01 accepted; F02-02 is next on a later invocation
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_EXTERNAL` / `Revise`; `V01` is locked.
 
@@ -44,7 +44,7 @@ exists to migrate. F02 therefore takes the smaller reversible diagnostic boundar
 
 Only one slice may be implemented and gate-reviewed per invocation.
 
-1. `F02-01 - API diagnostic context` (**implemented locally; exact CI pending**): record the minimal instrumentation
+1. `F02-01 - API diagnostic context` (**accepted on exact pushed CI**): record the minimal instrumentation
    dependency/ownership decision; define a fixed safe event vocabulary; add W3C
    context validation, safe-root creation, API middleware/context isolation, and
    allowlisted JSON diagnostics; replace or suppress unsafe raw request/error
@@ -143,10 +143,23 @@ The post-change fixed sample (20 warmups, 500 in-process requests) observed
 1.020 ms p50, 1.728 ms p95, and 2.312 ms maximum versus the pre-change 0.855 ms
 p50, 1.386 ms p95, and 4.743 ms maximum. Each measured request produced one
 265-byte compact diagnostic event. A Windows cross-process smoke observed API
-liveness in 1,668 ms, total smoke in 4,681 ms, and shutdown in 255 ms; local
-process/resident-memory collection was unavailable, so exact Ubuntu CI remains
-the resource gate. External API, model, telemetry-egress, and telemetry-storage
-cost remain zero.
+liveness in 1,668 ms, total smoke in 4,681 ms, and shutdown in 255 ms. Exact
+Ubuntu runtime-smoke job `87219208633` observed API liveness in 2,633 ms, four
+owned processes, 716,132,352 aggregate resident bytes, 16,368,938 Next.js build
+bytes, total smoke in 6,213 ms, and shutdown in 251 ms. External API, model,
+telemetry-egress, and telemetry-storage cost remain zero.
+
+## F02-01 Acceptance Evidence
+
+Implementation revision `1cd879ef9a37dc04a28c09e7fed23d40441fdb3c`
+completed exact GitHub Actions run `29372599433` successfully in 1 minute 28
+seconds. API quality job `87219074832` passed locked synchronization, both
+canonical contracts, Ruff, strict mypy, line endings, and all 186 tests in 3.00
+seconds at 99% coverage. Web quality job `87219074897` passed lint, strict
+typecheck, all 74 tests, and the production build. Runtime-smoke job
+`87219208633` passed the unchanged cross-process contract, resource, cleanup,
+and port-closure gates. This accepts F02-01 only; F02 remains `IN_PROGRESS` with
+a null phase gate until F02-02, F02-03, and the complete exit gate pass.
 
 ## Failure Handling
 
@@ -236,6 +249,6 @@ F02 creates no persistent data or migration.
 
 ## Exact Next Action
 
-Commit and push only the locally accepted `F02-01 - API diagnostic context`
-revision, then require its exact API, web, and runtime GitHub Actions jobs. Do
-not start F02-02 before F02-01 is accepted.
+On a later invocation, revalidate F02 entry conditions and implement only
+`F02-02 - Server-to-server propagation`. Do not start F02-03 or evaluate the F02
+phase gate in that invocation.

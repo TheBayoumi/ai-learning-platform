@@ -29,13 +29,15 @@ Revision `6de13bba593e4b7aae30f112feb4a22a106ef7e2` then defined the next
 foundation phase as `F02 - Cross-Process Correlation and Confidential
 Diagnostics Baseline` and passed exact GitHub Actions run `29367566575` across
 API, web, and runtime-smoke jobs. F02 is now `IN_PROGRESS` with no phase gate
-decision. Only `F02-01 - API diagnostic context` is locally implemented and
-independently accepted; it remains `IMPLEMENTED_UNVERIFIED` until the exact
-pushed revision passes API, web, and runtime CI. It adds app-local exporter-free
-technical context and a fixed confidential event, but no backend, persistence,
-product metric, learner identifier, or V17A behavior. This does not change V00,
-unlock V01, authorize V02/V17A, or establish learner, role, mastery, evidence,
-or readiness capability. F02-02 must remain for a later invocation.
+decision. Implementation revision
+`1cd879ef9a37dc04a28c09e7fed23d40441fdb3c` completed exact GitHub Actions run
+`29372599433`, accepting only `F02-01 - API diagnostic context` across API, web,
+and runtime-smoke jobs. It adds app-local exporter-free technical context and a
+fixed confidential event, but no backend, persistence, product metric, learner
+identifier, or V17A behavior. This does not change V00, unlock V01, authorize
+V02/V17A, or establish learner, role, mastery, evidence, or readiness
+capability. F02-02 is the next eligible slice on a later invocation; F02-03 and
+the F02 phase gate remain later work.
 
 The controller writes only on the dedicated branch
 `automation/v00-phase-loop`. Under the user's standing delegation of
