@@ -1,11 +1,10 @@
 # Implementation Inventory
 
-Generated from exact-CI-verified executable revision
-`2bc6dfa392725ea725dda6915a7d6ab68a246251`, exact-CI-verified F02-definition
-revision `6de13bba593e4b7aae30f112feb4a22a106ef7e2`, and this independently reviewed
-controller-authority amendment. The machine-readable record is
-`plans/implementation-inventory.json`. Roadmap prose and controller state are
-not counted as runtime implementation.
+Generated from exact-CI-verified controller revision
+`a35e1908f2d37dfcc2932d69bfd24a7bbd55dffd` and the current locally verified
+F02-01 implementation. Exact pushed CI acceptance is still pending. The
+machine-readable record is `plans/implementation-inventory.json`. Roadmap prose
+and controller state are not counted as runtime implementation.
 
 ## Current Evidence
 
@@ -55,14 +54,23 @@ not counted as runtime implementation.
   diagnostics baseline around the existing server-rendered health transaction.
   Architecture review preferred it over PostgreSQL because it adds no external
   service or persistent metadata and selects no provisional migration tooling.
-  F02 is `NOT_STARTED`: no source, dependency, workflow, test, runtime, exporter,
-  backend, product metric, learner identifier, or V17A behavior was added. Exact
-  revision `6de13bba593e4b7aae30f112feb4a22a106ef7e2` passed GitHub Actions run
-  `29367566575` across API, web, and runtime-smoke jobs.
-- GitHub is recorded as the source, CI, environment-governance, and deployment
-  control plane. GitHub Pages is not treated as a runtime deployment because it
-  cannot host this FastAPI plus server-rendered Next.js architecture. A real
-  containerized managed-PaaS deployment remains absent and separately gated.
+  F02-01 is `IMPLEMENTED_UNVERIFIED`: exact OpenTelemetry API/SDK pins now own an
+  app-local, exporter-free provider; one pure-ASGI boundary validates W3C context
+  for `GET /health/live`, creates safe roots, restores concurrent context, emits
+  one fixed confidential event, suppresses raw process/access/error logs, and
+  fails closed at bootstrap. Focused adversarial tests, 99% full API coverage,
+  strict native/Linux/Windows typing, both contracts, and the Windows smoke pass
+  locally. Independent final rereview returned `ACCEPT` with no actionable
+  finding. Exact API/web/runtime GitHub Actions remains the slice gate. F02-02,
+  F02-03, exporters, backend, product metrics, learner identifiers, and V17A
+  behavior remain absent.
+- GitHub remains the source, CI, and exact-revision acceptance control plane.
+  The user reports a Vercel Git connection; Vercel is the provisional deployment
+  candidate because current official support includes FastAPI Python Functions
+  and combined Next.js/FastAPI Services. No local link or deployment config is
+  verified, those surfaces are beta/constrained, and they conflict with the
+  currently approved container runtime unless a later gated phase reconciles or
+  amends that decision. No deployment is implemented in F02.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This repair does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -79,7 +87,7 @@ not counted as runtime implementation.
 | --- | --- | --- | --- |
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
-| F02 | Foundation | `NOT_STARTED` | Entry conditions pass; implement only F02-01 on a later invocation |
+| F02 | Foundation | `IMPLEMENTED_UNVERIFIED` | F02-01 passes locally; require exact pushed API/web/runtime CI before acceptance |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -120,17 +128,18 @@ an OpenAPI-derived TypeScript health type guard, canonical server-only loopback
 configuration, a replaceable bounded liveness adapter, a request-time
 server-rendered technical status surface with three accessible API states, a
 development-only fixed API/web supervisor with bounded owned-tree cleanup, and a
-deterministic bounded local/CI health-contract smoke.
-The repository has no cross-process correlation or allowlisted confidential
-diagnostic event boundary, persistence, authentication, learner or role
-state, events/outbox/replay, competency graph, curriculum, assessment, tutoring,
-LLM access, mastery, readiness, unique work, simulation, provenance, privacy
-lifecycle, jobs, telemetry backend, or deployment.
+deterministic bounded local/CI health-contract smoke. F02-01 locally adds one
+app-local W3C context/span and fixed allowlisted event for API liveness, with no
+exporter or global provider; exact CI acceptance remains pending.
+The repository has no web-to-API context propagation, persistent telemetry,
+authentication, learner or role state, events/outbox/replay, competency graph,
+curriculum, assessment, tutoring, LLM access, mastery, readiness, unique work,
+simulation, provenance, privacy lifecycle, jobs, telemetry backend, or
+deployment.
 
 ## Next Inventory Update
 
-Recompute only entries affected by controlled V00 evidence, executable changes,
-or exact-revision CI evidence. F01 is passed and adds no readiness, client state,
-or domain behavior. On a later invocation, revalidate F02 entry conditions and
-implement only F02-01. Do not treat F01 or F02 as evidence for V00, and do not
-start F02-02 in the same invocation.
+Recompute after the bounded F02-01 revision is committed, pushed, and its exact
+GitHub Actions API, web, and runtime jobs finish. Accept only F02-01 if they pass;
+keep F02 `IN_PROGRESS` with a null phase gate and leave F02-02 for a later
+invocation. Do not treat F01 or F02 as evidence for V00.

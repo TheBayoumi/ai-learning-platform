@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
-  "status": "READY",
+  "status": "WAITING_EXTERNAL",
   "active_phase": "F02",
   "active_slice": "F02-01",
   "gate_decision": null,
-  "last_completed_action": "Accepted the exact-CI-verified F02 definition and recorded standing Codex ownership of eligible technical, controller, and internally decidable V00 rule decisions without waiving external evidence gates.",
-  "next_action": "On a later invocation, revalidate F02 entry conditions and implement only F02-01 API diagnostic context.",
-  "stop_reason": "This bounded controller-authority amendment is complete; the next invocation may proceed automatically with F02-01, while V00 remains blocked only on external evidence.",
+  "last_completed_action": "Implemented and independently accepted only F02-01 API diagnostic context after repairing W3C flag delegation and confidential invalid-configuration startup; exact pushed CI remains pending.",
+  "next_action": "Commit and push the bounded F02-01 revision, then require exact API, web, and runtime GitHub Actions before accepting the slice.",
+  "stop_reason": "F02-01 is implemented locally but cannot be accepted until the exact pushed revision passes GitHub Actions; no user review or decision is pending.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
@@ -21,13 +21,13 @@
   },
   "foundation_track": {
     "active_phase": "F02",
-    "status": "NOT_STARTED",
+    "status": "IN_PROGRESS",
     "gate_decision": null,
-    "next_action": "On a later invocation, revalidate entry conditions and implement only F02-01 API diagnostic context"
+    "next_action": "Publish only F02-01 and wait for exact GitHub Actions; do not begin F02-02"
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-14T21:18:03.162Z"
+    "generated_at": "2026-07-14T22:16:39.567Z"
   },
   "external_blockers": [
     "Two qualified practitioner availability and validation confirmations",
@@ -45,11 +45,13 @@
   "human_decisions_required": [],
   "deployment_maturity_intent": {
     "status": "DEFERRED_UNTIL_SEPARATE_PHASE",
-    "github_role": "Source, CI, GitHub Environments, and deployment orchestration",
-    "runtime_target": "Containerized managed PaaS; provider, region, credentials, and exact Next.js mode remain provisional",
-    "reason": "GitHub Pages cannot run FastAPI or server-rendered Next.js, and F02 explicitly excludes deployment"
+    "github_role": "Source, CI, and exact-revision acceptance gate",
+    "runtime_candidate": "Vercel Python Functions plus Next.js/FastAPI Services, provisionally",
+    "connection_evidence": "User reports the Git repository is connected in Vercel; no local .vercel link or vercel.json is present",
+    "constitution_constraint": "The approved runtime remains containers on a managed PaaS; a later deployment phase must reconcile or explicitly amend the Vercel function topology",
+    "reason": "Vercel currently supports FastAPI and combined services, but deployment, beta constraints, region, secrets, data/jobs, rollback, cost, and exact Next.js mode are outside F02"
   },
-  "last_verified_commit": "6de13bba593e4b7aae30f112feb4a22a106ef7e2",
+  "last_verified_commit": "a35e1908f2d37dfcc2932d69bfd24a7bbd55dffd",
   "authoritative_file_hashes": {
     "AGENTS.md": "d7a3a4309183f42f05fa336e8283270b3cda204a159c827e8ee44783de2ca820",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
@@ -58,15 +60,15 @@
     "specs/roadmap.md": "18eccf6aabd08c17e76b8737b96c53bbb43ea54064d44f116c7e9b9c2088f774",
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
-    "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "6a4e9dd4ef11f0ff909ff1c7a9ba41995c33c1b6983589f5c6584b934f76a3c0",
-    "plans/implementation-inventory.json": "03dc2658286dc7210cb778e27beec75810343084f23fbce4dba782f0135a0199",
+    "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "785e1d69bacf79fa0442dd7b831b73289d653c02360a64efa940532f89a167cc",
+    "plans/implementation-inventory.json": "42f01fbf99898d158fc4f92a01891487fdffd1357be990f5611604958eb98f7f",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "e8c0cba1aa32c676afe1a0bcb2e8bf96af6f72e384451baac708c5c3f3ef1b07",
     "docs/validation/V00-candidate-role-evidence.md": "fa4563e988ebbe97c7ed2bf4185574a81880cdca5be7ebe43e5174459dfdf069"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 14,
-  "last_run_started_at": "2026-07-14T21:13:00.000Z",
-  "last_run_completed_at": "2026-07-14T21:18:03.162Z"
+  "run_number": 15,
+  "last_run_started_at": "2026-07-14T21:50:00.000Z",
+  "last_run_completed_at": "2026-07-14T22:16:39.567Z"
 }

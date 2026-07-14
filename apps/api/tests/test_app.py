@@ -49,8 +49,15 @@ def test_invalid_environment_fails_settings_validation(monkeypatch: pytest.Monke
 
 def test_structured_logging_initialization_emits_json(capsys: pytest.CaptureFixture[str]) -> None:
     configure_logging("INFO")
-    logging.getLogger("foundation-test").info("configured")
+    logging.getLogger("foundation-test").info("CANARY configured")
 
     payload = json.loads(capsys.readouterr().err)
 
-    assert payload == {"level": "INFO", "logger": "foundation-test", "message": "configured"}
+    assert payload == {
+        "schema_version": 1,
+        "event": "process.log",
+        "service": "api",
+        "outcome": "status",
+        "reason": "unstructured_suppressed",
+        "severity": "info",
+    }

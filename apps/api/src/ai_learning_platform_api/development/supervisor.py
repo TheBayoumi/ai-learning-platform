@@ -323,6 +323,7 @@ def build_service_specs(
             API_HOST,
             "--port",
             str(API_PORT),
+            "--no-access-log",
         ),
         working_directory=resolved_api_root,
         environment=api_environment,

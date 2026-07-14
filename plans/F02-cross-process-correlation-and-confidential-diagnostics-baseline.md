@@ -2,7 +2,7 @@
 
 **Phase:** `F02 - Cross-Process Correlation and Confidential Diagnostics Baseline`
 **Class:** Technical foundation
-**Status:** Not started
+**Status:** In progress - F02-01 implemented locally; exact pushed CI pending
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_EXTERNAL` / `Revise`; `V01` is locked.
 
@@ -44,7 +44,7 @@ exists to migrate. F02 therefore takes the smaller reversible diagnostic boundar
 
 Only one slice may be implemented and gate-reviewed per invocation.
 
-1. `F02-01 - API diagnostic context`: record the minimal instrumentation
+1. `F02-01 - API diagnostic context` (**implemented locally; exact CI pending**): record the minimal instrumentation
    dependency/ownership decision; define a fixed safe event vocabulary; add W3C
    context validation, safe-root creation, API middleware/context isolation, and
    allowlisted JSON diagnostics; replace or suppress unsafe raw request/error
@@ -94,6 +94,59 @@ path. Select the smallest maintained option that implements the approved W3C and
 OpenTelemetry boundary without an exporter or vendor SDK. A package is not
 approved merely because it is popular, and a custom protocol is not an allowed
 way to avoid a dependency.
+
+## F02-01 Dependency and Ownership Decision
+
+F02-01 evaluated four options. A standard-library parser was rejected because
+it would make this repository own a bespoke W3C protocol and compatibility
+surface. `opentelemetry-api` alone was rejected because it cannot own an
+application-local recording provider. Broad ASGI/FastAPI auto-instrumentation,
+logging instrumentation, distributions, exporters, and vendor SDKs were
+rejected because they expand route coverage, attributes, duplication, egress,
+and upgrade surface. The selected boundary is the exact pair
+`opentelemetry-api==1.43.0` and `opentelemetry-sdk==1.43.0`; both are direct
+dependencies because production code imports both. The SDK resolves
+`opentelemetry-semantic-conventions==0.64b0`, while its other dependency,
+`typing-extensions`, was already locked.
+
+The API owns W3C types and the official `TraceContextTextMapPropagator`. The SDK
+owns one application-local `TracerProvider`, a parent-based always-on root
+sampler, span creation, and provider shutdown. No global provider is set. No
+span processor, exporter, backend, automatic instrumentation, worker, network
+request, or retained store is configured. One pure-ASGI middleware owns only
+`GET /health/live`, creates a safe root for absent or rejected context, and
+emits exactly one fixed completion event through an injectable in-process sink.
+The 512-byte inbound cap is an application resource policy, not a W3C maximum;
+future versions and reserved flag bits remain delegated to the official parser.
+
+The three added wheels total 444,477 bytes. The manifest grew from 1,061 to
+1,123 bytes and the lockfile from 68,308 to 71,014 bytes. A warm locked sync was
+61 ms after the change versus the prior 140 ms warm observation; these cache-
+sensitive timings are observations, not an install budget. API and SDK versions
+must move together under a locked dependency review; the transitive semantic-
+conventions version must be re-inspected on upgrade. Rollback removes the two
+pins, regenerated lock entries, middleware/runtime/event modules, and wiring.
+The provider-neutral replacement boundary is the event sink plus app-local
+runtime, so a later approved implementation can replace the SDK without changing
+the health response or accepting a vendor contract.
+
+Instrumentation setup, monotonic-clock, and event-sink failures fall back to the
+unchanged health operation without logging their exception. Invalid or hostile
+context creates a safe root. Configuration failure exits nonzero through a fixed
+generic bootstrap event without reproducing validation input or a traceback.
+The application lifespan shuts down the empty provider. The remaining upgrade
+risk is OpenTelemetry's coupled API/SDK and semantic-conventions release train;
+no public response, schema, migration, data, storage, external API, or model
+compatibility surface changes in F02-01.
+
+The post-change fixed sample (20 warmups, 500 in-process requests) observed
+1.020 ms p50, 1.728 ms p95, and 2.312 ms maximum versus the pre-change 0.855 ms
+p50, 1.386 ms p95, and 4.743 ms maximum. Each measured request produced one
+265-byte compact diagnostic event. A Windows cross-process smoke observed API
+liveness in 1,668 ms, total smoke in 4,681 ms, and shutdown in 255 ms; local
+process/resident-memory collection was unavailable, so exact Ubuntu CI remains
+the resource gate. External API, model, telemetry-egress, and telemetry-storage
+cost remain zero.
 
 ## Failure Handling
 
@@ -183,5 +236,6 @@ F02 creates no persistent data or migration.
 
 ## Exact Next Action
 
-On a later invocation, revalidate F02 entry conditions and implement only
-`F02-01 - API diagnostic context`.
+Commit and push only the locally accepted `F02-01 - API diagnostic context`
+revision, then require its exact API, web, and runtime GitHub Actions jobs. Do
+not start F02-02 before F02-01 is accepted.

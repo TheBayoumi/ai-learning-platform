@@ -51,7 +51,7 @@ uv run --locked coverage report --fail-under=95
 ```
 
 For a local runtime smoke check from `apps/api`, start the API with
-`uv run --locked uvicorn ai_learning_platform_api.main:app`. Stop it after
+`uv run --locked uvicorn ai_learning_platform_api.main:app --no-access-log`. Stop it after
 checking `/health/live`, `/health/ready`, and `/openapi.json`. The F00 API quality
 job does not run a long-lived server; F01-06 defines the owned cross-process
 local/CI smoke below.

@@ -287,6 +287,7 @@ def test_build_service_specs_are_fixed_loopback_commands(tmp_path: Path) -> None
         "127.0.0.1",
         "--port",
         "8000",
+        "--no-access-log",
     )
     assert api.working_directory == api_root
     assert api.environment["PYTHONUNBUFFERED"] == "1"

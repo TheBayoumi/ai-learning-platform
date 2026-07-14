@@ -194,3 +194,41 @@ changes no source, dependency, lockfile, workflow, test, schema, runtime, or
 evidence artifact. Independent final verification returned `ACCEPT` with no
 actionable finding. The exact pushed revision's GitHub Actions run remains the
 publication gate.
+
+## Run 15 — 2026-07-15
+
+Revalidated F02 entry on exact-CI-accepted revision
+`a35e1908f2d37dfcc2932d69bfd24a7bbd55dffd` and implemented only F02-01.
+Selected exact OpenTelemetry API/SDK pins and an app-local provider with no
+processor, exporter, global registration, backend, persistence, or egress. Added
+strict W3C `traceparent` handling, safe roots, a pure-ASGI liveness boundary,
+one fixed allowlisted completion event, confidential generic process logging,
+disabled Uvicorn access logging, provider lifecycle ownership, and adversarial
+tests. The health response and generated API/web contracts remain unchanged.
+
+Independent verification found that the first draft privately rejected reserved
+v00 flag bits and that invalid environment configuration escaped Uvicorn import
+as a raw Pydantic traceback containing the supplied value. Reserved flags and
+future versions now delegate to the official propagator. The entrypoint now
+emits only a fixed generic error and exits nonzero; a real subprocess regression
+proves the canary, traceback, and validation input are absent. Fifty focused
+diagnostic tests and 186 full API tests pass at 99% coverage. Locked sync/lock,
+both contracts, Ruff, native/Linux/Windows strict mypy, and the Windows runtime
+smoke pass. Dependency, event-byte, latency, install, failure, upgrade, rollback,
+and zero-egress/storage/model-cost observations are recorded in the F02 plan and
+checkpoint.
+
+The user reports connecting the repository to Vercel. Official Vercel material
+now supports FastAPI Python Functions and combined Next.js/FastAPI Services, so
+Vercel replaces GitHub Pages as the provisional deployment candidate while
+GitHub remains source, CI, and exact-revision acceptance. No deployment config
+or local link exists, the Vercel surfaces have beta/runtime constraints, and a
+later gated phase must reconcile the function topology with the approved
+container-managed-PaaS constitution. F02 remains deployment-neutral.
+
+F02 is `IN_PROGRESS` with a null phase decision; F02-01 is
+`IMPLEMENTED_UNVERIFIED` until its exact pushed API, web, and runtime GitHub
+Actions jobs pass. V00 remains `WAITING_EXTERNAL / Revise`, V01 remains locked,
+and F02-02 must not start in this invocation. Independent final rereview
+reproduced the complete local gate, canary, structure, scope, and confidentiality
+evidence and returned `ACCEPT` with no actionable finding.

@@ -28,13 +28,14 @@ with owned-process and resident-memory observations plus clean shutdown.
 Revision `6de13bba593e4b7aae30f112feb4a22a106ef7e2` then defined the next
 foundation phase as `F02 - Cross-Process Correlation and Confidential
 Diagnostics Baseline` and passed exact GitHub Actions run `29367566575` across
-API, web, and runtime-smoke jobs. F02 is `NOT_STARTED` with no phase gate
-decision. The amendment added no source, dependency, workflow, test, runtime,
-exporter, telemetry backend, product metric, persistent diagnostic store,
-learner identifier, or V17A behavior. On a later invocation, revalidate F02
-entry conditions and implement only `F02-01 - API diagnostic context`. This
-does not change V00, unlock V01, authorize V02/V17A, or establish learner, role,
-mastery, evidence, or readiness capability.
+API, web, and runtime-smoke jobs. F02 is now `IN_PROGRESS` with no phase gate
+decision. Only `F02-01 - API diagnostic context` is locally implemented and
+independently accepted; it remains `IMPLEMENTED_UNVERIFIED` until the exact
+pushed revision passes API, web, and runtime CI. It adds app-local exporter-free
+technical context and a fixed confidential event, but no backend, persistence,
+product metric, learner identifier, or V17A behavior. This does not change V00,
+unlock V01, authorize V02/V17A, or establish learner, role, mastery, evidence,
+or readiness capability. F02-02 must remain for a later invocation.
 
 The controller writes only on the dedicated branch
 `automation/v00-phase-loop`. Under the user's standing delegation of
@@ -55,10 +56,18 @@ explicitly required by the product constitution. Such missing inputs are
 unlocking V01 without V00 evidence, broadening a phase, publishing secrets, or
 including unrelated working-tree changes.
 
-GitHub is the source, CI, environment-governance, and deployment-orchestration
-control plane for the maturity path. GitHub Pages is not a runtime target because
-it cannot host the FastAPI service or the approved server-rendered Next.js path.
-An actual staging or production deployment must be a separately gated,
-containerized managed-PaaS phase after its entry conditions pass; the PaaS,
-region, credentials, environment isolation, and exact Next.js mode remain
-provisional until that phase records evidence. F02 remains deployment-neutral.
+GitHub remains the source, CI, and exact-revision acceptance control plane; it is
+not the application runtime. The user reports connecting the repository to
+Vercel, so Vercel replaces GitHub Pages as the provisional deployment candidate.
+Current Vercel documentation supports FastAPI through
+[Python Functions](https://vercel.com/docs/frameworks/backend/fastapi) and a
+combined Next.js/FastAPI [Services](https://vercel.com/docs/services) topology,
+but both Python runtime and Services carry beta/runtime constraints. No local
+Vercel link or repository deployment configuration is verified yet.
+
+An actual preview, staging, or production deployment remains a separately gated
+phase after its entry conditions pass. That phase must reconcile Vercel's
+function model with the approved containerized managed-PaaS constitution, or
+explicitly amend that decision; it must also record region, credentials,
+environment isolation, database/job compatibility, rollback, cost, and exact
+Next.js mode. F02 remains deployment-neutral and does not claim Vercel maturity.

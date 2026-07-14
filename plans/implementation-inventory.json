@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T21:18:03.162Z",
+  "generated_at": "2026-07-14T22:16:39.567Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "6de13bba593e4b7aae30f112feb4a22a106ef7e2",
-    "working_tree": "This controller-only authority amendment starts from exact-CI-verified F02-definition revision 6de13bba593e4b7aae30f112feb4a22a106ef7e2; it changes no executable, dependency, workflow, test, or runtime behavior, leaves the tracked ai-learning-platform.7z untouched, and preserves four protected V00 Markdown working copies whose mixed EOL has no content diff",
+    "head": "a35e1908f2d37dfcc2932d69bfd24a7bbd55dffd",
+    "working_tree": "F02-01 is implemented and locally verified on exact-CI-accepted starting revision a35e1908f2d37dfcc2932d69bfd24a7bbd55dffd; the bounded working tree changes API diagnostics, dependencies, tests, launch logging, and controller records only, leaves the tracked ai-learning-platform.7z untouched, and preserves the protected V00 evidence paths",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -34,6 +34,7 @@
       "request-time server-rendered local API available, unavailable, and invalid-response states",
       "development-only cross-platform API and web process supervisor with bounded owned-tree cleanup",
       "deterministic local/CI cross-process health-contract smoke with bounded cleanup",
+      "app-local exporter-free W3C context and one allowlisted confidential event for GET /health/live, pending exact F02-01 CI acceptance",
       "static Next.js App Router technical shell",
       "locked API and web dependency workflows",
       "format, lint, strict type, test, coverage, build, and CI quality gates"
@@ -42,7 +43,7 @@
       "database schema, ORM, migrations, or persistence",
       "domain event ledger, outbox, replay, projections, or jobs",
       "authentication, authorization, tenancy, privacy lifecycle, or deletion",
-      "cross-process request correlation, allowlisted diagnostic events, telemetry backend, or exporter",
+      "web-to-API cross-process request propagation, telemetry backend, or exporter",
       "object storage, LLM gateway, or deployment",
       "Target or RoleProfile runtime model",
       "competency graph or Blueprint and ItemFamily runtime contracts",
@@ -211,7 +212,7 @@
       "id": "F02",
       "name": "Cross-Process Correlation and Confidential Diagnostics Baseline",
       "lane": "foundation",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "entry_conditions": [
         {
           "condition": "F01 passes",
@@ -241,16 +242,35 @@
           ]
         }
       ],
-      "implemented_files": [],
-      "tests": [],
+      "implemented_files": [
+        "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+        "apps/api/pyproject.toml",
+        "apps/api/uv.lock",
+        "apps/api/src/ai_learning_platform_api/diagnostics.py",
+        "apps/api/src/ai_learning_platform_api/transport/http/diagnostics.py",
+        "apps/api/src/ai_learning_platform_api/app.py",
+        "apps/api/src/ai_learning_platform_api/main.py",
+        "apps/api/src/ai_learning_platform_api/logging.py",
+        "apps/api/src/ai_learning_platform_api/development/supervisor.py",
+        "apps/api/tests/test_api_diagnostics.py",
+        "apps/api/tests/test_app.py",
+        "apps/api/tests/test_dev_supervisor.py",
+        "README.md"
+      ],
+      "tests": [
+        "apps/api/tests/test_api_diagnostics.py: 50 focused adversarial tests pass, including hostile and future W3C context, exact event counts, canary suppression, concurrent isolation, cleanup, failures, and real invalid-configuration subprocess startup",
+        "full API suite: 186 passed in 15.32 seconds at 99% total line and branch coverage; the new diagnostic runtime, formatter, and middleware are at 100%",
+        "locked sync and lock check, both health contract checks, Ruff format/lint, native/Linux/Windows strict mypy, and Windows cross-process smoke pass locally",
+        "independent verification found and reproduced W3C flag and raw startup-validation defects; both regressions were repaired, all local gates were reproduced, and final rereview returned ACCEPT with no actionable finding"
+      ],
       "missing_outputs": [
-        "F02-01 API W3C diagnostic context and allowlisted confidential event boundary",
+        "exact pushed GitHub Actions acceptance for the implemented F02-01 API boundary",
         "F02-02 server-only web-to-API context propagation and safe outcome diagnostics",
         "F02-03 cross-process correlation, confidentiality, isolation, resource, and exact-CI exit evidence"
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "On a later invocation, revalidate F02 entry conditions and implement only F02-01 API diagnostic context"
+      "next_smallest_action": "Commit and push only F02-01, require exact API/web/runtime GitHub Actions, and do not start F02-02 before acceptance"
     },
     {
       "id": "V00",
