@@ -1,1 +1,17 @@
 .bbrainy_code_intelligence_mcp/
+# F00 local environments, test output, and web build artifacts
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+.coverage
+htmlcov/
+apps/web/node_modules/
+apps/web/.next/
+apps/web/coverage/
+apps/web/*.tsbuildinfo
+.env
+.env.*
+!.env.example

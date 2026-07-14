@@ -1,0 +1,127 @@
+name: Quality Gates
+
+on:
+  pull_request:
+  push:
+    branches: [main, automation/v00-phase-loop]
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+      - name: Synchronize locked dependencies
+        run: uv sync --locked --all-groups
+      - name: Verify canonical health OpenAPI contract
+        run: >-
+          uv run --locked python -m
+          ai_learning_platform_api.contracts.health_openapi
+          check openapi/health.openapi.json
+      - name: Verify generated health response validator
+        run: >-
+          uv run --locked python -m
+          ai_learning_platform_api.contracts.health_typescript
+          check openapi/health.openapi.json
+          ../web/server/contracts/generated/health-response.ts
+      - name: Check formatting
+        run: uv run --locked ruff format --check . ../../scripts
+      - name: Lint
+        run: uv run --locked ruff check . ../../scripts
+      - name: Type check
+        run: uv run --locked mypy src tests ../../scripts
+      - name: Test with coverage
+        run: |
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
+      - name: Verify repository line endings
+        working-directory: .
+        run: |
+          git diff --check
+          git ls-files --eol | awk '
+            $1 ~ /^i\/(crlf|mixed)$/ ||
+            $2 == "w/mixed" ||
+            ($0 ~ /attr\/.*eol=lf/ && $2 == "w/crlf") ||
+            ($0 ~ /attr\/.*eol=crlf/ && $2 !~ /^w\/(crlf|none)$/) {
+              print "invalid line ending: " $0
+              invalid = 1
+            }
+            END { exit invalid }
+          '
+
+  web:
+    name: Web quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@11.18.0
+      - name: Verify npm version
+        run: test "$(npm --version)" = "11.18.0"
+      - name: Synchronize locked dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+
+  runtime-smoke:
+    name: Runtime smoke
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@11.18.0
+      - name: Verify npm version
+        run: test "$(npm --version)" = "11.18.0"
+      - name: Synchronize locked API dependencies
+        working-directory: apps/api
+        run: uv sync --locked --all-groups
+      - name: Synchronize locked web dependencies
+        working-directory: apps/web
+        run: npm ci
+      - name: Run the cross-process smoke contract
+        timeout-minutes: 2
+        run: uv run --project apps/api --locked python scripts/smoke.py

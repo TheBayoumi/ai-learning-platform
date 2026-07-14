@@ -3,3 +3,109 @@
 ## Run 1 — 2026-07-12
 
 Initialized the durable V00 controller and drafted the pending-approval symmetric demand-sampling protocol plus unsent privacy-safe practitioner, recruitment, and cost request templates. Validation and independent re-review passed; gate remains `Revise`; status is `WAITING_HUMAN` for the sampling-sufficiency, practitioner-qualification, and cost-boundary decisions.
+
+## Run 2 — 2026-07-12
+
+Added the separately gated, role-neutral F00 lane and implemented the locked
+FastAPI/Next.js repository foundation, tests, CI, and line-ending policy. Local
+API, runtime, web, build, and production-dependency checks passed; independent
+review findings were repaired. F00 gate is `Continue` / `PHASE_PASSED`; V00 stays
+`WAITING_HUMAN` / `Revise`, V01 stays locked, and no product capability was added.
+
+## Run 3 — 2026-07-12
+
+Defined and independently verified `F01 - Local Runtime Integration and API
+Contract Baseline` as a health/OpenAPI-only foundation phase. Updated the
+inventory and controller; F01 remains `NOT_STARTED` with no runtime files or
+tests. V00 remains `WAITING_HUMAN` / `Revise`, V01 remains locked, and the next
+run is limited to the `F01-01` health-contract export and drift-gate slice.
+
+## Run 4 — 2026-07-13
+
+Created the F01 ExecPlan and implemented only F01-01: a canonical FastAPI-generated
+health OpenAPI artifact, explicit operation IDs, a deterministic non-mutating
+write/check module, 10 focused tests, documentation, and identical CI/local drift
+validation. The full API suite passed 15 tests at 98% coverage; the contract
+module reached 100% line and branch coverage. Independent verification accepted
+the slice with no code or scope defect. F01 remains `IN_PROGRESS` with no phase
+gate decision; V00 remains `WAITING_HUMAN` / `Revise`, V01 remains locked, and the
+next run is limited to the F01-02 contract-derived health runtime validator.
+
+## Run 5 — 2026-07-13
+
+Reconciled F01-02 to validator-only scope and generated an 822-byte TypeScript
+health response type guard directly from the verified OpenAPI artifact, with a
+fail-closed dependency-free Python generator, deterministic write/check command,
+30 focused Python tests, and 3 focused Vitest cases. The full API suite passed 45
+tests at 99% coverage, both contract generators reached 100% line/branch coverage,
+the 4-test web suite and static production build passed, and independent review
+found no code or scope defect. F01 remains `IN_PROGRESS` with no phase gate;
+V00 remains `WAITING_HUMAN` / `Revise`, V01 remains locked, and the next run is
+limited to F01-03 server-only API-base configuration and health adapter work.
+
+## Run 6 — 2026-07-13
+
+Implemented only F01-03: canonical server-only literal-loopback API-origin
+configuration with typed redacted pre-fetch failure, plus an injected-fetch,
+bounded, non-cached and redirect-rejecting `/health/live` adapter that validates
+exact 200 JSON through the generated guard and exposes only safe classifications.
+Locked install, 52 focused and 56 full web tests, lint, strict typecheck, both
+canonical checks, 40 focused API contract tests, and the API-absent 8.3-second
+build passed. Independent verification found no code or scope defect after two
+bookkeeping repairs. F01 remains `IN_PROGRESS` with no phase gate; V00 remains
+`WAITING_HUMAN` / `Revise`, V01 remains locked, and only F01-04 accessible health
+states are eligible next.
+
+## Run 7 — 2026-07-13
+
+Implemented only F01-04: an explicitly dynamic server route, a server-only
+runtime resolver with a provisional 2,000 ms one-attempt bound, and a restrained
+accessible surface for local API available, unavailable, and invalid-response
+states. Presentation receives only the result kind; configuration and unexpected
+errors propagate. Locked install, 19 focused and 74 full web tests, lint, strict
+typecheck, both canonical checks, the API-absent 8.7-second dynamic build, a real
+179 ms unavailable render, browser-asset confidentiality scan, contrast checks,
+and visual inspection passed. Independent verification found no code or scope
+defect. F01 remains `IN_PROGRESS` with no phase gate; V00 remains
+`WAITING_HUMAN` / `Revise`, V01 remains locked, and only F01-05 process
+supervision is eligible next.
+
+## Run 8 — 2026-07-13
+
+Implemented only F01-05: one fixed repository-root development supervisor for
+the locked API and pinned Next.js CLI, with literal-loopback commands, inherited
+logs, visible failure propagation, POSIX process groups, and Windows children
+created suspended and assigned to kill-on-close Job Objects before resuming.
+Thirty-seven focused and 82 full API tests pass at 96% supervisor and 97% total
+coverage; all affected API quality and canonical checks pass. Actual Windows
+startup, clean shutdown, induced child failure, graceful/forced helper trees,
+and leader-exited descendant cleanup leave no owned PID or listener and preserve
+an unrelated blocker. Independent verification found no material defect. F01
+remains `IN_PROGRESS` with no phase gate; V00 remains `WAITING_HUMAN` / `Revise`,
+V01 remains locked, and only F01-06 smoke and exit-gate work is eligible next.
+
+## Run 9 — 2026-07-13
+
+Independent verification identified that the exact governing attachment
+authorizes F00 only and explicitly forbids F01. Removed only Run 9's F01-06
+smoke, focused tests, documentation, and CI additions and restored the pre-run
+F01-05 files. Preserved the pre-existing uncommitted F01-01 through F01-05 work
+because deleting it also requires user direction. F00 remains `PHASE_PASSED /
+Continue`; V00 remains `WAITING_HUMAN / Revise`; V01 remains locked. The
+controller disposition is `Stop` until the user decides whether the pre-existing
+F01 work should be retained and explicitly authorized or rolled back. No commit
+or push occurred.
+
+## Run 10 — 2026-07-13
+
+Reconciled the later implementation-loop attachment as the governing
+authorization for the formally defined and reviewed F01, then implemented only
+F01-06. Added one exact local/CI root smoke command that reuses F01-05 process
+ownership and signals, bounds loopback requests and startup, verifies exact
+health/OpenAPI/accessible-web contracts, records resources, and requires cleanup
+plus closed ports. Independent review found two bounded-observation defects;
+cache diagnostics and shared-deadline enforcement were repaired with four
+regressions. Forty-four focused and 126 full API tests pass at 98% smoke and 97%
+total coverage; all affected gates and the live Windows smoke pass. F01 remains
+`WAITING_EXTERNAL`, V00 remains `WAITING_HUMAN / Revise`, and V01 stays locked.
+No commit or push occurred; exact-revision Ubuntu CI remains required.
