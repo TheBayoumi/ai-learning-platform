@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-15T08:08:09.581Z",
+  "generated_at": "2026-07-15T08:20:11.948Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "7ac1fb3c938472a8c803e1ee98a772b42f92cdb8",
-    "working_tree": "F02-02 server-only web propagation and bounded diagnostics are implemented and independently accepted from the clean exact-CI-accepted opening revision; exact pushed CI remains pending, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
+    "head": "b6550c58f4342a82197455f53eb064a32306e8fc",
+    "working_tree": "F02-02 server-only web propagation and bounded diagnostics are accepted on exact pushed CI; this controller-only update advances eligibility to F02-03 for a later invocation, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -36,7 +36,7 @@
       "development-only cross-platform API and web process supervisor with bounded owned-tree cleanup",
       "deterministic local/CI cross-process health-contract smoke with bounded cleanup",
       "app-local exporter-free W3C context and one allowlisted confidential event for GET /health/live, accepted on exact F02-01 CI",
-      "server-only web client context propagation and one bounded confidential health-completion event, independently accepted for F02-02 before exact CI",
+      "server-only web client context propagation and one bounded confidential health-completion event, accepted on exact F02-02 CI",
       "production browser-asset confidentiality scan for fixed web diagnostic and API-configuration markers",
       "static Next.js App Router technical shell",
       "locked API and web dependency workflows",
@@ -284,15 +284,18 @@
         "F02-02 fixed 500-call observation emits exactly 500 260-byte events; baseline p50/p95/max is 0.049/0.120/2.463 ms and instrumented p50/p95/max is 0.095/0.210/0.709 ms",
         "F02-02 affected API gate: locked sync/lock, both contracts, Ruff, native/Linux/Windows strict mypy, and all 186 API tests pass at 99% coverage",
         "F02-02 Windows runtime smoke passes in 4,031 ms with API live in 1,936 ms, shutdown in 155 ms, matching web/API trace IDs observed with distinct spans, and both ports closed",
-        "F02-02 independent final verification accepts dependency ownership, private context, fail-open behavior, confidentiality, unchanged F01 contracts, resource evidence, and scope with no actionable finding"
+        "F02-02 independent final verification accepts dependency ownership, private context, fail-open behavior, confidentiality, unchanged F01 contracts, resource evidence, and scope with no actionable finding",
+        "exact revision b6550c58f4342a82197455f53eb064a32306e8fc completed GitHub Actions run 29400137315 successfully in 1 minute 33 seconds",
+        "exact API quality job 87302552878: locked sync, both contracts, Ruff, strict mypy across 26 files, line endings, and all 186 tests in 2.45 seconds passed at 99% coverage",
+        "exact web quality job 87302552907: locked install with zero vulnerabilities, lint, strict typecheck, all 97 tests in 8 files in 2.13 seconds, production build, and 10-file 629,565-byte browser confidentiality scan passed",
+        "exact runtime-smoke job 87302713249: API live in 1,924 ms; 4 owned processes; 747,077,632 aggregate resident bytes; 17,013,419 Next.js bytes; smoke completed in 4,773 ms; shutdown completed in 252 ms; matching web/API trace IDs with distinct spans were observed; both ports closed"
       ],
       "missing_outputs": [
-        "F02-02 exact pushed-CI acceptance",
         "F02-03 cross-process correlation, confidentiality, isolation, resource, and exact-CI exit evidence"
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Push only the bounded F02-02 revision and require exact GitHub Actions acceptance; do not start F02-03"
+      "next_smallest_action": "On a later invocation, revalidate entry and implement only F02-03 cross-process proof and phase exit"
     },
     {
       "id": "V00",

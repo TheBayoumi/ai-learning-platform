@@ -6,10 +6,10 @@ Validation remains `V00 - Candidate Role Evidence`, `WAITING_EXTERNAL / Revise`.
 Foundation remains `F02 - Cross-Process Correlation and Confidential Diagnostics
 Baseline`, `IN_PROGRESS`, with a null phase gate. `F02-01 - API diagnostic
 context` is accepted. `F02-02 - Server-to-server propagation` is implemented
-and independently accepted locally; exact pushed CI remains pending. V01 stays
-locked.
+and accepted on exact pushed CI. F02-03 is eligible only on a later invocation.
+V01 stays locked, and the global controller is `READY`.
 
-## Verified opening gate
+## Verified acceptance gates
 
 F02-01 implementation revision
 `1cd879ef9a37dc04a28c09e7fed23d40441fdb3c` passed exact GitHub Actions run
@@ -17,6 +17,10 @@ F02-01 implementation revision
 `7ac1fb3c938472a8c803e1ee98a772b42f92cdb8` then passed run `29373234548`
 across API, web, and runtime-smoke jobs. The worktree was clean and synchronized
 at that revision before F02-02 dependencies changed. F00 and F01 remain passed.
+
+F02-02 implementation revision
+`b6550c58f4342a82197455f53eb064a32306e8fc` passed exact GitHub Actions run
+`29400137315` across API, web, and runtime-smoke jobs in 1 minute 33 seconds.
 
 Architecture and roadmap reviews independently returned `Continue` for only
 F02-02. They required one explicit app-local client span, official W3C
@@ -27,7 +31,7 @@ telemetry storage, product identifiers, V00/V01 changes, and deployment.
 
 ## Last completed action
 
-Implemented the local F02-02 candidate. The Next.js server now owns one private,
+Implemented and accepted F02-02. The Next.js server now owns one private,
 exporter-free OpenTelemetry client span around its existing health adapter,
 starts it from explicit root context, and copies exactly one canonical
 `traceparent` from the official W3C propagator into the server-only fetch. The
@@ -101,6 +105,23 @@ migration, V00 evidence, product artifact, or tracked
 - `git diff --check`, line-ending, scope, secret, and controller JSON checks
   pass. Authoritative hashes are refreshed after these controller edits.
 
+## Exact pushed-CI results
+
+- API quality job `87302552878` passed locked synchronization, both contracts,
+  Ruff, strict mypy across 26 files, line endings, and 186 tests in 2.45 seconds
+  at 99% coverage.
+- Web quality job `87302552907` passed locked install with zero vulnerabilities,
+  lint, strict typecheck, 97 tests in 8 files in 2.13 seconds, and the production
+  build. Compile completed in 3.6 seconds; the confidentiality gate scanned 10
+  browser files totaling 629,565 bytes.
+- Runtime-smoke job `87302713249` passed with API live in 1,924 ms, four owned
+  processes, 747,077,632 aggregate resident bytes, 17,013,419 Next.js bytes,
+  total smoke in 4,773 ms, shutdown in 252 ms, matching web/API trace IDs with
+  distinct spans, and both ports closed.
+- The Ubuntu 500-call observation emitted exactly 500 260-byte events;
+  baseline p50/p95/max was 0.045/0.115/4.392 ms and instrumented was
+  0.088/0.229/7.106 ms. These remain observations, not budgets.
+
 ## Deployment maturity intent
 
 GitHub remains source, CI, and exact-revision acceptance. The user reports a
@@ -111,8 +132,9 @@ container-managed-PaaS decision. Deployment is not part of F02.
 
 ## Unresolved findings
 
-Exact pushed CI has not yet accepted F02-02. F02-03 and the complete F02 exit
-gate remain absent. The tracked 66.3 MB archive remains a
+F02-03 and the complete F02 exit gate remain absent. The matching trace in the
+runtime smoke is not yet an automated success/failure, isolation,
+rendered-output, or resource assertion. The tracked 66.3 MB archive remains a
 repository/checkout-cost risk outside this slice. V00 still lacks all four
 required external evidence groups.
 
@@ -133,6 +155,6 @@ the accepted F02-01/F01 runtime. No data rollback exists.
 
 ## Exact next action
 
-Commit and push only the independently accepted F02-02 revision, then require
-exact GitHub Actions acceptance. Do not start F02-03, evaluate the F02 phase
-gate, alter V00/V01, or add Vercel deployment configuration in this invocation.
+On a later invocation, revalidate entry and implement only F02-03 cross-process
+proof and phase exit. Do not start F02-03, evaluate the F02 phase gate, alter
+V00/V01, or add Vercel deployment configuration in this invocation.

@@ -2,7 +2,7 @@
 
 **Phase:** `F02 - Cross-Process Correlation and Confidential Diagnostics Baseline`
 **Class:** Technical foundation
-**Status:** In progress - F02-01 accepted; F02-02 independently accepted locally
+**Status:** In progress - F02-01 and F02-02 accepted; F02-03 not started
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_EXTERNAL` / `Revise`; `V01` is locked.
 
@@ -50,7 +50,7 @@ Only one slice may be implemented and gate-reviewed per invocation.
    allowlisted JSON diagnostics; replace or suppress unsafe raw request/error
    logging; and prove malformed-input, canary-redaction, concurrency, cleanup,
    and exact-count behavior.
-2. `F02-02 - Server-to-server propagation` (**independently accepted locally; exact-CI acceptance pending**): create and propagate context only
+2. `F02-02 - Server-to-server propagation` (**accepted on exact pushed CI**): create and propagate context only
    inside the Next.js server around the existing health adapter; emit bounded
    safe outcome/timing events; preserve timeout, cache, redirect, credential,
    and result-classification behavior; and prove that no context or diagnostics
@@ -242,8 +242,32 @@ canonical contracts, Ruff, strict mypy, line endings, and all 186 tests in 3.00
 seconds at 99% coverage. Web quality job `87219074897` passed lint, strict
 typecheck, all 74 tests, and the production build. Runtime-smoke job
 `87219208633` passed the unchanged cross-process contract, resource, cleanup,
-and port-closure gates. This accepts F02-01 only; F02 remains `IN_PROGRESS` with
-a null phase gate until F02-02, F02-03, and the complete exit gate pass.
+and port-closure gates. That revision accepted F02-01 only; F02 remained
+`IN_PROGRESS` with a null phase gate pending F02-02, F02-03, and the complete
+exit gate.
+
+## F02-02 Acceptance Evidence
+
+Implementation revision `b6550c58f4342a82197455f53eb064a32306e8fc`
+completed exact GitHub Actions run `29400137315` successfully in 1 minute 33
+seconds. API quality job `87302552878` passed locked synchronization, both
+canonical contracts, Ruff, strict mypy across 26 files, line endings, and all
+186 tests in 2.45 seconds at 99% coverage. Web quality job `87302552907` passed
+locked install with zero vulnerabilities, lint, strict typecheck, all 97 tests
+in 8 files in 2.13 seconds, and the production build. The build compiled in 3.6
+seconds and its confidentiality gate scanned 10 browser files totaling 629,565
+bytes. Its fixed 500-call observation emitted exactly 500 260-byte events;
+Ubuntu baseline p50/p95/max was 0.045/0.115/4.392 ms and instrumented was
+0.088/0.229/7.106 ms.
+
+Runtime-smoke job `87302713249` passed in 39 seconds. It reached API liveness in
+1,924 ms, completed the smoke in 4,773 ms, observed four owned processes and
+747,077,632 aggregate resident bytes, produced 17,013,419 Next.js bytes, shut
+down in 252 ms, and closed both ports. Its logs showed a validated matching
+trace ID across the web and API events with distinct span IDs. That observation
+accepts F02-02 propagation on Ubuntu but does not substitute for the automated
+success/failure, isolation, rendered-output, and resource assertions reserved
+for F02-03. F02 remains `IN_PROGRESS` with a null phase gate.
 
 ## Failure Handling
 
@@ -333,7 +357,6 @@ F02 creates no persistent data or migration.
 
 ## Exact Next Action
 
-Commit and push the independently accepted `F02-02 - Server-to-server
-propagation` revision, then require exact GitHub Actions acceptance. Do not start
-F02-03, evaluate the F02 phase gate, or add deployment configuration in this
-invocation.
+On a later invocation, revalidate the entry gate and implement only `F02-03 -
+Cross-process proof and phase exit`. Do not start F02-03, evaluate the F02 phase
+gate, or add deployment configuration in this invocation.

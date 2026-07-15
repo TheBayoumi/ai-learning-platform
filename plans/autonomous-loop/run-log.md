@@ -298,3 +298,25 @@ F02-02 is `IMPLEMENTED_UNVERIFIED` until its exact pushed API, web, and runtime
 GitHub Actions jobs pass. The controller moves to `WAITING_EXTERNAL` for that
 machine gate only; no user review is pending. F02-03, the F02 phase decision,
 V00/V01 changes, and Vercel deployment remain excluded.
+
+Implementation revision `b6550c58f4342a82197455f53eb064a32306e8fc`
+then completed exact GitHub Actions run `29400137315` successfully in 1 minute
+33 seconds. API quality job `87302552878` passed locked synchronization, both
+contracts, Ruff, strict mypy across 26 files, line endings, and 186 tests in
+2.45 seconds at 99% coverage. Web quality job `87302552907` passed locked
+install with zero vulnerabilities, lint, strict typecheck, all 97 tests in 8
+files in 2.13 seconds, and the production build; compile completed in 3.6
+seconds and the confidentiality gate scanned 10 browser files totaling 629,565
+bytes. The Ubuntu fixed observation emitted exactly 500 260-byte events;
+baseline p50/p95/max was 0.045/0.115/4.392 ms and instrumented was
+0.088/0.229/7.106 ms.
+
+Runtime-smoke job `87302713249` reached API liveness in 1,924 ms, observed four
+owned processes and 747,077,632 aggregate resident bytes, produced 17,013,419
+Next.js bytes, completed in 4,773 ms, shut down in 252 ms, and closed both
+ports. Its logs showed a matching validated trace ID across the web and API
+events with distinct spans. F02-02 is accepted. F02 remains `IN_PROGRESS` with
+a null phase gate because F02-03 and the complete exit gate remain absent. The
+controller returns to `READY`, with F02-03 eligible only on a later invocation.
+V00 remains `WAITING_EXTERNAL / Revise`, V01 remains locked, and no deployment
+configuration was added.
