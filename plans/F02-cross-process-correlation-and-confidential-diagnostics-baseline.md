@@ -2,7 +2,7 @@
 
 **Phase:** `F02 - Cross-Process Correlation and Confidential Diagnostics Baseline`
 **Class:** Technical foundation
-**Status:** In progress - F02-01 accepted; F02-02 is next on a later invocation
+**Status:** In progress - F02-01 accepted; F02-02 independently accepted locally
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_EXTERNAL` / `Revise`; `V01` is locked.
 
@@ -50,7 +50,7 @@ Only one slice may be implemented and gate-reviewed per invocation.
    allowlisted JSON diagnostics; replace or suppress unsafe raw request/error
    logging; and prove malformed-input, canary-redaction, concurrency, cleanup,
    and exact-count behavior.
-2. `F02-02 - Server-to-server propagation`: create and propagate context only
+2. `F02-02 - Server-to-server propagation` (**independently accepted locally; exact-CI acceptance pending**): create and propagate context only
    inside the Next.js server around the existing health adapter; emit bounded
    safe outcome/timing events; preserve timeout, cache, redirect, credential,
    and result-classification behavior; and prove that no context or diagnostics
@@ -148,6 +148,90 @@ Ubuntu runtime-smoke job `87219208633` observed API liveness in 2,633 ms, four
 owned processes, 716,132,352 aggregate resident bytes, 16,368,938 Next.js build
 bytes, total smoke in 6,213 ms, and shutdown in 251 ms. External API, model,
 telemetry-egress, and telemetry-storage cost remain zero.
+
+## F02-02 Dependency and Ownership Decision
+
+F02-02 evaluated four web-side approaches. Hand-generating identifiers and a
+`traceparent` string was rejected because it would make this repository own a
+bespoke interoperability surface. `@opentelemetry/api` alone was rejected
+because its default tracer is non-recording and cannot own the real span and
+identifiers required by the cross-process boundary. Next.js `instrumentation.ts`,
+`@vercel/otel`, `@opentelemetry/sdk-node`, and HTTP/fetch auto-instrumentation
+were rejected because they broaden ownership beyond one health call, may select
+a deployment runtime, and can introduce duplicate spans or attributes. The
+selected exact direct dependencies are `@opentelemetry/api@1.9.1`,
+`@opentelemetry/core@2.9.0`, and
+`@opentelemetry/sdk-trace@2.9.0`. Production imports the API types and root
+context, core's official `W3CTraceContextPropagator`, and the trace SDK's
+low-level private `TracerProvider`, so each package is a direct dependency
+rather than an accidental transitive import. The lower-level provider was
+selected after verification showed that the base SDK provider parses ambient
+`OTEL_*` configuration during construction; F02-02 must not let deployment
+environment values broaden or disable its fixed app-local behavior.
+
+The selected trace SDK resolves `@opentelemetry/resources@2.9.0` and
+`@opentelemetry/semantic-conventions@1.43.0`. All resolved Node constraints are
+compatible with the repository's `>=20.9.0 <26` range. The provider is
+application-local with an explicit parent-based always-on root sampler and an
+empty processor list. It is never globally registered, has no context manager,
+exporter, worker, socket, persistence, or egress, and starts each client span
+against explicit `ROOT_CONTEXT`. The official propagator injects into a
+temporary carrier; only a canonical validated `traceparent` whose identifiers
+match the span is copied into the server-only fetch. Browser or ambient Next.js
+context, baggage, `tracestate`, cookies, credentials, and arbitrary headers are
+not read or forwarded.
+
+Next.js 16.2.10 declares `@opentelemetry/api` as an optional peer, so the direct
+pin activates one shared API singleton for Next.js and this private provider.
+Current F02-02 code performs no global registration, making that shared package
+inert outside this explicit call path. Any future global provider,
+`instrumentation.ts`, or automatic-instrumentation change must review this
+singleton boundary first because it could allow framework-owned tracing to
+observe or duplicate the health transaction.
+
+The web health adapter retains one attempt, the positive timeout validation,
+the existing `AbortController`, the 2,000 ms runtime bound, `no-store`, omitted
+credentials, rejected redirects, exact 200/media-type/JSON/contract checks, and
+the unchanged public result union. A request-local idempotent completion emits
+one frozen allowlisted `web.health.request.completed` JSON line to standard
+error with only schema, service, operation, outcome, result, reason, validated
+trace/span identifiers, numeric status, and elapsed milliseconds. Setup,
+propagation, clock, span-status, span-end, sink, and completion failures suppress
+diagnostics without changing the health result. Unexpected adapter failures
+emit only `application_error`, end the span, and rethrow the original failure.
+No URL, header, body, response detail, environment value, exception text, or
+arbitrary field enters the event.
+
+The manifest grew from 785 to 1,025 bytes and the lockfile from 252,035 to
+254,732 bytes, deltas of 240 and 2,697 bytes. The five installed OpenTelemetry
+package directories contain 14,822,615 bytes. A clean post-change `npm ci`
+completed in 66,659 ms and `npm audit` reported zero vulnerabilities; install
+repeated allow-script warnings for the already locked `sharp` and
+`unrs-resolver` packages, neither of which F02-02 changes. A clean production
+build completed in 9,619 ms and produced 4,335,774 `.next` bytes. No comparable
+clean opening snapshot was retained, so that server-output value is an
+observation rather than a claimed delta. All 10 browser assets remained exactly
+629,565 bytes and the enforced confidentiality scan passed; a temporary banned
+marker then made the scan fail nonzero before removal, and the clean scan passed
+again.
+
+The final Windows runtime smoke started from an absent `.next/dev` cache and
+observed it grow from zero to 16,998,393 bytes, API liveness in 1,936 ms, total
+smoke in 4,031 ms, and shutdown in 155 ms. Process and resident-memory readings
+were unavailable on this Windows host, both fixed ports closed, and logs showed
+one matching trace ID across the web and API events with distinct span IDs.
+That match remains an observation until F02-03 adds the deterministic
+cross-process assertion.
+
+A fixed 20-warmup, 500-call in-process observation measured the unchanged
+adapter path at 0.049 ms p50, 0.120 ms p95, and 2.463 ms maximum, and the
+instrumented path at 0.095 ms p50, 0.210 ms p95, and 0.709 ms maximum. Exactly
+500 events were captured at 260 UTF-8 bytes each. These are local observations,
+not product or production budgets. External API, model, telemetry-egress, and
+telemetry-storage cost remain zero. Upgrades must review the three direct pins
+and resolved semantic-conventions release together. Rollback removes those
+pins, the web diagnostic module, adapter wiring, focused tests, and browser
+scan; the F01 health response and UI contract then remain intact.
 
 ## F02-01 Acceptance Evidence
 
@@ -249,6 +333,7 @@ F02 creates no persistent data or migration.
 
 ## Exact Next Action
 
-On a later invocation, revalidate F02 entry conditions and implement only
-`F02-02 - Server-to-server propagation`. Do not start F02-03 or evaluate the F02
-phase gate in that invocation.
+Commit and push the independently accepted `F02-02 - Server-to-server
+propagation` revision, then require exact GitHub Actions acceptance. Do not start
+F02-03, evaluate the F02 phase gate, or add deployment configuration in this
+invocation.

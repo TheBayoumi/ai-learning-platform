@@ -1,9 +1,11 @@
 # Implementation Inventory
 
-Generated from exact-CI-accepted F02-01 implementation revision
-`1cd879ef9a37dc04a28c09e7fed23d40441fdb3c`. The machine-readable record is
+Generated from exact-CI-accepted F02-02 opening/controller revision
+`7ac1fb3c938472a8c803e1ee98a772b42f92cdb8` and the current locally verified
+F02-02 candidate. The machine-readable record is
 `plans/implementation-inventory.json`. Roadmap prose and controller state are
-not counted as runtime implementation.
+not counted as runtime implementation; exact pushed-CI acceptance remains
+pending.
 
 ## Current Evidence
 
@@ -65,8 +67,16 @@ not counted as runtime implementation.
   seconds at 99% coverage; web quality passed 74 tests and the production build;
   runtime smoke observed four owned processes, 716,132,352 resident bytes, 2,633
   ms API liveness, 6,213 ms total smoke, 251 ms shutdown, and both ports closed.
-  F02-02, F02-03, exporters, backend, product metrics, learner identifiers, and
-  V17A behavior remain absent.
+  F02-02 is implemented locally: the Next.js server now owns one private client
+  span, injects one canonical `traceparent`, emits one fixed completion event,
+  preserves every F01 health classification and bound, and enforces a browser
+  asset confidentiality scan. Its 61 focused tests, 97-test full web run,
+  production build, hostile ambient-configuration and response-detail canaries,
+  500-call resource observation, all affected API gates, and Windows smoke pass
+  locally. Independent final verification returned `ACCEPT` with no actionable
+  finding; exact pushed CI remains required. F02-03, exporters, backend,
+  product metrics, learner
+  identifiers, and V17A behavior remain absent.
 - GitHub remains the source, CI, and exact-revision acceptance control plane.
   The user reports a Vercel Git connection; Vercel is the provisional deployment
   candidate because current official support includes FastAPI Python Functions
@@ -90,7 +100,7 @@ not counted as runtime implementation.
 | --- | --- | --- | --- |
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
-| F02 | Foundation | `IN_PROGRESS` | F02-01 accepted on exact CI; implement only F02-02 on a later invocation |
+| F02 | Foundation | `IN_PROGRESS` | F02-01 accepted; F02-02 independently accepted locally with exact CI pending |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -133,8 +143,10 @@ server-rendered technical status surface with three accessible API states, a
 development-only fixed API/web supervisor with bounded owned-tree cleanup, and a
 deterministic bounded local/CI health-contract smoke. Accepted F02-01 adds one
 app-local W3C context/span and fixed allowlisted event for API liveness, with no
-exporter or global provider.
-The repository has no web-to-API context propagation, persistent telemetry,
+exporter or global provider. Locally verified F02-02 adds one private web client
+span, server-only W3C propagation, one fixed safe web event, and a production
+browser-asset confidentiality gate; exact pushed-CI acceptance remains pending.
+The repository has no persistent telemetry,
 authentication, learner or role state, events/outbox/replay, competency graph,
 curriculum, assessment, tutoring, LLM access, mastery, readiness, unique work,
 simulation, provenance, privacy lifecycle, jobs, telemetry backend, or
@@ -142,7 +154,6 @@ deployment.
 
 ## Next Inventory Update
 
-On a later invocation, revalidate F02 entry conditions and implement only F02-02
-server-to-server propagation. Keep F02 `IN_PROGRESS` with a null phase gate and
-leave F02-03 for a later invocation. Do not treat F01 or F02 as evidence for
-V00.
+Push only the independently accepted F02-02 revision and require exact GitHub
+Actions acceptance. Keep F02 `IN_PROGRESS` with a null phase gate and leave
+F02-03 for a later invocation. Do not treat F01 or F02 as evidence for V00.

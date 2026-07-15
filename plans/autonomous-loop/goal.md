@@ -36,8 +36,9 @@ and runtime-smoke jobs. It adds app-local exporter-free technical context and a
 fixed confidential event, but no backend, persistence, product metric, learner
 identifier, or V17A behavior. This does not change V00, unlock V01, authorize
 V02/V17A, or establish learner, role, mastery, evidence, or readiness
-capability. F02-02 is the next eligible slice on a later invocation; F02-03 and
-the F02 phase gate remain later work.
+capability. F02-02 is now implemented and independently accepted locally on the
+accepted opening revision; exact pushed-CI acceptance remains its current gate.
+F02-03 and the F02 phase gate remain later work.
 
 The controller writes only on the dedicated branch
 `automation/v00-phase-loop`. Under the user's standing delegation of

@@ -3,142 +3,136 @@
 ## Current phase and slice
 
 Validation remains `V00 - Candidate Role Evidence`, `WAITING_EXTERNAL / Revise`.
-Foundation is `F02 - Cross-Process Correlation and Confidential Diagnostics
+Foundation remains `F02 - Cross-Process Correlation and Confidential Diagnostics
 Baseline`, `IN_PROGRESS`, with a null phase gate. `F02-01 - API diagnostic
-context` is accepted; `F02-02 - Server-to-server propagation` is the next
-eligible slice on a later invocation. V01 is locked.
+context` is accepted. `F02-02 - Server-to-server propagation` is implemented
+and independently accepted locally; exact pushed CI remains pending. V01 stays
+locked.
 
-## Verified gate state
+## Verified opening gate
 
-Implementation revision `1cd879ef9a37dc04a28c09e7fed23d40441fdb3c`
-passed exact GitHub Actions run `29372599433` across API, web, and runtime-smoke
-jobs. This accepts only F02-01. F00 and F01 remain passed. F02 entry conditions
-remain met, but F02 cannot pass until all three slices and its exact exit gate
-pass.
+F02-01 implementation revision
+`1cd879ef9a37dc04a28c09e7fed23d40441fdb3c` passed exact GitHub Actions run
+`29372599433`. Controller publication revision
+`7ac1fb3c938472a8c803e1ee98a772b42f92cdb8` then passed run `29373234548`
+across API, web, and runtime-smoke jobs. The worktree was clean and synchronized
+at that revision before F02-02 dependencies changed. F00 and F01 remain passed.
 
-F02-01 now owns an app-local OpenTelemetry provider and official W3C propagator,
-strict inbound resource handling, safe-root creation, one span and one fixed
-completion event only for `GET /health/live`, unconditional context cleanup,
-confidential generic process logging, disabled Uvicorn access logging, and a
-fail-closed bootstrap boundary. It configures no exporter, processor, backend,
-global provider, telemetry persistence, or network egress.
-
-Validation remains unchanged. No role, learner, mastery, evidence, readiness,
-product analytics, audit, privacy approval, or V17A state was added. F02-01 is
-not V00 evidence and does not unlock V01 or authorize V02.
+Architecture and roadmap reviews independently returned `Continue` for only
+F02-02. They required one explicit app-local client span, official W3C
+propagation, one fixed safe event, no global registration or automatic
+instrumentation, no browser output, unchanged F01 behavior, independent review,
+and exact pushed CI. They explicitly excluded F02-03, API changes, exporters,
+telemetry storage, product identifiers, V00/V01 changes, and deployment.
 
 ## Last completed action
 
-Accepted only F02-01 after implementation, independent verification, and exact
-pushed CI. Architecture and roadmap reviews selected exact
-`opentelemetry-api==1.43.0` and
-`opentelemetry-sdk==1.43.0`, with locked
-`opentelemetry-semantic-conventions==0.64b0`, instead of a bespoke parser,
-API-only no-op spans, broad auto-instrumentation, exporters, or vendor SDKs.
+Implemented the local F02-02 candidate. The Next.js server now owns one private,
+exporter-free OpenTelemetry client span around its existing health adapter,
+starts it from explicit root context, and copies exactly one canonical
+`traceparent` from the official W3C propagator into the server-only fetch. The
+adapter emits one frozen allowlisted `web.health.request.completed` line with
+fixed classifications, validated trace/span IDs, status, and duration. It keeps
+the one-attempt timeout, abort, cache, credentials, redirect, media-type, JSON,
+contract, and public-result behavior unchanged. All instrumentation failures are
+diagnostic-only, and unexpected adapter failures are rethrown unchanged after a
+generic completion.
 
-Independent verification found two material defects in the first draft. The
-private v00 flag restriction was removed so reserved bits and future versions
-are delegated to the official propagator. A real invalid-environment subprocess
-proved that Uvicorn import failure bypassed the formatter and exposed raw
-Pydantic input; `main.py` now emits one fixed generic event and exits nonzero
-without a traceback. Both regressions now pass. The required dependency,
-ownership, cost, failure, upgrade, rollback, and replacement decision is recorded
-in the F02 ExecPlan. Exact run `29372599433` then passed every API, web, and
-runtime-smoke job for the implementation revision.
-
-## Exact next action
-
-On a later invocation, revalidate F02 entry conditions and implement only
-`F02-02 - Server-to-server propagation`. Do not start F02-03 or evaluate the F02
-phase gate in that invocation.
+The production build now scans `.next/static` for unique diagnostic and API
+configuration markers. No context or diagnostic field was added to
+`HealthCheckResult`, `ApiAvailability`, page props, rendered UI, public health
+schema, or generated validator. No global provider, context manager, exporter,
+processor, worker, storage, egress, database, migration, product behavior, or
+deployment configuration was added.
 
 ## Changed files
 
-The accepted implementation changed the F02 ExecPlan and controller/inventory
-records; exact API dependency and lock files; new diagnostic runtime, event, and
-pure-ASGI middleware modules; API app, entrypoint, logging, and supervisor
-wiring; focused diagnostics and adjacent app and supervisor tests; and the
-direct Uvicorn README command. This acceptance update changes only the F02
-ExecPlan and controller/inventory records. No web source, workflow, generated
-health contract, schema, migration, V00 evidence, or product artifact changed.
-The tracked `ai-learning-platform.7z` remains untouched.
+- Exact web dependencies and lock: `apps/web/package.json` and
+  `apps/web/package-lock.json`.
+- New server diagnostic boundary:
+  `apps/web/server/diagnostics/health-diagnostics.ts`.
+- Existing adapter wiring: `apps/web/server/health/health-adapter.ts`.
+- Enforced browser scan:
+  `apps/web/scripts/check-browser-confidentiality.mjs`.
+- Focused, resource, adapter, and presentation tests under `apps/web/tests/`.
+- Operator documentation, F02 ExecPlan, implementation inventory, and durable
+  controller records.
 
-## Validation results
+No API source, workflow, OpenAPI artifact, generated health validator, schema,
+migration, V00 evidence, product artifact, or tracked
+`ai-learning-platform.7z` content changed.
 
-- Locked sync and `uv lock --check` pass. Both canonical health contract checks
-  report current artifacts.
-- Ruff format and lint pass. Native, Linux-targeted, and Windows-targeted strict
-  mypy each pass all 26 source/test/script files.
-- `apps/api/tests/test_api_diagnostics.py`: 50 focused adversarial tests pass.
-  They cover valid, absent, malformed, hostile, duplicate, oversized, reserved-
-  flag, and future-version context; safe roots; exact counts; canary suppression;
-  concurrent/nested cleanup; response and route isolation; downstream,
-  cancellation, clock, sink, propagator, and span-start failures; provider
-  ownership; lifecycle; logging; and real invalid-configuration startup.
-- The full API suite passes 186 tests in 15.32 seconds at 99% total line and
-  branch coverage. The new diagnostic runtime, formatter, and middleware are at
-  100% coverage without exclusions.
-- A Windows cross-process smoke passes with unchanged health/OpenAPI/web
-  contracts: API liveness 1,668 ms, total 4,681 ms, and shutdown 255 ms. Local
-  process count and resident memory were unavailable.
-- A fixed 500-request in-process sample observed 1.020 ms p50, 1.728 ms p95,
-  and 2.312 ms maximum versus the pre-change 0.855/1.386/4.743 ms observations.
-  Exactly 500 events were captured at 265 compact JSON bytes each.
-- The manifest grew 62 bytes and lockfile 2,706 bytes; the three added wheels
-  total 444,477 bytes. A warm locked sync was 61 ms. No process, worker, egress,
-  persistence, external API, model, or telemetry-storage cost was added.
-- Independent final rereview reproduced locked dependencies, formatting, lint,
-  native/Linux/Windows typing, both contracts, all 186 tests and 99% coverage,
-  Windows smoke, live and startup canary behavior, JSON, hashes, timestamps,
-  scope, LF, secrets, and diff checks, then returned `ACCEPT` with no finding.
-- Exact GitHub Actions run `29372599433` succeeded in 1 minute 28 seconds. API
-  job `87219074832` passed locked sync, both contracts, Ruff, strict mypy, line
-  endings, and all 186 tests in 3.00 seconds at 99% coverage. Web job
-  `87219074897` passed lint, strict typecheck, all 74 tests in 1.32 seconds, and
-  the production build with zero npm vulnerabilities. Runtime-smoke job
-  `87219208633` observed API liveness in 2,633 ms, four owned processes,
-  716,132,352 aggregate resident bytes, 16,368,938 Next.js build bytes, total
-  smoke in 6,213 ms, shutdown in 251 ms, and closed both ports.
+## Local validation results
+
+- `npm ci` passed in 66,659 ms and `npm audit` reported zero vulnerabilities. It
+  repeated allow-script warnings for already locked `sharp` and
+  `unrs-resolver`.
+- Web lint and strict typecheck pass. All 61 focused diagnostics, adapter,
+  runtime, page, shell, and resource tests pass; the complete suite passes all
+  97 tests in 8 files.
+- A clean `npm run build` passed in 9,619 ms and produced 4,335,774 `.next`
+  bytes. Its enforced browser scan checked 10 assets totaling 629,565 bytes and
+  found no diagnostic or API-configuration marker. A temporary banned marker
+  made the scan fail nonzero; after removal, the clean scan passed again.
+- The exact dependency tree resolves direct API/core/trace-SDK pins plus
+  resources and semantic conventions. The five package directories contain
+  14,822,615 bytes; manifest/lock growth is 240/2,697 bytes. Next.js shares its
+  optional OpenTelemetry API peer, so future global registration or automatic
+  instrumentation must review the singleton boundary; F02-02 registers neither.
+- Hostile ambient SDK-disable, always-off sampler, service, and resource values
+  cannot override the explicit sampled private root or enter diagnostics. A
+  valid nonempty response-detail canary is accepted but absent from the emitted
+  event.
+- A 20-warmup, 500-call observation emitted exactly 500 events at 260 bytes
+  each. Baseline p50/p95/max was 0.049/0.120/2.463 ms; instrumented was
+  0.095/0.210/0.709 ms. These are observations, not budgets.
+- API locked sync/lock, both canonical contract checks, Ruff format/lint, and
+  native/Linux/Windows strict mypy pass all 26 source/test/script files.
+- The unchanged full API suite passes 186 tests in 17.07 seconds at 99% total
+  line and branch coverage.
+- Windows cross-process smoke passed: API live in 1,936 ms, total smoke in
+  4,031 ms, shutdown in 155 ms, both ports closed, and process/memory readings
+  unavailable. Its logs showed the same validated trace ID across the web and
+  API events with distinct span IDs; F02-03 must turn that observation into an
+  automated exit assertion.
+- Independent final verification returned `ACCEPT` with no actionable finding
+  after reproducing the dependency, behavior, confidentiality, scope, and full
+  web gates.
+- `git diff --check`, line-ending, scope, secret, and controller JSON checks
+  pass. Authoritative hashes are refreshed after these controller edits.
 
 ## Deployment maturity intent
 
 GitHub remains source, CI, and exact-revision acceptance. The user reports a
-Vercel Git connection, and current official documentation supports FastAPI
-Python Functions plus combined Next.js/FastAPI Services. Vercel is therefore the
-provisional deployment candidate, but there is no local link or `vercel.json`,
-the relevant Vercel surfaces have beta/runtime constraints, and the function
-topology conflicts with the approved container-managed-PaaS decision unless a
-later gated phase reconciles or explicitly amends it. No deployment is part of
-F02.
+Vercel Git connection, so Vercel is the provisional deployment candidate rather
+than GitHub Pages. No local Vercel link or deployment configuration is verified,
+and a later gated phase must reconcile its function topology with the approved
+container-managed-PaaS decision. Deployment is not part of F02.
 
 ## Unresolved findings
 
-F02-02 web propagation and F02-03 cross-process/resource exit evidence are
-absent. The tracked 66.3 MB archive remains a repository/checkout-cost risk
-outside this slice. V00 still lacks every required external evidence group.
+Exact pushed CI has not yet accepted F02-02. F02-03 and the complete F02 exit
+gate remain absent. The tracked 66.3 MB archive remains a
+repository/checkout-cost risk outside this slice. V00 still lacks all four
+required external evidence groups.
 
-## External blockers
+## External and human blockers
 
-F02 has none. V00 still requires
-qualifying demand evidence, two qualified practitioner confirmations, a real
-20-50-adult recruitment channel, and acceptable measured expected-cost evidence.
-
-## Human decisions required
-
-None for F02-02 selection or later bounded implementation. Constitutionally
-required human evidence remains external and cannot be self-certified by Codex.
+F02 has none. V00 still requires qualifying demand evidence, two qualified
+practitioner confirmations, a real 20-50-adult recruitment channel, and
+acceptable measured expected-cost evidence. No technical/controller decision
+requires human review; constitutionally required external evidence cannot be
+self-certified by Codex.
 
 ## Rollback point
 
-`1cd879ef9a37dc04a28c09e7fed23d40441fdb3c` on
-`automation/v00-phase-loop`. F02-01 has no stored telemetry, migration, or data
-rollback; removing its pins, modules, wiring, tests, and launch override restores
-the F01 runtime.
+Opening revision `7ac1fb3c938472a8c803e1ee98a772b42f92cdb8` on
+`automation/v00-phase-loop`. Removing the three web pins, diagnostic module,
+adapter wiring, focused tests, browser scan, and F02-02 documentation restores
+the accepted F02-01/F01 runtime. No data rollback exists.
 
-## Another run may proceed automatically
+## Exact next action
 
-Yes. On a later invocation, revalidate F02 entry conditions and implement only
-F02-02 without user review under the standing decision and commit/push
-authorization. Do not start F02-03 in that invocation, pass the F02 phase, alter
-V00/V01, introduce browser telemetry, select a backend, or treat diagnostics as
-V17A evidence.
+Commit and push only the independently accepted F02-02 revision, then require
+exact GitHub Actions acceptance. Do not start F02-03, evaluate the F02 phase
+gate, alter V00/V01, or add Vercel deployment configuration in this invocation.

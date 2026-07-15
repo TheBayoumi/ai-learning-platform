@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-14T22:24:08.987Z",
+  "generated_at": "2026-07-15T08:08:09.581Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "1cd879ef9a37dc04a28c09e7fed23d40441fdb3c",
-    "working_tree": "F02-01 implementation revision 1cd879ef9a37dc04a28c09e7fed23d40441fdb3c passed its exact API, web, and runtime GitHub Actions gate; this controller-only update records that acceptance, leaves the tracked ai-learning-platform.7z untouched, and preserves the protected V00 evidence paths",
+    "head": "7ac1fb3c938472a8c803e1ee98a772b42f92cdb8",
+    "working_tree": "F02-02 server-only web propagation and bounded diagnostics are implemented and independently accepted from the clean exact-CI-accepted opening revision; exact pushed CI remains pending, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -14,6 +14,7 @@
       "apps/api/openapi/health.openapi.json",
       "apps/web/server/contracts/generated/health-response.ts",
       "apps/web/server/config/api-base.ts",
+      "apps/web/server/diagnostics/health-diagnostics.ts",
       "apps/web/server/health/health-adapter.ts",
       "apps/api/src/ai_learning_platform_api/development/smoke.py",
       "docs/validation/V00-candidate-role-evidence.md",
@@ -35,6 +36,8 @@
       "development-only cross-platform API and web process supervisor with bounded owned-tree cleanup",
       "deterministic local/CI cross-process health-contract smoke with bounded cleanup",
       "app-local exporter-free W3C context and one allowlisted confidential event for GET /health/live, accepted on exact F02-01 CI",
+      "server-only web client context propagation and one bounded confidential health-completion event, independently accepted for F02-02 before exact CI",
+      "production browser-asset confidentiality scan for fixed web diagnostic and API-configuration markers",
       "static Next.js App Router technical shell",
       "locked API and web dependency workflows",
       "format, lint, strict type, test, coverage, build, and CI quality gates"
@@ -43,7 +46,7 @@
       "database schema, ORM, migrations, or persistence",
       "domain event ledger, outbox, replay, projections, or jobs",
       "authentication, authorization, tenancy, privacy lifecycle, or deletion",
-      "web-to-API cross-process request propagation, telemetry backend, or exporter",
+      "automated cross-process correlation assertion, telemetry backend, or exporter",
       "object storage, LLM gateway, or deployment",
       "Target or RoleProfile runtime model",
       "competency graph or Blueprint and ItemFamily runtime contracts",
@@ -206,7 +209,7 @@
       "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "No further F01 action; F02 is defined and remains NOT_STARTED"
+      "next_smallest_action": "No further F01 action; F02 is IN_PROGRESS"
     },
     {
       "id": "F02",
@@ -255,6 +258,15 @@
         "apps/api/tests/test_api_diagnostics.py",
         "apps/api/tests/test_app.py",
         "apps/api/tests/test_dev_supervisor.py",
+        "apps/web/package.json",
+        "apps/web/package-lock.json",
+        "apps/web/server/diagnostics/health-diagnostics.ts",
+        "apps/web/server/health/health-adapter.ts",
+        "apps/web/scripts/check-browser-confidentiality.mjs",
+        "apps/web/tests/health-diagnostics.test.ts",
+        "apps/web/tests/health-diagnostics-resource.test.ts",
+        "apps/web/tests/health-adapter.test.ts",
+        "apps/web/tests/home-page.test.tsx",
         "README.md"
       ],
       "tests": [
@@ -265,15 +277,22 @@
         "exact revision 1cd879ef9a37dc04a28c09e7fed23d40441fdb3c completed GitHub Actions run 29372599433 successfully in 1 minute 28 seconds",
         "exact API quality job 87219074832: locked sync, both contracts, Ruff, strict mypy, line endings, and all 186 tests in 3.00 seconds passed at 99% coverage",
         "exact web quality job 87219074897: lint, strict typecheck, all 74 tests in 1.32 seconds, and the production build passed with zero npm vulnerabilities",
-        "exact runtime-smoke job 87219208633: API live in 2,633 ms; 4 owned processes; 716,132,352 aggregate resident bytes; 16,368,938 Next.js build bytes; smoke completed in 6,213 ms; shutdown completed in 251 ms; both ports closed"
+        "exact runtime-smoke job 87219208633: API live in 2,633 ms; 4 owned processes; 716,132,352 aggregate resident bytes; 16,368,938 Next.js build bytes; smoke completed in 6,213 ms; shutdown completed in 251 ms; both ports closed",
+        "F02-02 focused web diagnostics, adapter, runtime, rendered-output, hostile-ambient-configuration, and resource validation: 61 tests pass; the full web suite passes 97 tests in 8 files",
+        "F02-02 clean production build passes in 9,619 ms with 4,335,774 .next bytes; its enforced confidentiality scan finds none of the fixed diagnostic or API-configuration markers in 10 browser assets totaling 629,565 bytes, fails nonzero for a temporary banned marker, and passes again after removal",
+        "F02-02 clean npm ci passes in 66,659 ms and npm audit reports zero vulnerabilities; manifest/lock growth is 240/2,697 bytes and five installed OpenTelemetry directories total 14,822,615 bytes",
+        "F02-02 fixed 500-call observation emits exactly 500 260-byte events; baseline p50/p95/max is 0.049/0.120/2.463 ms and instrumented p50/p95/max is 0.095/0.210/0.709 ms",
+        "F02-02 affected API gate: locked sync/lock, both contracts, Ruff, native/Linux/Windows strict mypy, and all 186 API tests pass at 99% coverage",
+        "F02-02 Windows runtime smoke passes in 4,031 ms with API live in 1,936 ms, shutdown in 155 ms, matching web/API trace IDs observed with distinct spans, and both ports closed",
+        "F02-02 independent final verification accepts dependency ownership, private context, fail-open behavior, confidentiality, unchanged F01 contracts, resource evidence, and scope with no actionable finding"
       ],
       "missing_outputs": [
-        "F02-02 server-only web-to-API context propagation and safe outcome diagnostics",
+        "F02-02 exact pushed-CI acceptance",
         "F02-03 cross-process correlation, confidentiality, isolation, resource, and exact-CI exit evidence"
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "On a later invocation, revalidate F02 entry conditions and implement only F02-02 server-to-server propagation"
+      "next_smallest_action": "Push only the bounded F02-02 revision and require exact GitHub Actions acceptance; do not start F02-03"
     },
     {
       "id": "V00",

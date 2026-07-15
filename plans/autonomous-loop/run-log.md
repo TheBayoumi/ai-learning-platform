@@ -244,3 +244,57 @@ F02-02, F02-03, and the complete exit gate are absent. Global controller state
 returns to `READY`, with F02-02 eligible only on a later invocation. V00 remains
 `WAITING_EXTERNAL / Revise`, V01 remains locked, and no V00 evidence, deployment
 configuration, or F02-02 work was added in this invocation.
+
+## Run 16 - 2026-07-15 (started)
+
+Revalidated the F02-02 entry gate from clean synchronized revision
+`7ac1fb3c938472a8c803e1ee98a772b42f92cdb8`, whose controller publication passed
+exact GitHub Actions run `29373234548` across API, web, and runtime-smoke jobs.
+Started only `F02-02 - Server-to-server propagation`. V00 remains
+`WAITING_EXTERNAL / Revise`, V01 remains locked, F02 retains a null phase gate,
+and F02-03 plus Vercel deployment configuration remain outside this invocation.
+
+Implemented one server-only client span around the existing bounded health
+adapter with exact `@opentelemetry/api@1.9.1`, `core@2.9.0`, and
+`sdk-trace@2.9.0` pins. The app-local provider has no global registration,
+processor, exporter, context manager, backend, persistence, or egress. It starts
+from explicit root context, injects one official canonical nonzero W3C
+`traceparent`, and emits one frozen allowlisted web completion event. The F01
+timeout, abort, cache, credential, redirect, status, media-type, contract, and
+public UI-result behavior remains unchanged. A production build gate now scans
+browser assets for fixed diagnostic and API-configuration markers.
+
+Independent review found and the parent repaired four material defects: the
+first base provider read ambient `OTEL_*` configuration; default setup could
+fail at module evaluation instead of returning the frozen no-op boundary; the
+adapter fallback validator did not reject zero identifiers; and the first
+browser marker used the wrong API environment name. The final lower-level
+provider ignores hostile SDK-disable, always-off sampler, service, and resource
+values under an executable regression. A valid 200 response-detail canary is
+accepted but absent from the event. The optional OpenTelemetry API peer shared
+with Next.js is documented as a future global-registration risk.
+
+All 61 focused web tests and all 97 tests in 8 files pass, as do lint, strict
+typecheck, a clean production build, and the browser confidentiality scan over
+10 assets and 629,565 bytes. The scan failed nonzero for a temporary banned
+marker and passed again after removal. Clean install completed in 66,659 ms and
+the audit found zero vulnerabilities. Five installed OpenTelemetry directories
+contain 14,822,615 bytes; manifest/lock growth is 240/2,697 bytes. A 500-call
+observation emitted exactly 500 260-byte events; local baseline p50/p95/max was
+0.049/0.120/2.463 ms and instrumented was 0.095/0.210/0.709 ms. These are
+observations, not budgets; API/model/telemetry egress and storage cost remain
+zero.
+
+The unaffected API gate passes locked sync/lock, both contracts, Ruff,
+native/Linux/Windows strict mypy, and 186 tests at 99% coverage. The final
+Windows smoke reached API liveness in 1,936 ms, completed in 4,031 ms, shut down
+in 155 ms, and closed both ports. Its logs observed matching web/API trace IDs
+with distinct spans; F02-03 still owns the automated real-process correlation,
+rendered-output confidentiality, resource, Ubuntu, and complete phase-exit
+assertions.
+
+Independent final verification returned `ACCEPT` with no actionable finding.
+F02-02 is `IMPLEMENTED_UNVERIFIED` until its exact pushed API, web, and runtime
+GitHub Actions jobs pass. The controller moves to `WAITING_EXTERNAL` for that
+machine gate only; no user review is pending. F02-03, the F02 phase decision,
+V00/V01 changes, and Vercel deployment remain excluded.

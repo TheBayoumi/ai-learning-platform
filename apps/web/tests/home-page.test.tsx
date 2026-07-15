@@ -34,4 +34,15 @@ describe("HomePage", () => {
     expect(runtime.resolveRuntimeApiAvailability).toHaveBeenCalledTimes(1);
     expect(markup).toContain(label);
   });
+
+  it("keeps server diagnostic context out of rendered output", async () => {
+    runtime.resolveRuntimeApiAvailability.mockResolvedValue("available");
+
+    const markup = renderToStaticMarkup(await HomePage());
+
+    expect(markup).not.toContain("traceparent");
+    expect(markup).not.toContain("web.health.request.completed");
+    expect(markup).not.toContain("0123456789abcdef0123456789abcdef");
+    expect(markup).not.toContain("0123456789abcdef");
+  });
 });

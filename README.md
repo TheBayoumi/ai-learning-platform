@@ -188,3 +188,24 @@ server-only values. It also proves that cleanup succeeded and both fixed ports
 closed. It does not prove product, learner, mastery, or role readiness. Startup,
 contract, process-exit, interruption, cleanup, or port-closure failure returns
 nonzero without echoing response bodies or private exception details.
+
+## F02 confidential health diagnostics
+
+F02-01 and F02-02 add one exporter-free W3C/OpenTelemetry diagnostic chain only
+for the existing server-rendered `GET /health/live` transaction. The Next.js
+server creates one private client span and sends exactly one canonical
+`traceparent`; the API creates a distinct server span in the same trace. Both
+processes emit one compact allowlisted completion event to their server logs.
+There is no global provider registration, browser tracing, automatic route
+instrumentation, exporter, telemetry backend, persistence, or network egress.
+
+The events contain only fixed classifications, validated trace/span IDs, HTTP
+status, and elapsed milliseconds. They never contain the configured API origin,
+URL, request or response headers, body, health detail, exception text,
+environment values, cookies, learner data, or product identifiers.
+Instrumentation failure may remove a diagnostic record but cannot change the
+health result. `npm run build` now scans `.next/static` and fails if web
+diagnostic or API-configuration markers enter browser assets. This diagnostic
+baseline is not monitoring, analytics, audit evidence, a production
+observability approval, or a deployment configuration; Vercel deployment
+remains a separate gated decision.

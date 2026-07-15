@@ -5,6 +5,14 @@ import {
   type ApiBaseUrl
 } from "../config/api-base";
 import { isHealthResponse } from "../contracts/generated/health-response";
+import {
+  isCanonicalTraceparent,
+  webHealthDiagnostics,
+  type WebHealthDiagnosticAttempt,
+  type WebHealthDiagnosticReason,
+  type WebHealthDiagnosticResult,
+  type WebHealthDiagnostics
+} from "../diagnostics/health-diagnostics";
 
 export type HealthCheckResult =
   | { readonly kind: "available" }
@@ -25,18 +33,65 @@ export type FetchLike = typeof fetch;
 
 interface HealthAdapterOptions {
   readonly apiBaseUrl: ApiBaseUrl;
+  readonly diagnostics?: WebHealthDiagnostics;
   readonly fetch: FetchLike;
   readonly timeoutMs: number;
 }
 
 interface ConfiguredHealthAdapterOptions {
   readonly configuredApiBaseUrl: string | undefined;
+  readonly diagnostics?: WebHealthDiagnostics;
   readonly fetch: FetchLike;
   readonly timeoutMs: number;
 }
 
+interface StartedDiagnosticAttempt {
+  readonly attempt: WebHealthDiagnosticAttempt | undefined;
+  readonly traceparent: string | undefined;
+}
+
+function startDiagnosticAttempt(
+  diagnostics: WebHealthDiagnostics
+): StartedDiagnosticAttempt {
+  let attempt: WebHealthDiagnosticAttempt | undefined;
+  try {
+    attempt = diagnostics.startAttempt();
+  } catch {
+    return { attempt: undefined, traceparent: undefined };
+  }
+  if (attempt === undefined) {
+    return { attempt, traceparent: undefined };
+  }
+
+  try {
+    const traceparent = attempt.traceparent;
+    return {
+      attempt,
+      traceparent: isCanonicalTraceparent(traceparent)
+        ? traceparent
+        : undefined
+    };
+  } catch {
+    return { attempt, traceparent: undefined };
+  }
+}
+
+function completeDiagnosticAttempt(
+  attempt: WebHealthDiagnosticAttempt | undefined,
+  result: WebHealthDiagnosticResult,
+  reason: WebHealthDiagnosticReason,
+  statusCode: number
+): void {
+  try {
+    attempt?.complete({ result, reason, statusCode });
+  } catch {
+    return;
+  }
+}
+
 export function createHealthAdapter({
   apiBaseUrl,
+  diagnostics = webHealthDiagnostics,
   fetch: fetchImplementation,
   timeoutMs
 }: HealthAdapterOptions): HealthAdapter {
@@ -50,27 +105,44 @@ export function createHealthAdapter({
 
   return {
     async checkHealth(): Promise<HealthCheckResult> {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      const diagnosticAttempt = startDiagnosticAttempt(diagnostics);
+      let diagnosticResult: WebHealthDiagnosticResult = "exception";
+      let diagnosticReason: WebHealthDiagnosticReason = "application_error";
+      let statusCode = 0;
+      let timeout: ReturnType<typeof setTimeout> | undefined;
 
       try {
+        const controller = new AbortController();
+        timeout = setTimeout(() => controller.abort(), timeoutMs);
         let response: Response;
         try {
-          response = await fetchImplementation(new URL("/health/live", apiBaseUrl), {
-            method: "GET",
-            headers: { Accept: "application/json" },
-            cache: "no-store",
-            credentials: "omit",
-            redirect: "error",
-            signal: controller.signal
-          });
+          response = await fetchImplementation(
+            new URL("/health/live", apiBaseUrl),
+            {
+              method: "GET",
+              headers:
+                diagnosticAttempt.traceparent === undefined
+                  ? { Accept: "application/json" }
+                  : {
+                      Accept: "application/json",
+                      traceparent: diagnosticAttempt.traceparent
+                    },
+              cache: "no-store",
+              credentials: "omit",
+              redirect: "error",
+              signal: controller.signal
+            }
+          );
         } catch {
-          return controller.signal.aborted
-            ? { kind: "unavailable", reason: "timeout" }
-            : { kind: "unavailable", reason: "network" };
+          diagnosticResult = "unavailable";
+          diagnosticReason = controller.signal.aborted ? "timeout" : "network";
+          return { kind: "unavailable", reason: diagnosticReason };
         }
 
-        if (response.status !== 200) {
+        statusCode = response.status;
+        if (statusCode !== 200) {
+          diagnosticResult = "unavailable";
+          diagnosticReason = "http_status";
           return { kind: "unavailable", reason: "http_status" };
         }
 
@@ -80,6 +152,8 @@ export function createHealthAdapter({
           ?.trim()
           .toLowerCase();
         if (mediaType !== "application/json") {
+          diagnosticResult = "invalid_response";
+          diagnosticReason = "content_type";
           return { kind: "invalid-response", reason: "content_type" };
         }
 
@@ -87,18 +161,39 @@ export function createHealthAdapter({
         try {
           body = await response.json();
         } catch {
-          return controller.signal.aborted
-            ? { kind: "unavailable", reason: "timeout" }
-            : { kind: "invalid-response", reason: "invalid_json" };
+          if (controller.signal.aborted) {
+            diagnosticResult = "unavailable";
+            diagnosticReason = "timeout";
+            statusCode = 0;
+            return { kind: "unavailable", reason: "timeout" };
+          }
+          diagnosticResult = "invalid_response";
+          diagnosticReason = "invalid_json";
+          return { kind: "invalid-response", reason: "invalid_json" };
         }
 
         if (!isHealthResponse(body)) {
+          diagnosticResult = "invalid_response";
+          diagnosticReason = "contract";
           return { kind: "invalid-response", reason: "contract" };
         }
 
+        diagnosticResult = "available";
+        diagnosticReason = "ok";
         return { kind: "available" };
       } finally {
-        clearTimeout(timeout);
+        try {
+          if (timeout !== undefined) {
+            clearTimeout(timeout);
+          }
+        } finally {
+          completeDiagnosticAttempt(
+            diagnosticAttempt.attempt,
+            diagnosticResult,
+            diagnosticReason,
+            statusCode
+          );
+        }
       }
     }
   };
@@ -106,12 +201,14 @@ export function createHealthAdapter({
 
 export function createConfiguredHealthAdapter({
   configuredApiBaseUrl,
+  diagnostics,
   fetch: fetchImplementation,
   timeoutMs
 }: ConfiguredHealthAdapterOptions): HealthAdapter {
   const apiBaseUrl = parseApiBaseUrl(configuredApiBaseUrl);
   return createHealthAdapter({
     apiBaseUrl,
+    diagnostics,
     fetch: fetchImplementation,
     timeoutMs
   });

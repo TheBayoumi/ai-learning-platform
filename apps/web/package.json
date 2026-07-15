@@ -12,13 +12,17 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && npm run check:browser-confidentiality",
+    "check:browser-confidentiality": "node scripts/check-browser-confidentiality.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/core": "2.9.0",
+    "@opentelemetry/sdk-trace": "2.9.0",
     "next": "16.2.10",
     "react": "19.2.7",
     "react-dom": "19.2.7"
