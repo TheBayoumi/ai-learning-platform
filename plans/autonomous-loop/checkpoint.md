@@ -76,10 +76,11 @@ drift, prior-head validation, and non-success upstream jobs.
 
 ## Current evidence state
 
-Local and independent validation are complete. The adversarial controller suite
-passed 133 tests in 8.91 seconds; the complete API suite passed 383 tests in
-23.59 seconds at 97% branch-aware coverage; and Ruff plus native, Linux, and
-Win32 strict mypy passed across 30 files. The web lane passed locked install
+Local repair and independent follow-up validation are complete. The adversarial
+controller suite passed
+134 tests in 10.06 seconds; the complete API suite passed 384 tests in 27.15
+seconds at 97% branch-aware coverage; and Ruff plus native, Linux, and Win32
+strict mypy passed across 30 files. The web lane passed locked install
 with zero vulnerabilities, lint, strict typecheck, all 97 tests, production
 build, and a 10-file/629,565-byte confidentiality scan. The real runtime smoke
 passed with 48 events, 21 correlations, 4 concurrent requests, 1,386 ms API
@@ -94,6 +95,20 @@ will be refreshed from the clean commit and GitHub run. The parent will now
 publish one bounded implementation revision and repair every failed exact job
 without user approval.
 
+Implementation attempt `9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21`
+passed the clean local controller checks but exact GitHub run `29521143904`
+failed closed. Web quality (`87698239481`) succeeded; API quality
+(`87698239491`), Phase gate (`87698239511`), and Gate projection
+(`87698419129`) failed; Runtime smoke (`87698419979`) was skipped. Raw hashes
+for two V00 Markdown files differed between the transparently CRLF-converted
+Windows worktree and Linux LF checkout. The repair canonicalizes authoritative
+text to LF before hashing and adds a checkout-line-ending regression. The failed
+run is repair evidence only. Follow-up verification independently reproduced
+LF success, CRLF success, and rejection of a real content mutation with
+`state_hash_mismatch`; it passed 134 targeted and 384 full API tests at 97%
+branch-aware coverage plus Ruff, strict mypy for all three platform targets,
+contracts, hashes, JSON, and diff checks. The repair is accepted for a new
+implementation revision.
 Only after that exact implementation revision passes will a separate commit
 project F03 as `PASSED / Continue` and record the implementation SHA, run, and
 job IDs. That acceptance-state commit must then pass its own exact five jobs.
@@ -124,8 +139,8 @@ the exact implementation run.
 
 ## Exact next action
 
-Commit the independently verified bounded implementation, run its clean
-exact-head Phase gate and Gate projection, push it, and repair until all five
-exact GitHub jobs pass. Then create and push the separate acceptance-state
-revision, require its own exact five jobs, record both runs in pull request #1,
-and stop before F04.
+Commit the independently verified canonical-LF repair, run the clean exact-head
+Phase gate and Gate projection, push it, and repair until all five exact GitHub
+jobs pass. Then create and push the separate acceptance-state
+revision, require its own exact five jobs, record both successful revisions in
+pull request #1, and stop before F04.

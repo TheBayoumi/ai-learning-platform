@@ -95,14 +95,16 @@ prose is a synchronized human-readable projection.
   `29511515229`: API, web, and runtime-smoke jobs all succeeded. F02 is
   `PASSED / Continue`. Exporters, backend, product metrics, learner identifiers,
   V17A behavior, containers, and deployment remain absent.
-- F03 is now `IMPLEMENTED_UNVERIFIED` as the GitHub Phase-Gate Control Plane.
-  Its versioned policy, clean exact-head fail-closed validator, deterministic
-  lane projection, and 133 adversarial tests pass locally. The full 383-test API
-  gate remains at 97% branch-aware coverage; web and runtime gates pass.
-  Independent verification is accepted after all material findings were
-  repaired. The implementation revision's exact five GitHub checks remain
-  pending, followed by a separate acceptance-state revision whose own exact
-  five checks must pass.
+- F03 is `IMPLEMENTED_UNVERIFIED` as the GitHub Phase-Gate Control Plane. Its
+  versioned policy, clean exact-head fail-closed validator, deterministic lane
+  projection, and 134 adversarial tests pass locally. The full 384-test API gate
+  remains at 97% branch-aware coverage; web and runtime gates pass.
+  Implementation attempt `9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21` was
+  correctly rejected by run `29521143904` because raw Windows CRLF checkout
+  hashes did not match Linux LF bytes. Canonical-LF hashing and a regression are
+  implemented and independently accepted; a new exact five-check implementation
+  revision remains pending, followed by a separate acceptance-state revision
+  whose own exact five checks must pass.
 - GitHub remains the source, CI, exact-revision acceptance, and integration
   control plane. Vercel deployment is outside F03 and remains a separately
   gated F04 boundary from issue #3. A pre-existing integration may create an
@@ -125,7 +127,7 @@ prose is a synchronized human-readable projection.
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
-| F03 | Foundation | `IMPLEMENTED_UNVERIFIED` | Local and independent gates pass; both exact five-check revisions remain |
+| F03 | Foundation | `IMPLEMENTED_UNVERIFIED` | Canonical-LF repair is independently accepted; both exact five-check revisions remain |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |

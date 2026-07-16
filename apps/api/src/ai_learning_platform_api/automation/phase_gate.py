@@ -977,6 +977,11 @@ def _validate_state(
         raise _violation("unsupported_product_or_readiness_claim")
 
 
+def _canonical_file_hash(path: Path) -> str:
+    data = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
+
+
 def _validate_hashes(repository_root: Path, state: Mapping[str, object], policy: Policy) -> None:
     hashes = _mapping(state["authoritative_file_hashes"], "state_hashes_invalid")
     if not set(policy.required_hashes).issubset(hashes):
@@ -986,7 +991,7 @@ def _validate_hashes(repository_root: Path, state: Mapping[str, object], policy:
         if re.fullmatch(r"[0-9a-f]{64}", expected) is None:
             raise _violation("state_hash_invalid")
         path = _resolve_input(repository_root, relative_path, "state_hash_path_invalid")
-        if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+        if _canonical_file_hash(path) != expected:
             raise _violation("state_hash_mismatch")
 
 

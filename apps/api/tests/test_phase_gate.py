@@ -562,6 +562,16 @@ def test_state_drift_and_claims_fail_closed(
     _assert_violation(controller_root, code)
 
 
+def test_authoritative_hashes_are_checkout_line_ending_stable(
+    controller_root: Path,
+) -> None:
+    path = controller_root / "AGENTS.md"
+    text = path.read_text(encoding="utf-8")
+    assert "\r" not in text
+    path.write_bytes(text.replace("\n", "\r\n").encode())
+    _validate(controller_root)
+
+
 def test_external_blockers_cannot_become_human_wait(controller_root: Path) -> None:
     def reclassify_inventory(value: dict[str, Any]) -> None:
         v00 = _phase(value, "V00")

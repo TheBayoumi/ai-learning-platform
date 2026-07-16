@@ -2,11 +2,11 @@
   "schema_version": 3,
   "status": "IMPLEMENTED_UNVERIFIED",
   "active_phase": "F03",
-  "active_slice": "F03-implementation-verified",
+  "active_slice": "F03-implementation-repair-verified",
   "gate_decision": null,
-  "last_completed_action": "Implemented and independently verified the fail-closed F03 controller; 133 adversarial and 383 full API tests pass at 97% branch-aware coverage, with web and runtime evidence preserved.",
-  "next_action": "Commit the bounded implementation, require clean exact-head local Phase gate and Gate projection, push, and inspect all five exact GitHub jobs.",
-  "stop_reason": "F03 is independently verified but unaccepted; exact implementation and separate acceptance-state revisions must each pass all five required checks before the phase can pass.",
+  "last_completed_action": "Independently verified the canonical-LF repair after failed run 29521143904; LF and CRLF checkouts pass, real content mutation fails closed, and 134 targeted plus 384 full API tests pass at 97% coverage.",
+  "next_action": "Commit the independently verified canonical-LF repair, run clean exact-head controller checks, push, and require all five exact GitHub jobs.",
+  "stop_reason": "F03 remains unaccepted; failed run 29521143904 is repair evidence only, and a repaired implementation plus separate acceptance-state revision must each pass all five checks.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
@@ -23,11 +23,11 @@
     "active_phase": "F03",
     "status": "IMPLEMENTED_UNVERIFIED",
     "gate_decision": null,
-    "next_action": "Commit the independently verified implementation and require its clean exact-head local and GitHub five-check gates."
+    "next_action": "Publish and gate the independently verified canonical-LF implementation revision."
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-16T17:36:25.285Z"
+    "generated_at": "2026-07-16T18:09:53.102Z"
   },
   "external_blockers": [
     "v00.symmetric_demand",
@@ -53,27 +53,27 @@
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
     "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "b8d743abee02a1ec33fecfcc9304b856a733cca25016076609bd349e1841f5cf",
-    "plans/implementation-inventory.json": "d4e46670d92d1e61a310d49146eec8c8098e1c4fb03ad04f375dd7f7e0e436cc",
+    "plans/implementation-inventory.json": "acc263ffff020abb3d68670578a4f9ba7cfcbd4961546001817d47451cdbf836",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
-    "plans/V00-candidate-role-evidence.md": "e8c0cba1aa32c676afe1a0bcb2e8bf96af6f72e384451baac708c5c3f3ef1b07",
-    "docs/validation/V00-candidate-role-evidence.md": "fa4563e988ebbe97c7ed2bf4185574a81880cdca5be7ebe43e5174459dfdf069",
+    "plans/V00-candidate-role-evidence.md": "597e36eeec0a61abb46607de8bc3405f283a9dea6265e98e516c02c6efe99877",
+    "docs/validation/V00-candidate-role-evidence.md": "938617ef1337660c9152c701ee3380ea3e337a2f7a199e830630c31e22bc5870",
     ".github/workflows/ci.yml": "35ba7b105ce5a667b9d2495698a8511feb803a459bd613a258f03d9f17d110f3",
-    "plans/F03-github-phase-gate-control-plane.md": "f6915d356428504662bf8d89c09917612d1ab57a0b9e9522d507aa4ac25faae6",
+    "plans/F03-github-phase-gate-control-plane.md": "097d37918c08ca6ed20cffe695ce04546ea709e74fd7d2f726ee0e855853621c",
     "plans/autonomous-loop/controller-policy.json": "8c3847c32dfa812fb84002254e857c2ac0342ec49dabba668d9614d971fe5c2b",
     "plans/autonomous-loop/goal.md": "9730037369348994c6e5c059ed77d032d12cc58f210100a72f812880e922310a",
-    "plans/autonomous-loop/checkpoint.md": "c7b8cd0927822d101f9adfa5ceb9ed9763ea1e42741367549ab8e47c70f4a1c3",
-    "plans/autonomous-loop/run-log.md": "eb1a45ecb6521e2a5cae6e3f2afb9affa98d5606b960ece780b072080bbb226e",
+    "plans/autonomous-loop/checkpoint.md": "8e654fa411927f1a25ccd639e45804e094dfb8db20bd2eca9bd5acd2e3240f04",
+    "plans/autonomous-loop/run-log.md": "95537787d9b3bb7e2e2101cccefb32a9a8895deffc9aca86151b532447ef2ac5",
     "apps/api/src/ai_learning_platform_api/automation/__init__.py": "83192a0bb62273eecdbd9ad33ac8bbe2c13641c38cc68740e6e927d4cbe3025f",
-    "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "66e63575213a3d7f7db512a7ddafb45010a9a47120ab7f7d7fb9fc627d63f4aa",
-    "apps/api/tests/test_phase_gate.py": "6d8150b2587a2c7cdf8f3359ae971617f6c43710eb531adb366529084ecc3128",
+    "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "8e48b53c2194af095b2042d5ba3b8b18343664839aaf647597b77e51d8daaa9c",
+    "apps/api/tests/test_phase_gate.py": "f8f805c179706ef7e4103ec0d609b1b1f13a6e156377c9bc870b68d3ccd753c8",
     "scripts/phase_gate.py": "6f4b92f92ece4a9c1a93df6e8b07212f7387138f419ef494a166e00c6d3fb709",
-    "plans/implementation-inventory.md": "be0fde612dc4666ff544bfa880441f6da13d371ce9d6a4310efeee7c4de4ef9b"
+    "plans/implementation-inventory.md": "329e8f81521adb6ec9c71d451145bfe95095066a28f219ef370b8cfee02e07f3"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "run_number": 19,
-  "last_run_started_at": "2026-07-16T17:36:25.285Z",
-  "last_run_completed_at": "2026-07-16T17:36:25.285Z",
+  "last_run_started_at": "2026-07-16T18:09:53.102Z",
+  "last_run_completed_at": "2026-07-16T18:09:53.102Z",
   "future_phase_boundary": {
     "phase": "F04",
     "status": "LOCKED_UNTIL_F03_ACCEPTED",

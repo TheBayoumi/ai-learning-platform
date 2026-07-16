@@ -2,7 +2,7 @@
 
 **Phase:** `F03 - GitHub Phase-Gate Control Plane`
 **Class:** Technical foundation
-**Status:** Independently verified; exact implementation-revision checks pending
+**Status:** Independently verified; repaired implementation-revision checks pending
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** Pull request #1 on `automation/v00-phase-loop`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -177,8 +177,8 @@ independent review:
 | Locked API synchronization and both generated-contract drift checks | Passed | 39 packages resolved; 38 checked |
 | Ruff format and lint | Passed | 30 files |
 | Strict mypy | Passed natively and for Linux and Win32 targets | 30 files per target |
-| Adversarial controller suite | 133 passed | 8.91 seconds; controller module 97% branch-aware coverage in the full suite |
-| Complete API suite | 383 passed | 23.59 seconds; 97% overall branch-aware coverage; complete locked API gate 27.976 seconds |
+| Adversarial controller suite | 134 passed | 10.06 seconds; controller module 97% branch-aware coverage in the full suite |
+| Complete API suite | 384 passed | 27.15 seconds; 97% overall branch-aware coverage; complete locked repair API gate 31.902 seconds |
 | Locked web install and audit | Passed | 384 packages; zero vulnerabilities |
 | Web lint, strict typecheck, unit tests, build, and confidentiality | Passed | 97 tests in 8 files; compile 1.358 seconds; typecheck 1.877 seconds; 10 files / 629,565 bytes; complete web gate 43.854 seconds |
 | Real cross-process runtime smoke | Passed | 48 events; 21 correlations; 4 concurrent requests; API live 1,386 ms; smoke 3,874 ms; shutdown 51 ms; complete command 4.591 seconds; both ports closed |
@@ -190,13 +190,43 @@ Ruff, strict mypy, hashes, JSON, and diff checks. It found and drove repairs for
 unknown explicit dependency IDs, hard-coded upstream check sources, coordinated
 external-to-human reclassification, incomplete transition evidence, ignored
 nontechnical blockers, dirty-worktree SHA labeling, invalid claim prerequisites,
-and workflow execution bypasses. No material finding remains open.
+and workflow execution bypasses. No material finding remained open on that
+implementation snapshot; the canonical-LF repair below requires follow-up
+verification.
 
 The first sandboxed `npm ci` attempt was denied by the Windows process sandbox
 with `spawn EPERM`; the required escalated rerun completed successfully. This is
 an execution-environment permission observation, not an application or lockfile
 failure. No dependency or lockfile changed. Generated `.coverage`, `.next`, and
 dependency-install artifacts are ignored and are not part of the bounded diff.
+
+## Implementation Attempt 1 and Repair
+
+Implementation attempt `9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21`
+passed clean local exact-head Phase gate and Gate projection, then was rejected by
+exact GitHub Actions run `29521143904`:
+
+| Job | Job ID | Conclusion |
+| --- | ---: | --- |
+| API quality | `87698239491` | Failure |
+| Web quality | `87698239481` | Success |
+| Runtime smoke | `87698419979` | Skipped |
+| Phase gate | `87698239511` | Failure |
+| Gate projection | `87698419129` | Failure |
+
+The Phase gate log reported `state_hash_mismatch`; API reproduced the same root
+cause across 32 controller tests. Two V00 Markdown files are LF in Git but are
+transparently CRLF-converted in the clean Windows worktree, so hashes generated
+from raw Windows bytes could not match the Linux checkout. The repair hashes
+all authoritative text after CRLF-to-LF canonicalization, retains the clean-
+worktree and exact-SHA checks, and adds a regression that validates identical LF
+and CRLF checkouts. Independent follow-up verification reproduced LF success,
+CRLF success, and rejection of a real content mutation with
+`state_hash_mismatch`. It passed 134 targeted tests in 9.43 seconds and 384
+full API tests in 26.50 seconds at 97% branch-aware coverage, plus Ruff, native,
+Linux, and Win32 strict mypy, both generated-contract checks, JSON, hashes, and
+diff checks. The failed run is not acceptance evidence. A new exact five-check
+implementation revision remains required.
 
 ## Implementation Files
 

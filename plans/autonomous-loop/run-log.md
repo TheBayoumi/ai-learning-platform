@@ -508,3 +508,40 @@ recorded as an environment-permission observation. No dependency or lockfile
 changed. Independent verification is accepted; the implementation revision and
 the separate acceptance-state revision must still pass their own exact five
 GitHub checks. No chat approval is required for any repair or acceptance step.
+
+### F03 exact implementation attempt 1 - failed closed and repaired
+
+Pushed implementation attempt `9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21`.
+Its clean local Phase gate and Gate projection were eligible, but exact GitHub
+Actions run `29521143904` was not accepted: Web quality job `87698239481`
+succeeded; API quality `87698239491`, Phase gate `87698239511`, and Gate
+projection `87698419129` failed; Runtime smoke `87698419979` was skipped.
+
+The Phase gate emitted `state_hash_mismatch`, and API reproduced the mismatch in
+32 controller tests. The authoritative state had hashed raw bytes from a clean
+Windows worktree where two tracked V00 Markdown files were transparently CRLF-
+converted; the exact Linux checkout used LF Git blobs. The repair canonicalizes
+CRLF to LF before hashing authoritative text and adds an LF/CRLF checkout
+regression. It preserves clean-worktree enforcement and exact-SHA validation.
+The repaired local suite passes 134 targeted tests in 10.06 seconds and 384 full
+API tests in 27.15 seconds at 97% branch-aware coverage; the complete repair API
+gate took 31.902 seconds. Ruff, strict mypy, and contract drift checks pass.
+Web/runtime executables were unchanged, so their already-recorded successful
+local gates remain applicable. Follow-up verification and a new exact five-check
+implementation revision remain mandatory; failed run `29521143904` is repair
+evidence only.
+
+### F03 canonical-LF repair independently verified
+
+The follow-up `verification_reviewer` accepted the bounded eight-file repair.
+It reproduced LF checkout success, CRLF checkout success, and rejection of a
+real content mutation with `state_hash_mismatch`. The targeted controller suite
+passed 134 tests in 9.43 seconds; the full API suite passed 384 tests in 26.50
+seconds at 97% branch-aware coverage overall and for the controller. Ruff,
+native/Linux/Win32 strict mypy, both generated-contract checks, all 24 canonical
+hashes, JSON, line-ending, final-newline, and diff checks passed. No material
+finding remains.
+
+F03 remains `IMPLEMENTED_UNVERIFIED`. The repair must be committed and pass all
+five exact GitHub jobs before a separate acceptance-state revision may be
+created; that revision must then pass its own five exact jobs.
