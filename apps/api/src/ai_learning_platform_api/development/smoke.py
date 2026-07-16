@@ -18,7 +18,7 @@ from dataclasses import asdict, dataclass, replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import FrameType
-from typing import Any, BinaryIO, TextIO, cast
+from typing import Any, BinaryIO, Protocol, TextIO, cast
 
 from ai_learning_platform_api.development.supervisor import (
     API_PORT,
@@ -108,6 +108,9 @@ _WEB_EVENT_FIELDS = frozenset(
 _PROCESS_LOG_FIELDS = frozenset(
     {"schema_version", "event", "service", "outcome", "reason", "severity"}
 )
+_INNER_PROOF_PREFIX = b"[smoke-inner] passed "
+_DIAGNOSTIC_WRITE_LOCK = threading.Lock()
+_FILTER_REJECTION_EVENT = b'{"event":"diagnostic.filter.rejected"}\n'
 
 
 class SmokeFailure(RuntimeError):
@@ -190,6 +193,16 @@ class CompleteSmokeObservation:
 
 Requester = Callable[[int, str], HttpResponse]
 MetadataRequester = Callable[[int, str, Mapping[str, str]], HttpResponse]
+
+
+class _OwnedTreeProcess(ChildProcess, Protocol):
+    def tree_active(self) -> bool: ...
+
+    def terminate_tree(self) -> bool: ...
+
+    def close_tree(self) -> None: ...
+
+
 Launcher = Callable[[ServiceSpec, PlatformFamily], ChildProcess]
 PortProbe = Callable[[int], bool]
 ResourceObserver = Callable[[Sequence[ManagedProcess]], ResourceObservation]
@@ -459,6 +472,169 @@ def _prepare_diagnostic_services(
     return tuple(prepared)
 
 
+def _process_log_event(service_name: str) -> bytes:
+    return (
+        json.dumps(
+            {
+                "schema_version": 1,
+                "event": "process.log",
+                "service": service_name,
+                "outcome": "status",
+                "reason": "unstructured_suppressed",
+                "severity": "info",
+            },
+            separators=(",", ":"),
+        ).encode("ascii")
+        + b"\n"
+    )
+
+
+class _DiagnosticFilteredProcess:
+    """Map framework-owned stderr before it enters the outer capture boundary."""
+
+    def __init__(
+        self,
+        process: ChildProcess,
+        reader: BinaryIO,
+        sink: BinaryIO,
+        service_name: str,
+    ) -> None:
+        self._process = process
+        self._reader = reader
+        self._sink = sink
+        self._service_name = service_name
+        self._failed = threading.Event()
+        self.pid = process.pid
+        self._thread = threading.Thread(
+            target=self._route_stderr,
+            name=f"f02-{service_name}-stderr-filter",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def _write_filtered(self, content: bytes) -> None:
+        try:
+            with _DIAGNOSTIC_WRITE_LOCK:
+                written = self._sink.write(content)
+                if written != len(content):
+                    self._failed.set()
+                self._sink.flush()
+        except (OSError, TypeError, ValueError):
+            self._failed.set()
+
+    def _reject(self) -> None:
+        self._failed.set()
+        self._write_filtered(_FILTER_REJECTION_EVENT)
+
+    def _route_line(self, raw_line: bytes) -> None:
+        if len(raw_line) > MAX_CAPTURE_BYTES:
+            self._reject()
+            return
+        line = raw_line.strip()
+        if not line:
+            return
+        if any(marker.encode("ascii") in raw_line for marker in CONFIDENTIAL_MARKERS):
+            self._reject()
+            return
+        event_markers = (
+            API_DIAGNOSTIC_EVENT.encode("ascii"),
+            WEB_DIAGNOSTIC_EVENT.encode("ascii"),
+        )
+        if (
+            line.startswith(b"{")
+            or line.startswith(_INNER_PROOF_PREFIX)
+            or any(marker in raw_line for marker in event_markers)
+        ):
+            self._write_filtered(raw_line if raw_line.endswith(b"\n") else raw_line + b"\n")
+            return
+        lowered = raw_line.lower()
+        web_forbidden = (
+            b"/health/live",
+            b"authorization",
+            b"cookie",
+            b"traceparent",
+            b"x-f02-canary",
+            b"traceback",
+        )
+        if self._service_name != "web" or any(marker in lowered for marker in web_forbidden):
+            self._write_filtered(raw_line if raw_line.endswith(b"\n") else raw_line + b"\n")
+            return
+        self._write_filtered(_process_log_event(self._service_name))
+
+    def _route_stderr(self) -> None:
+        try:
+            while True:
+                raw_line = self._reader.readline(MAX_CAPTURE_BYTES + 1)
+                if not raw_line:
+                    break
+                self._route_line(raw_line)
+        except (OSError, TypeError, ValueError):
+            self._reject()
+        finally:
+            try:
+                self._reader.close()
+            except (OSError, TypeError, ValueError):
+                self._failed.set()
+
+    def diagnostic_filter_failed(self) -> bool:
+        return self._failed.is_set() or (
+            not self._thread.is_alive() and self._process.poll() is None
+        )
+
+    def diagnostic_filter_ok(self) -> bool:
+        self._thread.join(timeout=PORT_CLOSE_TIMEOUT_SECONDS)
+        return not self._thread.is_alive() and not self._failed.is_set()
+
+    def poll(self) -> int | None:
+        return self._process.poll()
+
+    def send_signal(self, signal_number: int) -> None:
+        self._process.send_signal(signal_number)
+
+    def kill(self) -> None:
+        self._process.kill()
+
+    def tree_active(self) -> bool:
+        return cast(_OwnedTreeProcess, self._process).tree_active()
+
+    def terminate_tree(self) -> bool:
+        return cast(_OwnedTreeProcess, self._process).terminate_tree()
+
+    def close_tree(self) -> None:
+        cast(_OwnedTreeProcess, self._process).close_tree()
+
+
+def _launch_diagnostic_service(
+    service: ServiceSpec,
+    platform: PlatformFamily,
+    *,
+    sink: BinaryIO | None = None,
+) -> ChildProcess:
+    """Launch one real service with a confidentiality-preserving stderr router."""
+
+    actual_sink = sink
+    if actual_sink is None:
+        actual_sink = cast(BinaryIO | None, getattr(sys.stderr, "buffer", None))
+    if actual_sink is None:
+        raise OSError("binary diagnostic sink is unavailable")
+    process = launch_service(
+        service,
+        platform,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
+    reader = cast(BinaryIO | None, getattr(process, "stderr", None))
+    if reader is None:
+        try:
+            process.kill()
+        finally:
+            close_tree = getattr(process, "close_tree", None)
+            if callable(close_tree):
+                cast(Callable[[], None], close_tree)()
+        raise OSError("diagnostic stderr pipe is unavailable")
+    return _DiagnosticFilteredProcess(process, reader, actual_sink, service.name)
+
+
 def _validate_captured_log(content: bytes) -> None:
     if len(content) > MAX_CAPTURE_BYTES:
         raise SmokeFailure("captured diagnostic output exceeded the byte limit")
@@ -531,7 +707,7 @@ def _validate_process_log(event: Mapping[str, object]) -> None:
         or type(event.get("schema_version")) is not int
         or event.get("schema_version") != 1
         or event.get("event") != "process.log"
-        or event.get("service") != "api"
+        or event.get("service") not in {"api", "web"}
         or event.get("outcome") not in {"status", "error"}
         or event.get("reason") != "unstructured_suppressed"
         or event.get("severity") not in {"debug", "info", "warning", "error", "critical"}
@@ -721,8 +897,11 @@ def _optional_nonnegative_integer(value: object) -> int | None:
 
 
 def _extract_inner_observation(content: bytes) -> InnerSmokeObservation:
-    prefix = b"[smoke-inner] passed "
-    result_lines = [line[len(prefix) :] for line in content.splitlines() if line.startswith(prefix)]
+    result_lines = [
+        line[len(_INNER_PROOF_PREFIX) :]
+        for line in content.splitlines()
+        if line.startswith(_INNER_PROOF_PREFIX)
+    ]
     if len(result_lines) != 1:
         raise SmokeFailure("inner smoke observation was missing or duplicated")
     try:
@@ -978,6 +1157,9 @@ class RuntimeSmoke:
         if self._signals.requested.is_set():
             raise SmokeFailure("smoke interrupted")
         for item in processes:
+            filter_failed = getattr(item.process, "diagnostic_filter_failed", None)
+            if callable(filter_failed) and cast(Callable[[], bool], filter_failed)():
+                raise SmokeFailure(f"{item.service.name} diagnostic output filter failed")
             code = item.process.poll()
             if code is not None:
                 raise SmokeFailure(
@@ -1216,6 +1398,7 @@ class RuntimeSmoke:
         next_root = self._repository_root / "apps" / "web" / ".next" / "dev"
         next_before = _measure_directory_bytes(next_root)
         managed: list[ManagedProcess] = []
+        launched: list[ChildProcess] = []
         failure: SmokeFailure | None = None
         resource = ResourceObservation(process_count=None, resident_bytes=None)
         api_live_ms = 0
@@ -1232,9 +1415,13 @@ class RuntimeSmoke:
             for service in services:
                 _write(self._output, f"launching {service.name} process")
                 try:
-                    process = self._launcher(service, self._platform)
+                    if diagnostic_proof and self._launcher is launch_service:
+                        process = _launch_diagnostic_service(service, self._platform)
+                    else:
+                        process = self._launcher(service, self._platform)
                 except OSError as exc:
                     raise SmokeFailure(f"failed to launch {service.name}") from exc
+                launched.append(process)
                 managed.append(ManagedProcess(service=service, process=process))
 
             deadline = start + STARTUP_TIMEOUT_SECONDS
@@ -1295,8 +1482,16 @@ class RuntimeSmoke:
             shutdown_ms = round((self._monotonic() - shutdown_start) * 1000)
             ports_closed = self._wait_for_closed_ports()
 
+        filters_ok = True
+        for process in launched:
+            filter_ok = getattr(process, "diagnostic_filter_ok", None)
+            if callable(filter_ok):
+                filters_ok = cast(Callable[[], bool], filter_ok)() and filters_ok
+
         if not cleanup_ok or not ports_closed:
             raise SmokeFailure("owned runtime cleanup did not complete")
+        if not filters_ok:
+            raise SmokeFailure("diagnostic output filtering did not complete")
         if failure is not None:
             raise failure
 

@@ -545,3 +545,37 @@ finding remains.
 F03 remains `IMPLEMENTED_UNVERIFIED`. The repair must be committed and pass all
 five exact GitHub jobs before a separate acceptance-state revision may be
 created; that revision must then pass its own five exact jobs.
+
+### F03 exact implementation attempt 2 - runtime smoke failed closed
+
+Pushed canonical-hash repair revision
+`34d5de2b5af15ec39e09b0f91ed5d358020dcfed`. Exact run `29523254781`
+rejected it: API quality job `87705173886`, Web quality job `87705173871`,
+and Phase gate job `87705173912` succeeded; Runtime smoke job
+`87705355479` failed; Gate projection job `87705481759` failed closed.
+
+The Runtime smoke log reported forbidden category `raw_url`. Linux Next.js had
+nondeterministically written a loopback or documentation URL as framework-owned
+stderr. The accepted F02 validator correctly rejected the raw value because it
+scans every captured byte; the first proposed repair weakened that rule by
+scanning only proof-bearing lines, and independent verification returned
+`REVISE`. The corrected repair restores the full-capture validator unchanged.
+Real API and web stderr is routed before capture: structured JSON, inner-proof,
+and diagnostic-marker candidates are forwarded byte-exact; confidential
+canaries, oversized lines, I/O failures, and premature pipe closure fail safely;
+ordinary framework-owned lines become fixed allowlisted `process.log` events.
+
+The runtime suite now passes 126 adversarial tests in 0.74 seconds. Two real
+local smokes pass in about 7 seconds each with 48 events, 21 correlations, 4
+concurrent requests, 12,638 diagnostic bytes, and 14,223-14,224 captured bytes;
+shutdown completed in 51-102 ms and both ports closed. The complete API suite
+passes 402 tests in 26.69 seconds at 97% overall branch-aware coverage with
+`smoke.py` at 95%. The 134 controller tests, Ruff, native/Linux/Win32 strict
+mypy across 30 files, both contracts, canonical hashes, JSON, and diff checks
+pass. Corrected independent follow-up verification then returned `ACCEPT`
+with no material finding. It reproduced 126 runtime tests in 1.32 seconds, 47
+supervisor tests in 16.27 seconds, 134 controller tests in 9.03 seconds, and 402
+full API tests in 27.84 seconds at 97% overall coverage with `smoke.py` at
+95%. Ruff, native/Linux/Win32 mypy, both contracts, 24 hashes, final newlines,
+diff checks, and two real smokes also passed. Run `29523254781` remains repair
+evidence only; a new exact five-check implementation revision is required.

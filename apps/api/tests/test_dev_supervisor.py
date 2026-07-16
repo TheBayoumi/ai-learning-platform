@@ -25,6 +25,7 @@ class FakeProcess:
         self.pid = process_id
         self._handle = process_id
         self.return_code = return_code
+        self.stderr: io.BytesIO | None = None
         self.sent_signals: list[int] = []
         self.kill_calls = 0
         self.signal_error = False
@@ -383,10 +384,28 @@ def test_launch_service_uses_platform_group_flags(monkeypatch: pytest.MonkeyPatc
     assert assigned_handles == [process._handle]
     assert resumed_processes == [process.pid]
     assert "start_new_session" not in calls[-1]
+    assert calls[-1]["stdout"] is None
+    assert calls[-1]["stderr"] is None
 
     assert dev_supervisor._launch_service(_service("service"), "posix") is process
     assert calls[-1]["start_new_session"] is True
     assert "creationflags" not in calls[-1]
+    assert calls[-1]["stdout"] is None
+    assert calls[-1]["stderr"] is None
+
+    stdout = object()
+    stderr = object()
+    assert (
+        dev_supervisor.launch_service(
+            _service("service"),
+            "posix",
+            stdout=stdout,
+            stderr=stderr,
+        )
+        is process
+    )
+    assert calls[-1]["stdout"] is stdout
+    assert calls[-1]["stderr"] is stderr
 
 
 def test_windows_launch_fails_closed_when_job_assignment_fails(
@@ -597,9 +616,12 @@ def test_windows_job_wrapper_and_api_failures(monkeypatch: pytest.MonkeyPatch) -
     close_success.close()
 
     direct = FakeProcess(106, return_code=0)
+    stderr = io.BytesIO()
+    direct.stderr = stderr
     job = FakeWindowsJob()
     wrapper = dev_supervisor._WindowsJobProcess(cast(subprocess.Popen[bytes], direct), job)
     assert wrapper.poll() == 0
+    assert wrapper.stderr is stderr
     assert wrapper.tree_active()
     assert wrapper.terminate_tree()
     assert not wrapper.tree_active()

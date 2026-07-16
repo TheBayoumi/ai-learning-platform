@@ -15,7 +15,7 @@ from ctypes import wintypes
 from dataclasses import dataclass
 from pathlib import Path
 from types import FrameType
-from typing import Any, Literal, Protocol, TextIO, cast
+from typing import Any, BinaryIO, Literal, Protocol, TextIO, cast
 
 API_HOST = "127.0.0.1"
 API_PORT = 8000
@@ -195,6 +195,10 @@ class _WindowsJobProcess:
 
     def kill(self) -> None:
         self._process.kill()
+
+    @property
+    def stderr(self) -> BinaryIO | None:
+        return cast(BinaryIO | None, self._process.stderr)
 
     def tree_active(self) -> bool:
         return self._job.active_process_count() > 0
@@ -452,7 +456,13 @@ def _resume_windows_process(process_id: int) -> None:
         kernel32.CloseHandle(thread_handle)
 
 
-def launch_service(service: ServiceSpec, platform: PlatformFamily) -> ChildProcess:
+def launch_service(
+    service: ServiceSpec,
+    platform: PlatformFamily,
+    *,
+    stdout: Any = None,
+    stderr: Any = None,
+) -> ChildProcess:
     """Launch a service as the leader of an isolated process group."""
 
     if platform == "windows":
@@ -464,6 +474,8 @@ def launch_service(service: ServiceSpec, platform: PlatformFamily) -> ChildProce
             env=service.environment,
             shell=False,
             creationflags=creation_flag,
+            stdout=stdout,
+            stderr=stderr,
         )
         job: WindowsJobHandle | None = None
         try:
@@ -488,6 +500,8 @@ def launch_service(service: ServiceSpec, platform: PlatformFamily) -> ChildProce
         env=service.environment,
         shell=False,
         start_new_session=True,
+        stdout=stdout,
+        stderr=stderr,
     )
 
 

@@ -2,7 +2,7 @@
 
 **Phase:** `F03 - GitHub Phase-Gate Control Plane`
 **Class:** Technical foundation
-**Status:** Independently verified; repaired implementation-revision checks pending
+**Status:** Pre-capture runtime-log repair independently accepted; implementation exact checks pending
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** Pull request #1 on `automation/v00-phase-loop`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -177,11 +177,11 @@ independent review:
 | Locked API synchronization and both generated-contract drift checks | Passed | 39 packages resolved; 38 checked |
 | Ruff format and lint | Passed | 30 files |
 | Strict mypy | Passed natively and for Linux and Win32 targets | 30 files per target |
-| Adversarial controller suite | 134 passed | 10.06 seconds; controller module 97% branch-aware coverage in the full suite |
-| Complete API suite | 384 passed | 27.15 seconds; 97% overall branch-aware coverage; complete locked repair API gate 31.902 seconds |
+| Adversarial controller suite | 134 passed | 9.80 seconds; controller module 97% branch-aware coverage in the full suite |
+| Complete API suite | 402 passed | 26.69 seconds; 97% overall branch-aware coverage; `smoke.py` 95% |
 | Locked web install and audit | Passed | 384 packages; zero vulnerabilities |
 | Web lint, strict typecheck, unit tests, build, and confidentiality | Passed | 97 tests in 8 files; compile 1.358 seconds; typecheck 1.877 seconds; 10 files / 629,565 bytes; complete web gate 43.854 seconds |
-| Real cross-process runtime smoke | Passed | 48 events; 21 correlations; 4 concurrent requests; API live 1,386 ms; smoke 3,874 ms; shutdown 51 ms; complete command 4.591 seconds; both ports closed |
+| Real cross-process runtime smoke | Passed twice | 48 events; 21 correlations; 4 concurrent requests; 12,638 diagnostic bytes; 14,223-14,224 captured bytes; 51-102 ms shutdown; about 7 seconds per command; both ports closed |
 | Dirty-worktree exact-head adversarial check | Failed closed as designed | `worktree_not_exact_head` at entry SHA `5b19455034583da0d0ec40c82edf70423b93b2df`; clean exact-head Phase gate and Gate projection are deferred until the implementation commit |
 | Initial controller resource observation | Informational | Before the final clean-worktree hardening, 20 validation/projection iterations averaged 173.578 ms, peaked at 1,392,192 traced Python heap bytes, and emitted 853 bytes; exact CI duration is recorded after push |
 
@@ -190,9 +190,9 @@ Ruff, strict mypy, hashes, JSON, and diff checks. It found and drove repairs for
 unknown explicit dependency IDs, hard-coded upstream check sources, coordinated
 external-to-human reclassification, incomplete transition evidence, ignored
 nontechnical blockers, dirty-worktree SHA labeling, invalid claim prerequisites,
-and workflow execution bypasses. No material finding remained open on that
-implementation snapshot; the canonical-LF repair below requires follow-up
-verification.
+and workflow execution bypasses. No material finding remained open on that implementation snapshot. The
+canonical-LF repair below was then independently accepted before its exact
+GitHub run.
 
 The first sandboxed `npm ci` attempt was denied by the Windows process sandbox
 with `spawn EPERM`; the required escalated rerun completed successfully. This is
@@ -228,6 +228,40 @@ Linux, and Win32 strict mypy, both generated-contract checks, JSON, hashes, and
 diff checks. The failed run is not acceptance evidence. A new exact five-check
 implementation revision remains required.
 
+## Implementation Attempt 2 and Runtime Repair
+
+Canonical-hash repair revision `34d5de2b5af15ec39e09b0f91ed5d358020dcfed`
+was rejected by exact run `29523254781`:
+
+| Job | Job ID | Conclusion |
+| --- | ---: | --- |
+| API quality | `87705173886` | Success |
+| Web quality | `87705173871` | Success |
+| Runtime smoke | `87705355479` | Failure |
+| Phase gate | `87705173912` | Success |
+| Gate projection | `87705481759` | Failure |
+
+The Linux runtime captured a nondeterministic loopback or documentation URL from
+framework-owned Next.js stderr. The accepted F02 outer validator correctly
+rejected it because every captured byte remains untrusted. This repair does not
+relax that validator. Real diagnostic-service stderr is now piped through a
+bounded child-side router before it enters the outer capture: structured JSON,
+inner-proof, and diagnostic-marker candidates are forwarded unchanged;
+confidential canaries, oversized lines, I/O failures, and premature pipe closure
+fail safely; ordinary framework-owned lines become fixed allowlisted
+`process.log` events. The outer capture remains byte-bounded and scans every
+resulting byte for all confidential and forbidden categories. The runtime suite
+passes 126 tests, including full-capture rejection and adversarial router
+failures, and two real local smokes pass with 48 events and 21 correlations. The
+full 402-test API replay passes at 97% overall coverage with `smoke.py` at 95%,
+along with Ruff, native/Linux/Win32 strict mypy, contracts, canonical hashes,
+JSON, and diff checks. Independent follow-up verification returned `ACCEPT`
+with no material finding. It independently reproduced 126 runtime, 47
+supervisor, 134 controller, and 402 full API tests at 97% overall coverage with
+`smoke.py` at 95%; Ruff, all three mypy targets, both contracts, 24 hashes,
+and two real smokes also passed. A new exact five-check implementation revision
+is now required.
+
 ## Implementation Files
 
 - `plans/autonomous-loop/controller-policy.json`
@@ -235,6 +269,10 @@ implementation revision remains required.
 - `apps/api/src/ai_learning_platform_api/automation/phase_gate.py`
 - `scripts/phase_gate.py`
 - `apps/api/tests/test_phase_gate.py`
+- `apps/api/src/ai_learning_platform_api/development/smoke.py`
+- `apps/api/src/ai_learning_platform_api/development/supervisor.py`
+- `apps/api/tests/test_runtime_smoke.py`
+- `apps/api/tests/test_dev_supervisor.py`
 - `.github/workflows/ci.yml`
 - `AGENTS.md`
 - `specs/roadmap.md`

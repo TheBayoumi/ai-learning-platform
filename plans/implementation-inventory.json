@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-16T18:09:53.102Z",
+  "generated_at": "2026-07-16T19:08:11.325Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
     "head": "5b19455034583da0d0ec40c82edf70423b93b2df",
-    "working_tree": "F03 canonical-LF repair independently accepted after 134 targeted and 384 full API tests at 97% coverage; exact five-check repair run and separate acceptance revision remain pending",
+    "working_tree": "F03 pre-capture runtime-log repair is independently accepted after 134 controller, 402 full API, 126 runtime, 47 supervisor, and two real smoke checks; the exact five-check implementation and acceptance revisions remain pending",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -389,27 +389,30 @@
           "condition": "All local API, web, runtime, phase-gate, and projection checks pass",
           "result": "PASSED",
           "evidence": [
-            "134 adversarial phase-gate tests passed in 10.06 seconds",
-            "384 full API tests passed in 27.15 seconds at 97% branch-aware coverage; complete repair API gate 31.902 seconds",
             "97 web tests, lint, strict typecheck, production build, and 629,565-byte browser confidentiality scan passed",
-            "real cross-process runtime smoke passed in 4.591 seconds with 48 events, 21 correlations, 51 ms shutdown, and closed ports",
+            "two corrected real cross-process smokes passed in about 7 seconds each with 48 events, 21 correlations, 14,223-14,224 captured bytes, 51-102 ms shutdown, and closed ports",
             "Ruff plus native, Linux, and Win32 strict mypy passed across 30 files",
-            "dirty-worktree CLI validation fails closed; clean exact-head validation passed implementation attempt 9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21 locally"
+            "dirty-worktree CLI validation fails closed; clean exact-head validation passed implementation attempt 9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21 locally",
+            "Pre-capture runtime-log repair passed 126 runtime-smoke unit tests and two real local cross-process smoke runs",
+            "The unchanged outer validator scans every captured byte; the child-side router forwards structured, proof, and marker candidates unchanged while safely mapping only ordinary framework stderr before capture",
+            "134 adversarial phase-gate tests passed in 9.80 seconds",
+            "402 full API tests passed in 26.69 seconds at 97% branch-aware coverage; smoke.py is at 95%"
           ]
         },
         {
           "condition": "Independent verification finds no material defect",
           "result": "PASSED",
           "evidence": [
-            "Initial verification accepted the 133-test implementation snapshot",
-            "Follow-up verification reproduced LF and CRLF success plus real-content rejection with state_hash_mismatch",
-            "Follow-up verification passed 134 targeted and 384 full API tests at 97% branch-aware coverage, Ruff, native/Linux/Win32 strict mypy, both contract checks, all 24 canonical hashes, JSON, and diff checks"
+            "Initial implementation and canonical-LF repair were independently accepted",
+            "Corrected pre-capture repair independently accepted: 126 runtime, 47 supervisor, 134 controller, and 402 full API tests; 97% overall coverage with smoke.py at 95%; two real smokes and all static gates passed"
           ]
         },
         {
           "condition": "The exact implementation revision passes all five required GitHub jobs",
           "result": "PENDING",
-          "evidence": []
+          "evidence": [
+            "Revision 34d5de2b5af15ec39e09b0f91ed5d358020dcfed run 29523254781 was rejected: API quality, Web quality, and Phase gate passed; Runtime smoke and Gate projection failed"
+          ]
         }
       ],
       "implemented_files": [
@@ -427,15 +430,22 @@
         "plans/autonomous-loop/checkpoint.md",
         "plans/autonomous-loop/run-log.md",
         "plans/implementation-inventory.json",
-        "plans/implementation-inventory.md"
+        "plans/implementation-inventory.md",
+        "apps/api/src/ai_learning_platform_api/development/smoke.py",
+        "apps/api/src/ai_learning_platform_api/development/supervisor.py",
+        "apps/api/tests/test_runtime_smoke.py",
+        "apps/api/tests/test_dev_supervisor.py"
       ],
       "tests": [
-        "apps/api/tests/test_phase_gate.py: 134 passed in 10.06 seconds; controller module 97% branch-aware coverage in the full suite",
-        "complete API suite: 384 passed in 27.15 seconds; 97% overall branch-aware coverage; complete locked repair API gate 31.902 seconds",
         "web: 97 tests in 8 files, lint, strict typecheck, production build, zero vulnerabilities, and 10-file/629,565-byte confidentiality scan passed",
-        "root runtime smoke: 48 events, 21 correlations, 4 concurrent requests, 1,386 ms API liveness, 3,874 ms smoke, 51 ms shutdown, and closed ports",
+        "root runtime smoke passed twice: 48 events, 21 correlations, 4 concurrent requests, 12,638 diagnostic bytes, 14,223-14,224 captured bytes, 51-102 ms shutdown, and closed ports",
         "Ruff and native/Linux/Win32 strict mypy passed across 30 files",
-        "GitHub run 29521143904 at 9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21 failed closed: Web quality success; API quality, Phase gate, and Gate projection failure; Runtime smoke skipped; root cause was platform-specific raw hashes for CRLF-converted V00 Markdown"
+        "GitHub run 29521143904 at 9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21 failed closed: Web quality success; API quality, Phase gate, and Gate projection failure; Runtime smoke skipped; root cause was platform-specific raw hashes for CRLF-converted V00 Markdown",
+        "Runtime repair: 126 runtime-smoke unit tests passed in 0.74 seconds; two real local smokes passed in about 7 seconds each with 48 events, 21 correlations, and 14,223-14,224 captured bytes",
+        "GitHub run 29523254781 at 34d5de2b5af15ec39e09b0f91ed5d358020dcfed failed closed: API job 87705173886, web job 87705173871, and Phase gate job 87705173912 succeeded; Runtime smoke job 87705355479 and Gate projection job 87705481759 failed",
+        "apps/api/tests/test_phase_gate.py: 134 passed in 9.80 seconds; controller module 97% branch-aware coverage in the full suite",
+        "complete API suite: 402 passed in 26.69 seconds; 97% overall branch-aware coverage; smoke.py 95%",
+        "independent final verification: ACCEPT with no material finding after 126 runtime, 47 supervisor, 134 controller, and 402 full API tests plus two real smokes, static gates, 24 hashes, JSON, final newlines, and diff checks"
       ],
       "missing_outputs": [
         "Exact implementation revision must pass all five required GitHub checks",
@@ -443,7 +453,7 @@
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Commit the independently verified canonical-LF repair, run clean exact-head checks, push, and require all five exact GitHub jobs",
+      "next_smallest_action": "Commit and push the independently accepted runtime-log repair, then require all five exact GitHub jobs",
       "gate_decision": null,
       "blocker_ids": [
         "f03.implementation_checks",

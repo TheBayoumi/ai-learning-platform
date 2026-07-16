@@ -76,15 +76,16 @@ drift, prior-head validation, and non-success upstream jobs.
 
 ## Current evidence state
 
-Local repair and independent follow-up validation are complete. The adversarial
-controller suite passed
-134 tests in 10.06 seconds; the complete API suite passed 384 tests in 27.15
-seconds at 97% branch-aware coverage; and Ruff plus native, Linux, and Win32
-strict mypy passed across 30 files. The web lane passed locked install
-with zero vulnerabilities, lint, strict typecheck, all 97 tests, production
-build, and a 10-file/629,565-byte confidentiality scan. The real runtime smoke
-passed with 48 events, 21 correlations, 4 concurrent requests, 1,386 ms API
-liveness, 3,874 ms smoke, 51 ms shutdown, and both ports closed.
+The canonical-LF repair was independently accepted. For the subsequent runtime
+repair, the adversarial controller suite passed 134 tests in 9.80 seconds; the
+complete API suite passed 402 tests in 26.69 seconds at 97% branch-aware
+coverage with `smoke.py` at 95%; and Ruff plus native, Linux, and Win32 strict
+mypy passed across 30 files. The web lane passed locked install with zero
+vulnerabilities, lint, strict typecheck, all 97 tests, production build, and a
+10-file/629,565-byte confidentiality scan. Two corrected real smokes passed in
+about 7 seconds each with 48 events, 21 correlations, 4 concurrent requests,
+12,638 diagnostic bytes, 14,223-14,224 captured bytes, 51-102 ms shutdown, and
+both ports closed.
 
 The hardened CLI intentionally rejects the dirty implementation worktree with
 `worktree_not_exact_head`; clean exact-head Phase gate and Gate projection runs
@@ -109,6 +110,26 @@ LF success, CRLF success, and rejection of a real content mutation with
 branch-aware coverage plus Ruff, strict mypy for all three platform targets,
 contracts, hashes, JSON, and diff checks. The repair is accepted for a new
 implementation revision.
+
+Canonical-hash repair revision `34d5de2b5af15ec39e09b0f91ed5d358020dcfed`
+was then rejected by exact run `29523254781`: API quality
+(`87705173886`), Web quality (`87705173871`), and Phase gate
+(`87705173912`) succeeded; Runtime smoke (`87705355479`) failed on a
+framework-owned raw URL in the private Linux stderr capture; Gate projection
+(`87705481759`) failed closed. The repair preserves F02's full-capture scan
+unchanged and routes real service stderr before capture. Structured JSON,
+inner-proof, and marker candidates remain byte-exact; confidential canaries,
+oversized lines, I/O failures, and premature pipe closure fail safely; only
+ordinary framework-owned lines become fixed allowlisted `process.log` events.
+The 126 runtime tests, two real local smokes, and 402-test full API replay pass
+at 97% overall coverage with `smoke.py` at 95%. Ruff, native/Linux/Win32
+strict mypy, contracts, canonical hashes, JSON, and diff checks pass.
+Independent follow-up verification returned `ACCEPT` with no material finding
+after reproducing 126 runtime, 47 supervisor, 134 controller, and 402 full API
+tests at 97% overall coverage with `smoke.py` at 95%, plus both real smokes and
+all static gates. Only the exact implementation and acceptance-revision GitHub
+checks remain pending.
+
 Only after that exact implementation revision passes will a separate commit
 project F03 as `PASSED / Continue` and record the implementation SHA, run, and
 job IDs. That acceptance-state commit must then pass its own exact five jobs.
@@ -132,15 +153,19 @@ readiness, or complete-role-readiness claim.
 
 F03 reads bounded repository metadata only and uses no new dependency. It adds
 no database, migration, learner data, role data, secret, service, external
-request, LLM call, artifact upload, deployment, or runtime path. The API, web,
-OpenAPI, diagnostics, and F02 smoke contracts are unchanged. The initial
-controller observation is recorded above; GitHub job duration remains pending
-the exact implementation run.
+request, LLM call, artifact upload, deployment, or product runtime path. The
+API, web, OpenAPI, and diagnostic event contracts remain unchanged. The
+existing F02 outer capture remains fully byte-bounded and applies its
+confidential and forbidden-category scan to every captured byte. A bounded
+child-side router maps only ordinary framework-owned stderr before that capture
+while forwarding all structured, proof, and marker candidates unchanged.
+Controller and exact GitHub durations are recorded per implementation attempt.
 
 ## Exact next action
 
-Commit the independently verified canonical-LF repair, run the clean exact-head
+Commit the independently accepted runtime-log repair, run the clean exact-head
 Phase gate and Gate projection, push it, and repair until all five exact GitHub
-jobs pass. Then create and push the separate acceptance-state
+jobs pass. Then
+create and push the separate acceptance-state
 revision, require its own exact five jobs, record both successful revisions in
 pull request #1, and stop before F04.

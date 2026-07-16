@@ -102,9 +102,18 @@ prose is a synchronized human-readable projection.
   Implementation attempt `9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21` was
   correctly rejected by run `29521143904` because raw Windows CRLF checkout
   hashes did not match Linux LF bytes. Canonical-LF hashing and a regression are
-  implemented and independently accepted; a new exact five-check implementation
-  revision remains pending, followed by a separate acceptance-state revision
-  whose own exact five checks must pass.
+  implemented and independently accepted. Its revision
+  `34d5de2b5af15ec39e09b0f91ed5d358020dcfed` was rejected by exact run
+  `29523254781` when Linux Runtime smoke captured a framework-owned raw URL;
+  API, web, and Phase gate passed, while Runtime smoke and Gate projection
+  failed. The corrected repair preserves F02's byte-for-byte outer validation
+  and maps only ordinary framework stderr before capture; structured, proof, and
+  marker candidates remain unchanged and every filter failure fails closed. The
+  full 402-test API replay passes at 97% coverage with `smoke.py` at 95%, 126
+  runtime tests, both real smokes, and all static gates. Independent follow-up
+  verification returned `ACCEPT` with no material finding; a new exact
+  five-check implementation revision remains pending, followed by the separate
+  acceptance-state revision.
 - GitHub remains the source, CI, exact-revision acceptance, and integration
   control plane. Vercel deployment is outside F03 and remains a separately
   gated F04 boundary from issue #3. A pre-existing integration may create an
@@ -127,7 +136,7 @@ prose is a synchronized human-readable projection.
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
-| F03 | Foundation | `IMPLEMENTED_UNVERIFIED` | Canonical-LF repair is independently accepted; both exact five-check revisions remain |
+| F03 | Foundation | `IMPLEMENTED_UNVERIFIED` | Repair is independently accepted; both exact five-check revisions remain |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -186,7 +195,7 @@ provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-After independent verification, publish the bounded F03 implementation revision
+Publish the independently accepted bounded F03 implementation revision
 and repair it until API quality, Web quality, Runtime smoke, Phase gate, and Gate
 projection all pass for that exact SHA. Then create a separate acceptance-state
 revision recording the immutable implementation evidence, require that newer

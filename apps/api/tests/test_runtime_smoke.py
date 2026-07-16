@@ -15,7 +15,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path
-from typing import ClassVar, TextIO, cast
+from typing import BinaryIO, ClassVar, TextIO, cast
 
 import pytest
 
@@ -27,6 +27,7 @@ class FakeProcess:
     def __init__(self, process_id: int, return_code: int | None = None) -> None:
         self.pid = process_id
         self.return_code = return_code
+        self.stderr: io.BytesIO | None = None
 
     def poll(self) -> int | None:
         return self.return_code
@@ -714,6 +715,302 @@ def test_captured_log_rejects_confidential_or_raw_values(
         smoke._validate_captured_log(marker.encode("ascii"))
 
 
+def test_diagnostic_filter_maps_web_framework_output_before_outer_capture() -> None:
+    raw = (
+        b"\n"
+        b"ready on http://127.0.0.1:3000\n"
+        b"learn more at https://nextjs.org/docs\n"
+        b"ordinary framework status\n"
+    )
+    sink = io.BytesIO()
+    filtered = smoke._DiagnosticFilteredProcess(
+        FakeProcess(700, return_code=0),
+        io.BytesIO(raw),
+        sink,
+        "web",
+    )
+
+    assert filtered.diagnostic_filter_ok()
+    content = sink.getvalue()
+    assert b"http://" not in content
+    assert b"https://" not in content
+    smoke._validate_captured_log(content)
+    assert smoke._extract_diagnostic_events(content) == []
+    process_events = [json.loads(line) for line in content.splitlines()]
+    assert len(process_events) == 3
+    assert {event["service"] for event in process_events} == {"web"}
+    assert {event["reason"] for event in process_events} == {"unstructured_suppressed"}
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"event":"unknown"}\n',
+        b'{"event":"api.health.request.completed","event":"api.health.request.completed"}\n',
+        b'prefix api.health.request.completed {"event":"process.log"}\n',
+        smoke._INNER_PROOF_PREFIX + b"{}\n",
+    ],
+)
+def test_diagnostic_filter_preserves_structured_proof_and_marker_candidates(
+    raw: bytes,
+) -> None:
+    sink = io.BytesIO()
+    filtered = smoke._DiagnosticFilteredProcess(
+        FakeProcess(701, return_code=0),
+        io.BytesIO(raw),
+        sink,
+        "web",
+    )
+
+    assert filtered.diagnostic_filter_ok()
+    assert sink.getvalue() == raw
+
+
+@pytest.mark.parametrize(
+    ("service_name", "raw"),
+    [
+        ("api", b"api ready at http://private.invalid\n"),
+        ("web", b'{"event":"unknown","raw":"http://private.invalid"}\n'),
+        ("web", b"Traceback from framework\n"),
+        ("web", b"framework request /health/live\n"),
+    ],
+)
+def test_diagnostic_filter_forwards_sensitive_or_structured_candidates_for_rejection(
+    service_name: str,
+    raw: bytes,
+) -> None:
+    sink = io.BytesIO()
+    filtered = smoke._DiagnosticFilteredProcess(
+        FakeProcess(702, return_code=0),
+        io.BytesIO(raw),
+        sink,
+        service_name,
+    )
+
+    assert filtered.diagnostic_filter_ok()
+    assert sink.getvalue() == raw
+    with pytest.raises(smoke.SmokeFailure, match=r"raw_url|raw_health_path|raw_exception"):
+        smoke._validate_captured_log(sink.getvalue())
+
+
+def test_diagnostic_filter_rejects_confidential_content_without_forwarding_it() -> None:
+    raw = f"framework output {smoke.REQUEST_CANARY}\n".encode("ascii")
+    sink = io.BytesIO()
+    filtered = smoke._DiagnosticFilteredProcess(
+        FakeProcess(703, return_code=0),
+        io.BytesIO(raw),
+        sink,
+        "web",
+    )
+
+    assert not filtered.diagnostic_filter_ok()
+    content = sink.getvalue()
+    assert smoke.REQUEST_CANARY.encode("ascii") not in content
+    assert content == smoke._FILTER_REJECTION_EVENT
+    with pytest.raises(smoke.SmokeFailure, match="corrupt event"):
+        smoke._extract_diagnostic_events(content)
+
+
+def test_diagnostic_filter_rejects_io_failures() -> None:
+    class FailingSink:
+        def write(self, _content: object) -> int:
+            raise OSError("private sink failure")
+
+        def flush(self) -> None:
+            pass
+
+    class ShortWriteSink(io.BytesIO):
+        def write(self, content: object) -> int:
+            super().write(cast(bytes, content)[:1])
+            return 1
+
+    class FailingReader(io.BytesIO):
+        def readline(self, _size: int | None = -1) -> bytes:
+            raise OSError("private read failure")
+
+    class FailingCloseReader(io.BytesIO):
+        def __init__(self) -> None:
+            super().__init__()
+            self._failed_once = False
+
+        def close(self) -> None:
+            if not self._failed_once:
+                self._failed_once = True
+                raise ValueError("private close failure")
+            super().close()
+
+    write_failure = smoke._DiagnosticFilteredProcess(
+        FakeProcess(707, return_code=0),
+        io.BytesIO(b"ordinary output\n"),
+        cast(BinaryIO, FailingSink()),
+        "api",
+    )
+    assert not write_failure.diagnostic_filter_ok()
+
+    short_write = smoke._DiagnosticFilteredProcess(
+        FakeProcess(704, return_code=0),
+        io.BytesIO(b"ordinary output\n"),
+        ShortWriteSink(),
+        "api",
+    )
+    assert not short_write.diagnostic_filter_ok()
+
+    read_sink = io.BytesIO()
+    read_failure = smoke._DiagnosticFilteredProcess(
+        FakeProcess(705, return_code=0),
+        FailingReader(),
+        read_sink,
+        "web",
+    )
+    assert not read_failure.diagnostic_filter_ok()
+    assert read_sink.getvalue() == smoke._FILTER_REJECTION_EVENT
+
+    close_failure = smoke._DiagnosticFilteredProcess(
+        FakeProcess(706, return_code=0),
+        FailingCloseReader(),
+        io.BytesIO(),
+        "api",
+    )
+    assert not close_failure.diagnostic_filter_ok()
+
+
+def test_diagnostic_filter_rejects_oversized_lines_and_early_pipe_close() -> None:
+    oversized_sink = io.BytesIO()
+    oversized = smoke._DiagnosticFilteredProcess(
+        FakeProcess(707, return_code=0),
+        io.BytesIO(b"x" * (smoke.MAX_CAPTURE_BYTES + 1)),
+        oversized_sink,
+        "api",
+    )
+    assert not oversized.diagnostic_filter_ok()
+    assert oversized_sink.getvalue() == smoke._FILTER_REJECTION_EVENT
+
+    early_close = smoke._DiagnosticFilteredProcess(
+        FakeProcess(708),
+        io.BytesIO(),
+        io.BytesIO(),
+        "web",
+    )
+    assert early_close.diagnostic_filter_failed()
+
+
+def test_diagnostic_filter_delegates_owned_process_lifecycle() -> None:
+    class OwnedFakeProcess(FakeProcess):
+        def __init__(self) -> None:
+            super().__init__(709, return_code=0)
+            self.closed = False
+
+        def tree_active(self) -> bool:
+            return not self.closed
+
+        def terminate_tree(self) -> bool:
+            self.return_code = 1
+            return True
+
+        def close_tree(self) -> None:
+            self.closed = True
+
+    process = OwnedFakeProcess()
+    filtered = smoke._DiagnosticFilteredProcess(
+        process,
+        io.BytesIO(),
+        io.BytesIO(),
+        "api",
+    )
+    assert filtered.poll() == 0
+    assert filtered.tree_active()
+    assert filtered.terminate_tree()
+    filtered.send_signal(int(signal.SIGTERM))
+    filtered.kill()
+    filtered.close_tree()
+    assert process.closed
+
+
+def test_launch_diagnostic_service_pipes_and_filters_child_stderr(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[object, object]] = []
+    process = FakeProcess(710, return_code=0)
+    process.stderr = io.BytesIO(b"ready at http://127.0.0.1:3000\n")
+
+    def launch(
+        _service: dev_supervisor.ServiceSpec,
+        _platform: dev_supervisor.PlatformFamily,
+        *,
+        stdout: object = None,
+        stderr: object = None,
+    ) -> FakeProcess:
+        calls.append((stdout, stderr))
+        return process
+
+    monkeypatch.setattr(smoke, "launch_service", launch)
+    sink = io.BytesIO()
+    filtered = smoke._launch_diagnostic_service(_service("web"), "posix", sink=sink)
+
+    assert calls == [(subprocess.DEVNULL, subprocess.PIPE)]
+    assert isinstance(filtered, smoke._DiagnosticFilteredProcess)
+    assert filtered.diagnostic_filter_ok()
+    smoke._validate_captured_log(sink.getvalue())
+
+
+def test_launch_diagnostic_service_uses_default_binary_sink(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BinaryStderr:
+        def __init__(self) -> None:
+            self.buffer = io.BytesIO()
+
+    process = FakeProcess(711, return_code=0)
+    process.stderr = io.BytesIO(b"ordinary output\n")
+    monkeypatch.setattr(
+        smoke,
+        "launch_service",
+        lambda _service, _platform, **_kwargs: process,
+    )
+    binary_stderr = BinaryStderr()
+    monkeypatch.setattr(sys, "stderr", binary_stderr)
+
+    filtered = cast(
+        smoke._DiagnosticFilteredProcess,
+        smoke._launch_diagnostic_service(_service("api"), "posix"),
+    )
+
+    assert filtered.diagnostic_filter_ok()
+    smoke._validate_captured_log(binary_stderr.buffer.getvalue())
+
+
+def test_launch_diagnostic_service_rejects_missing_binary_sink(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sys, "stderr", object())
+    with pytest.raises(OSError, match="binary diagnostic sink"):
+        smoke._launch_diagnostic_service(_service("api"), "posix")
+
+
+def test_launch_diagnostic_service_fails_closed_without_stderr_pipe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class CloseableProcess(FakeProcess):
+        def __init__(self) -> None:
+            super().__init__(712)
+            self.tree_closed = False
+
+        def close_tree(self) -> None:
+            self.tree_closed = True
+
+    process = CloseableProcess()
+    monkeypatch.setattr(
+        smoke,
+        "launch_service",
+        lambda _service, _platform, **_kwargs: process,
+    )
+
+    with pytest.raises(OSError, match="stderr pipe"):
+        smoke._launch_diagnostic_service(_service("api"), "posix", sink=io.BytesIO())
+    assert process.return_code == 1
+    assert process.tree_closed
+
+
 def test_diagnostic_proof_rejects_allowlist_trace_and_count_drift() -> None:
     events = [json.loads(line) for line in _diagnostic_capture(correlated_requests=2).splitlines()]
     events[0]["raw_url"] = "suppressed"
@@ -1118,10 +1415,11 @@ def test_runtime_diagnostic_scenario_exercises_concurrency_roots_and_fixture_sta
         launched.append(service)
         return FakeProcess(100 + len(launched))
 
+    monkeypatch.setattr(smoke, "_launch_diagnostic_service", launch)
     runtime, controller, _clock = _runtime(
         repository_root,
         canonical,
-        launcher=launch,
+        launcher=dev_supervisor.launch_service,
         metadata_requester=metadata_request,
     )
     runtime._monotonic = time.monotonic
@@ -1250,6 +1548,21 @@ def test_runtime_retries_only_startup_connection_errors(tmp_path: Path) -> None:
     runtime, _controller, clock = _runtime(repository_root, canonical, requester=request)
     runtime.run()
     assert clock.current == pytest.approx(2 * smoke.POLL_INTERVAL_SECONDS)
+
+
+def test_runtime_rejects_failed_diagnostic_filter(tmp_path: Path) -> None:
+    class FilterFailedProcess(FakeProcess):
+        def diagnostic_filter_failed(self) -> bool:
+            return True
+
+    repository_root, canonical = _create_repository(tmp_path)
+    runtime, _controller, _clock = _runtime(repository_root, canonical)
+    managed = [
+        dev_supervisor.ManagedProcess(_service("api"), FilterFailedProcess(713)),
+    ]
+
+    with pytest.raises(smoke.SmokeFailure, match="diagnostic output filter failed"):
+        runtime._ensure_running(managed)
 
 
 def test_runtime_reports_child_exit_and_still_cleans_up(tmp_path: Path) -> None:
