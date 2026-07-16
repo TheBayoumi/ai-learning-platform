@@ -218,4 +218,4 @@ It runs 20 measured health requests with a four-request overlapping cohort, plus
 one startup correlation, explicit absent and malformed API contexts, and three
 isolated success/failure fixture outcomes. A passing aggregate reports only
 counts, byte totals, lifecycle/resource observations, and p50/p95/max timings.
-F02-03 is not accepted until that exact pushed revision passes GitHub Actions.
+F02-03 is accepted at revision `16bf84c9919ccf16d1e06e1542245737bd61cde4` after exact GitHub Actions run `29510082305` and two successful full-job reruns. This remains a development proof, not deployment or production-observability approval.

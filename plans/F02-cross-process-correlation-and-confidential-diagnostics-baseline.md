@@ -2,7 +2,7 @@
 
 **Phase:** `F02 - Cross-Process Correlation and Confidential Diagnostics Baseline`
 **Class:** Technical foundation
-**Status:** In progress - F02-01 and F02-02 accepted; F02-03 under revision after exact Ubuntu confidentiality failure, classified rerun pending
+**Status:** Passed - F02-01, F02-02, and F02-03 accepted on exact pushed CI; gate `Continue`
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_EXTERNAL` / `Revise`; `V01` is locked.
 
@@ -305,9 +305,8 @@ unscanned response-header surface, boolean acceptance as schema version 1, and
 a post-exit-only capture cap. Each was repaired and regression-tested. The
 reviewer's final rereview was unavailable after quota exhaustion; per AGENTS.md,
 the parent performed the missing read-only diff and gate audit and also repaired
-the launch-to-capture interrupt race it found. F02 remains IN_PROGRESS with a
-null phase gate until the exact pushed API, web, and runtime-smoke jobs accept
-this revision.
+the launch-to-capture interrupt race it found. F02 remained IN_PROGRESS with
+a null phase gate until the revised exact API, web, and runtime-smoke jobs passed.
 
 Exact implementation revision `82736aff83c0c4fce66b31095b65fdc7e57d1c5f`
 reached GitHub Actions run `29509035888`. API job `87657348971` passed all
@@ -322,9 +321,41 @@ the value exactly as designed, so no confidential content entered Actions logs.
 The phase disposition is `Revise`. The repair does not allow or redact any raw
 content: it maps each already-forbidden byte marker to a fixed non-secret reason
 such as `raw_url`, `raw_health_path`, `raw_trace_header`, or `raw_exception`.
-All values remain suppressed and rejected. The next exact CI run must identify
-the Ubuntu-only category safely before any content-specific fix or F02 passage.
+All values remain suppressed and rejected. At that point, another exact CI run
+was required before any F02 passage.
 
+## F02 Acceptance Evidence
+
+Classifier revision `16bf84c9919ccf16d1e06e1542245737bd61cde4`
+passed exact GitHub Actions run `29510082305`. Initial API job `87660936291`
+passed locked sync, both contracts, Ruff, strict mypy, line endings, and all 250
+tests in 3.93 seconds at 97% coverage. Initial web job `87660936295` passed a
+zero-vulnerability install, lint, typecheck, all 97 tests in 2.11 seconds, a
+3.8-second compile, and the 10-file, 629,565-byte browser scan.
+
+Initial runtime job `87661156124` passed with 48 exact events, 21 correlated
+requests, four overlapping workers, four owned processes, 841,670,656 resident
+bytes, 17,012,862 Next.js bytes, 1,928 ms API liveness, 5,012 ms smoke, 403 ms
+shutdown, and closed ports. Because the preceding behavior-equivalent revision
+had failed once, the controller reran the full dependent job chain twice. Runtime
+jobs `87661534645` and `87661831197` also passed. Across the three successful
+Ubuntu attempts, resident memory was 841,670,656-844,980,224 bytes, API liveness
+was 1,832-2,340 ms, total smoke was 5,012-7,554 ms, shutdown was 50-403 ms,
+and every attempt preserved exactly 48 events, 21 correlations, four concurrent
+workers, four owned processes, bounded captured bytes, and closed ports.
+
+The earlier generic raw-marker failure did not recur and its source remains
+unknown. This is a residual CI-flake risk, not evidence that content leaked: the
+failed run suppressed the value, and the accepted revision keeps rejection
+unchanged while adding only a fixed safe category if it recurs. No dependency,
+workflow, contract, public schema, exporter, store, migration, egress, product
+identifier, V00 evidence, or deployment configuration changed.
+
+## Phase Gate Disposition
+
+Every F02 exit condition now has local and exact-revision evidence. F02 is
+`PASSED / Continue`. This does not pass V00, unlock V01, authorize V02 or V17A,
+or approve deployment or production observability.
 ## Failure Handling
 
 - Malformed external context never crashes a request or poisons another request.
@@ -413,6 +444,6 @@ F02 creates no persistent data or migration.
 
 ## Exact Next Action
 
-Commit and push the exact F02-03 implementation revision, then require its API,
-web, and runtime-smoke GitHub Actions jobs to pass before evaluating the F02
-phase gate. Do not add deployment configuration or begin another phase.
+Stop before the next phase. On a later invocation, recompute both lanes from
+this accepted F02 boundary; do not treat F02 as V00 evidence and do not begin
+deployment without a separately approved phase.

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-16T15:10:37.071Z",
+  "generated_at": "2026-07-16T15:21:12.614Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "4957e42c66d192fb53463a392eb7ccf4399d7ae5",
-    "working_tree": "F02-03 automated proof and safe Ubuntu-only failure classification are locally verified; exact pushed GitHub Actions phase-exit evidence is pending after run 29509035888 rejected the implementation runtime job, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
+    "head": "16bf84c9919ccf16d1e06e1542245737bd61cde4",
+    "working_tree": "F02-03 is accepted at exact revision 16bf84c9919ccf16d1e06e1542245737bd61cde4 after run 29510082305 and two successful full-job reruns; controller publication CI is pending, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -38,7 +38,7 @@
       "app-local exporter-free W3C context and one allowlisted confidential event for GET /health/live, accepted on exact F02-01 CI",
       "server-only web client context propagation and one bounded confidential health-completion event, accepted on exact F02-02 CI",
       "production browser-asset confidentiality scan for fixed web diagnostic and API-configuration markers",
-      "automated real-process correlation, safe-root, concurrency, induced-failure, confidentiality, event-volume, resource, and cleanup gate, locally verified with exact CI pending",
+      "automated real-process correlation, safe-root, concurrency, induced-failure, confidentiality, event-volume, resource, and cleanup gate, accepted on exact F02-03 CI plus two successful full-job reruns",
       "static Next.js App Router technical shell",
       "locked API and web dependency workflows",
       "format, lint, strict type, test, coverage, build, and CI quality gates"
@@ -210,13 +210,13 @@
       "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "No further F01 action; F02 is IN_PROGRESS"
+      "next_smallest_action": "No further F01 action; F02 is PASSED"
     },
     {
       "id": "F02",
       "name": "Cross-Process Correlation and Confidential Diagnostics Baseline",
       "lane": "foundation",
-      "status": "IN_PROGRESS",
+      "status": "PASSED",
       "entry_conditions": [
         {
           "condition": "F01 passes",
@@ -298,14 +298,14 @@
       "F02-03 unchanged web gate: lint, strict typecheck, all 97 tests, production build in 8.4 seconds, and browser confidentiality scan over 10 files totaling 629,565 bytes pass",
       "F02-03 independent verifier found seven lifecycle, concurrency, schema, and confidentiality defects that were repaired; its final rereview hit quota, so the parent performed the required fallback diff/gate audit and repaired one additional launch-to-capture interrupt race",
       "exact implementation run 29509035888: API job 87657348971 and web job 87657349046 passed; runtime-smoke job 87657590869 rejected an Ubuntu-only forbidden raw value after the private scenario succeeded, without exposing that value",
-      "F02-03 Revise response: fixed non-secret forbidden-category taxonomy preserves rejection and suppression; 108 focused and 250 full API tests plus the Windows root smoke pass locally; exact classified rerun pending"
+      "F02-03 Revise response: fixed non-secret forbidden-category taxonomy preserves rejection and suppression; 108 focused and 250 full API tests plus the Windows root smoke pass locally",
+      "exact classifier revision 16bf84c9919ccf16d1e06e1542245737bd61cde4 passed Actions run 29510082305: initial API job 87660936291, web job 87660936295, and runtime job 87661156124 all succeeded",
+      "controller repeatability gate: runtime jobs 87661534645 and 87661831197 plus their dependent API/web jobs succeeded; three Ubuntu attempts each kept 48 events, 21 correlations, 4 concurrent workers, 4 processes, bounded output, and closed ports; resident bytes ranged 841670656-844980224"
       ],
-      "missing_outputs": [
-        "exact pushed GitHub Actions API, web, and runtime-smoke phase-exit evidence after the Ubuntu-only forbidden category is identified and repaired"
-      ],
+      "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Commit and push the safe forbidden-category revision, inspect the exact Ubuntu runtime result, then repair without allowing raw content before evaluating the F02 phase gate"
+      "next_smallest_action": "No further F02 implementation; select a later eligible phase only on a future invocation"
     },
     {
       "id": "V00",

@@ -380,3 +380,25 @@ passes 108 focused tests, 250 full API tests in 11.75 seconds at 97% coverage,
 Ruff, native/Linux/Win32 mypy, and a 4,269 ms Windows root smoke with 48 events,
 21 correlations, 51 ms shutdown, and closed ports. F02 remains `IN_PROGRESS`
 with a null gate pending the next exact pushed runtime result.
+Classifier revision `16bf84c9919ccf16d1e06e1542245737bd61cde4` then
+passed exact GitHub Actions run `29510082305`. Initial API job `87660936291`
+passed contracts, Ruff, strict mypy, line endings, and 250 tests in 3.93 seconds
+at 97% coverage. Initial web job `87660936295` passed zero-vulnerability install,
+lint, typecheck, all 97 tests in 2.11 seconds, production build, and the 10-file,
+629,565-byte browser scan. Initial runtime job `87661156124` passed with 48
+events, 21 correlations, four processes, 841,670,656 resident bytes, 1,928 ms API
+liveness, 5,012 ms smoke, 403 ms shutdown, and closed ports.
+
+Because the preceding behavior-equivalent revision had failed once, the
+controller reran the full dependent chain twice. Runtime jobs `87661534645` and
+`87661831197` also passed. Across all three successful Ubuntu attempts, resident
+memory was 841,670,656-844,980,224 bytes, API liveness 1,832-2,340 ms, smoke
+5,012-7,554 ms, and shutdown 50-403 ms; event, correlation, concurrency, process,
+byte-bound, and port-closure assertions stayed exact.
+
+The earlier raw-marker source remains unknown and is recorded as a residual
+flake risk. Its value never entered Actions logs, and any recurrence now reports
+only a fixed safe category while remaining rejected. F02 is accepted as
+`PHASE_PASSED / Continue`. V00 remains `WAITING_EXTERNAL / Revise`, V01 stays
+locked, deployment remains deferred, and this invocation stops before another
+phase.

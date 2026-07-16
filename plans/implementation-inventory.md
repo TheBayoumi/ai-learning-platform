@@ -1,8 +1,9 @@
 # Implementation Inventory
 
-Generated from the locally verified F02-03 worktree based on exact-CI-accepted
-F02-02 controller revision `4957e42c66d192fb53463a392eb7ccf4399d7ae5`.
-Exact F02-03 GitHub Actions evidence is pending. The machine-readable record is
+Generated from exact-CI-accepted F02-03 revision
+`16bf84c9919ccf16d1e06e1542245737bd61cde4` and GitHub Actions run
+`29510082305`, including two successful full-job reruns.
+The machine-readable record is
 `plans/implementation-inventory.json`; prose and controller state are not
 counted as runtime implementation.
 
@@ -79,22 +80,19 @@ counted as runtime implementation.
   lint, strict typecheck, the production build, and browser confidentiality
   scan; runtime smoke observed matching web/API trace IDs with distinct spans,
   four processes, 747,077,632 resident bytes, 1,924 ms API liveness, 4,773 ms
-  total smoke, 252 ms shutdown, and both ports closed. F02-03 is now locally
-  implemented in the unchanged root smoke command: an isolated outer wrapper
-  streams stderr through a 256 KiB cap, validates exact private/event schemas,
-  scans response bodies, response headers, and all captured bytes, and reports
-  only aggregate evidence. The proof executes 21 correlated requests, including
-  20 measured requests and a barrier-started four-request overlapping cohort;
-  safe roots for two absent and one malformed contexts; and three isolated
-  available, HTTP-failure, and invalid-JSON outcomes. The final Windows run
-  emitted exactly 48 events totaling 12,638 bytes inside 14,222 captured bytes,
-  measured 126/138/140 ms p50/p95/max, completed in 4,269 ms, shut down in 51
-  ms, and closed both ports. The revised classifier passes 108 focused smoke
-  tests and 250 full API tests at 97% coverage, 97 web tests, static checks, contracts, and the production build
-  pass locally. Exact run 29509035888 passed API and web but runtime-smoke
-  rejected an Ubuntu-only forbidden raw marker without revealing its value. The
-  fixed-category Revise rerun remains the missing phase-exit evidence. Exporters, backend, product metrics, learner identifiers, and V17A
-  behavior remain absent.
+  total smoke, 252 ms shutdown, and both ports closed.
+  F02-03 is accepted: the unchanged root smoke command now owns an isolated,
+  bounded real-process correlation, confidentiality, failure, resource, and
+  lifecycle proof. It passes 108 focused tests, 250 full API tests at 97%
+  coverage, all 97 web tests, static and contract gates, the production build,
+  and the Windows root smoke. Exact classifier revision
+  `16bf84c9919ccf16d1e06e1542245737bd61cde4` passed Actions run
+  `29510082305`; its initial API, web, and runtime jobs plus two controller-run
+  full-chain retries all passed. The three Ubuntu runtime attempts each produced
+  exactly 48 events, 21 correlations, four concurrent workers, four owned
+  processes, bounded output, and closed ports. F02 is `PASSED / Continue`.
+  Exporters, backend, product metrics, learner identifiers, V17A behavior, and
+  deployment remain absent.
 - GitHub remains the source, CI, and exact-revision acceptance control plane.
   The user reports a Vercel Git connection; Vercel is the provisional deployment
   candidate because current official support includes FastAPI Python Functions
@@ -118,7 +116,7 @@ counted as runtime implementation.
 | --- | --- | --- | --- |
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
-| F02 | Foundation | `IN_PROGRESS` | F02-03 locally verified; exact pushed phase-exit CI pending |
+| F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -164,9 +162,9 @@ app-local W3C context/span and fixed allowlisted event for API liveness, with no
 exporter or global provider. Accepted F02-02 adds one private web client
 span, server-only W3C propagation, one fixed safe web event, and a production
 browser-asset confidentiality gate.
-Locally verified F02-03 adds the automated real-process correlation, safe-root,
+Accepted F02-03 adds the automated real-process correlation, safe-root,
 concurrency, failure, confidentiality, event-volume, resource, and lifecycle
-assertion; exact pushed CI is pending.
+assertion.
 The repository has no persistent telemetry,
 authentication, learner or role state, events/outbox/replay, competency graph,
 curriculum, assessment, tutoring, LLM access, mastery, readiness, unique work,
@@ -175,7 +173,7 @@ deployment.
 
 ## Next Inventory Update
 
-Commit and push the exact F02-03 implementation, then update this inventory only
-after all API, web, and runtime-smoke GitHub Actions jobs pass. Keep F02
-`IN_PROGRESS` with a null gate until then, and do not treat F01 or F02 as V00
-evidence.
+On a later invocation, recompute the validation and foundation lanes from this
+accepted F02 boundary and select only the earliest eligible approved phase. Do
+not treat F01 or F02 as V00 evidence, and do not begin deployment as an implicit
+next step.
