@@ -8,15 +8,26 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: quality-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   api:
     name: API quality
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: apps/api
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
@@ -66,11 +77,15 @@ jobs:
   web:
     name: Web quality
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
+          persist-credentials: false
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
@@ -99,6 +114,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
@@ -125,3 +143,54 @@ jobs:
       - name: Run the cross-process smoke contract
         timeout-minutes: 2
         run: uv run --project apps/api --locked python scripts/smoke.py
+  phase-gate:
+    name: Phase gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+      - name: Validate the exact revision phase state
+        run: >-
+          uv run --project apps/api --locked python scripts/phase_gate.py validate
+          --expected-sha "$EXACT_HEAD_SHA"
+
+  gate-projection:
+    name: Gate projection
+    needs: [api, web, runtime-smoke, phase-gate]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+      - name: Project the exact revision gate state
+        run: >-
+          uv run --project apps/api --locked python scripts/phase_gate.py project
+          --expected-sha "$EXACT_HEAD_SHA"
+          --check-result "API quality=${{ needs.api.result }}"
+          --check-result "Web quality=${{ needs.web.result }}"
+          --check-result "Runtime smoke=${{ needs.runtime-smoke.result }}"
+          --check-result "Phase gate=${{ needs.phase-gate.result }}"
+          --require-check-results
+          --github-summary "$GITHUB_STEP_SUMMARY"

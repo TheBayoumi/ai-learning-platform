@@ -123,6 +123,32 @@ Every phase must define:
 Do not start the next phase merely because code was written. The current phase's evidence gate must pass.
 
 For work expected to span multiple sessions or substantial milestones, create or update an ExecPlan under `plans/`. The plan must be self-contained and remain current as implementation progresses.
+### 4.1 Exact-revision implementation and acceptance loop
+
+For every internally decidable technical phase governed by the GitHub phase
+controller:
+
+1. complete implementation, adversarial tests, local gates, and independent
+   read-only verification;
+2. record the phase as `IMPLEMENTED_UNVERIFIED`, commit the bounded
+   implementation revision, and push it without waiting for chat approval;
+3. require that exact checked-out SHA to pass every check named by
+   `plans/autonomous-loop/controller-policy.json`;
+4. repair any failed, skipped, cancelled, pending, stale, or previous-head result
+   in another bounded implementation revision and repeat the exact-SHA gate;
+5. only after the implementation SHA passes, create a separate acceptance-state
+   commit that records its exact SHA and workflow run/job evidence in the
+   ExecPlan, autonomous state, checkpoint, run log, and implementation inventory;
+6. require the acceptance-state commit's own exact checked-out SHA to pass the
+   same complete check set; and
+7. record both immutable revisions and workflow evidence durably in the
+   persistent integration pull request before beginning another phase.
+
+An earlier revision's success cannot accept a newer head. GitHub Step Summary is
+an exact deterministic projection, not a substitute for checking every required
+job conclusion. Technical phase acceptance, reversible controller choices,
+commits, pushes, CI repair, documentation acceptance, and absence of chat
+confirmation do not create `WAITING_HUMAN`.
 
 ### 5. Ask only for unresolved decisions
 

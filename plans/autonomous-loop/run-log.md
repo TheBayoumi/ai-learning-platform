@@ -452,3 +452,59 @@ exclude that side effect from F03/F03-03 evidence, and use amendment wording. Th
 verifier otherwise confirmed the exact F02 run evidence, phase boundaries,
 protected V00 state, hashes, JSON, line endings, file whitelist, loopback/API
 privacy constraints, and official provider claims.
+## Run 19 - 2026-07-16 (F03 implementation started)
+
+Reanchored the autonomous loop to the latest durable pull request #1 steering
+and GitHub issue #2. Verified clean synchronized head
+`5b19455034583da0d0ec40c82edf70423b93b2df`; its run `29514959237` passed only
+API quality (`87677547747`), Web quality (`87677547757`), and Runtime smoke
+(`87677707977`). That three-check revision is an entry boundary, not F03
+acceptance. V00 remains `WAITING_EXTERNAL / Revise`; V01 remains locked.
+
+Read-only architecture and roadmap specialists both found that the local
+container/Vercel F03 contradicted issue #2 and that issue #3 reserves deployment
+for later F04. Replaced the obsolete definition with `F03 - GitHub Phase-Gate
+Control Plane`. The integrated design derives dependencies only from the
+roadmap, uses versioned status/blocker/claim policy, rejects cross-lane effects,
+validates exact checked-out Git HEAD and authoritative hashes, and emits a
+bounded deterministic projection only after full repository validation.
+
+Implemented the standard-library controller, root CLI, adversarial-test surface,
+exact-head checkout for every workflow job, and exact `Phase gate` plus final
+`Gate projection` jobs. The projection revalidates the repository, waits for all
+four upstream jobs with `always()`, and fails on pending, failed, cancelled, or
+skipped results. Workflow permissions remain read-only, actions remain pinned,
+checkout credentials are not persisted, and no secrets, artifact trust,
+repository mutation, product runtime, persistence, LLM, deployment, or Vercel
+configuration is added.
+
+Local validation then passed. The hardened adversarial controller suite passed
+133 tests in 8.91 seconds, and the full API suite passed 383 tests in 23.59
+seconds at 97% branch-aware coverage. Locked sync, both generated-contract
+checks, Ruff, and native/Linux/Win32 strict mypy across 30 files passed. The web
+gate completed in 43.854 seconds: locked install audited 385 packages with zero
+vulnerabilities; lint, strict typecheck, all 97 tests in 8 files, the production
+build, and the 10-file/629,565-byte browser confidentiality scan passed. The
+real runtime smoke completed in 4.591 seconds with 48 events, 21 correlations, 4
+concurrent requests, 1,386 ms API liveness, 3,874 ms internal smoke, 51 ms
+shutdown, and closed ports.
+
+Independent verification found and drove repairs for unknown explicit roadmap
+dependency IDs, hard-coded upstream-result sources, coordinated V00 blocker
+reclassification, incomplete transition evidence, ignored nontechnical
+foundation blockers, dirty-worktree SHA labeling, invalid claim prerequisites,
+and controller workflow bypasses. Its final rerun reproduced 133 targeted and
+383 full API tests, 97% branch-aware coverage, Ruff, strict mypy, authoritative
+hashes, JSON, and diff checks with no open material finding.
+
+The hardened CLI rejects the dirty pre-commit worktree with
+`worktree_not_exact_head`, so clean exact-head Phase gate and Gate projection
+commands are intentionally deferred until the implementation commit exists. A
+pre-hardening 20-iteration observation averaged 173.578 ms, peaked at 1,392,192
+traced Python heap bytes, and emitted an 853-byte deterministic projection; the
+clean exact-commit duration will be refreshed after commit. The first sandboxed
+`npm ci` was denied with `spawn EPERM`; the required escalated run passed and is
+recorded as an environment-permission observation. No dependency or lockfile
+changed. Independent verification is accepted; the implementation revision and
+the separate acceptance-state revision must still pass their own exact five
+GitHub checks. No chat approval is required for any repair or acceptance step.

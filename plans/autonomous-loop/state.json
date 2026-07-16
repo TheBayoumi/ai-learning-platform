@@ -1,39 +1,39 @@
 {
-  "schema_version": 2,
-  "status": "READY",
+  "schema_version": 3,
+  "status": "IMPLEMENTED_UNVERIFIED",
   "active_phase": "F03",
-  "active_slice": "F03-01",
+  "active_slice": "F03-implementation-verified",
   "gate_decision": null,
-  "last_completed_action": "Defined and independently reviewed F03 as a provider-neutral portable-container and non-production-preview baseline; added no runtime or deployment configuration and intentionally invoked no deployment.",
-  "next_action": "On a later invocation, revalidate F03 and implement only F03-01 FastAPI portable OCI artifact; do not add web or Vercel topology or intentionally invoke deployment; any integration-triggered preview is unverified and cannot advance F03-03.",
-  "stop_reason": "The required roadmap amendment is complete; this definition-only invocation stops before intentional F03 implementation or deployment work.",
+  "last_completed_action": "Implemented and independently verified the fail-closed F03 controller; 133 adversarial and 383 full API tests pass at 97% branch-aware coverage, with web and runtime evidence preserved.",
+  "next_action": "Commit the bounded implementation, require clean exact-head local Phase gate and Gate projection, push, and inspect all five exact GitHub jobs.",
+  "stop_reason": "F03 is independently verified but unaccepted; exact implementation and separate acceptance-state revisions must each pass all five required checks before the phase can pass.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
     "gate_decision": "Revise",
-    "next_action": "When real evidence arrives, Codex will preregister and apply the V00 decision rules without separate user approval",
+    "next_action": "When real evidence arrives, Codex will preregister and apply the V00 decision rules without separate user approval.",
     "blocking_inputs": [
-      "qualifying symmetric demand evidence",
-      "two qualified practitioner availability and validation confirmations",
-      "a confirmed channel owner able to reach 20-50 eligible adults",
-      "acceptable measured expected-cost evidence"
+      "v00.symmetric_demand",
+      "v00.practitioner_confirmations",
+      "v00.recruitment_channel",
+      "v00.measured_cost"
     ]
   },
   "foundation_track": {
     "active_phase": "F03",
-    "status": "NOT_STARTED",
+    "status": "IMPLEMENTED_UNVERIFIED",
     "gate_decision": null,
-    "next_action": "On a later invocation, revalidate entry conditions and implement only F03-01 FastAPI portable OCI artifact"
+    "next_action": "Commit the independently verified implementation and require its clean exact-head local and GitHub five-check gates."
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-16T15:52:50.827Z"
+    "generated_at": "2026-07-16T17:36:25.285Z"
   },
   "external_blockers": [
-    "Two qualified practitioner availability and validation confirmations",
-    "A confirmed channel owner able to reach 20-50 eligible adults",
-    "Qualifying symmetric demand evidence",
-    "Acceptable measured expected-cost evidence"
+    "v00.symmetric_demand",
+    "v00.practitioner_confirmations",
+    "v00.recruitment_channel",
+    "v00.measured_cost"
   ],
   "controller_decisions_owned": [
     "Select and accept the next eligible technical or controller action after constitutional checks, independent review, and exact GitHub Actions",
@@ -43,34 +43,45 @@
     "Stage, commit, and push one bounded verified slice without waiting for a user commit or review"
   ],
   "human_decisions_required": [],
-  "deployment_maturity_intent": {
-    "status": "F03_DEFINED_PREVIEW_ONLY",
-    "github_role": "Source, CI, and exact-revision acceptance gate",
-    "runtime_candidate": "Provider-neutral OCI containers with Vercel Services as a replaceable ephemeral-preview adapter",
-    "connection_evidence": "User reports the Git repository is connected in Vercel; no local .vercel link, vercel.json, or Vercel CLI is present",
-    "automatic_preview_boundary": "A branch push may trigger the reported pre-existing Git integration; any resulting preview is unverified, not intentionally invoked here, not F03 evidence, and cannot advance F03-03",
-    "constitution_constraint": "The approved runtime remains portable containers on a managed PaaS; the API stays private and no non-container fallback is F03 evidence",
-    "reason": "Official Vercel Services, container, binding, and pricing documentation supports a plausible Beta preview, but implementation, access, region, secrets, rollback, cost, and production selection remain separately gated"
-  },
-  "last_verified_commit": "8963101805d6f29f4701c91764b5563f07ff07c8",
+  "last_verified_commit": "5b19455034583da0d0ec40c82edf70423b93b2df",
   "authoritative_file_hashes": {
-    "AGENTS.md": "d7a3a4309183f42f05fa336e8283270b3cda204a159c827e8ee44783de2ca820",
+    "AGENTS.md": "71e31a7955de50367f5bd48408b422aae89b64312c238ee6bfb5bcc1254857a8",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
     "specs/mission.md": "955bb67629921c200199ba5e66b009c84504250abf67b47a541a2682ac8df5a6",
     "specs/tech-stack.md": "b15abb17ce919a3e4413091033d410b39fffa9ba0bfcd66c7276075f0f5c275f",
-    "specs/roadmap.md": "57ae3b8a11b09d16d2b69e174315cb6ac6adb4f0465441d68e05db8f2b64fd5f",
+    "specs/roadmap.md": "2143129b9d5b767dcb17e6bf1ca0187a061bfad0931c80986289d5e0e135c5e5",
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
     "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "b8d743abee02a1ec33fecfcc9304b856a733cca25016076609bd349e1841f5cf",
-    "plans/F03-portable-container-runtime-and-non-production-preview-baseline.md": "87ed76686900b345be036174281821132e8e8ee84084fd76b5dc4448a4f76e8f",
-    "plans/implementation-inventory.json": "6239880afc9c442363d8b138c318c3775a2ecaf4ef8f0cf520842fd3b4d36604",
+    "plans/implementation-inventory.json": "d4e46670d92d1e61a310d49146eec8c8098e1c4fb03ad04f375dd7f7e0e436cc",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "e8c0cba1aa32c676afe1a0bcb2e8bf96af6f72e384451baac708c5c3f3ef1b07",
-    "docs/validation/V00-candidate-role-evidence.md": "fa4563e988ebbe97c7ed2bf4185574a81880cdca5be7ebe43e5174459dfdf069"
+    "docs/validation/V00-candidate-role-evidence.md": "fa4563e988ebbe97c7ed2bf4185574a81880cdca5be7ebe43e5174459dfdf069",
+    ".github/workflows/ci.yml": "35ba7b105ce5a667b9d2495698a8511feb803a459bd613a258f03d9f17d110f3",
+    "plans/F03-github-phase-gate-control-plane.md": "f6915d356428504662bf8d89c09917612d1ab57a0b9e9522d507aa4ac25faae6",
+    "plans/autonomous-loop/controller-policy.json": "8c3847c32dfa812fb84002254e857c2ac0342ec49dabba668d9614d971fe5c2b",
+    "plans/autonomous-loop/goal.md": "9730037369348994c6e5c059ed77d032d12cc58f210100a72f812880e922310a",
+    "plans/autonomous-loop/checkpoint.md": "c7b8cd0927822d101f9adfa5ceb9ed9763ea1e42741367549ab8e47c70f4a1c3",
+    "plans/autonomous-loop/run-log.md": "eb1a45ecb6521e2a5cae6e3f2afb9affa98d5606b960ece780b072080bbb226e",
+    "apps/api/src/ai_learning_platform_api/automation/__init__.py": "83192a0bb62273eecdbd9ad33ac8bbe2c13641c38cc68740e6e927d4cbe3025f",
+    "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "66e63575213a3d7f7db512a7ddafb45010a9a47120ab7f7d7fb9fc627d63f4aa",
+    "apps/api/tests/test_phase_gate.py": "6d8150b2587a2c7cdf8f3359ae971617f6c43710eb531adb366529084ecc3128",
+    "scripts/phase_gate.py": "6f4b92f92ece4a9c1a93df6e8b07212f7387138f419ef494a166e00c6d3fb709",
+    "plans/implementation-inventory.md": "be0fde612dc4666ff544bfa880441f6da13d371ce9d6a4310efeee7c4de4ef9b"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 18,
-  "last_run_started_at": "2026-07-16T15:52:50.827Z",
-  "last_run_completed_at": "2026-07-16T16:00:45.818Z"
+  "run_number": 19,
+  "last_run_started_at": "2026-07-16T17:36:25.285Z",
+  "last_run_completed_at": "2026-07-16T17:36:25.285Z",
+  "future_phase_boundary": {
+    "phase": "F04",
+    "status": "LOCKED_UNTIL_F03_ACCEPTED",
+    "next_action": "Formally define and implement F04 — Vercel deployment baseline from GitHub issue #3."
+  },
+  "claims": {
+    "product_readiness": false,
+    "role_readiness": false,
+    "validation_satisfied_by_foundation": false
+  }
 }

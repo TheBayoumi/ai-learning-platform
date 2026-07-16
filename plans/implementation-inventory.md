@@ -2,11 +2,10 @@
 
 Generated from exact-CI-accepted F02 controller revision
 `8963101805d6f29f4701c91764b5563f07ff07c8` and GitHub Actions run
-`29511515229`. F03 is definition-only and not counted as runtime
-implementation.
-The machine-readable record is
-`plans/implementation-inventory.json`; prose and controller state are not
-counted as runtime implementation.
+`29511515229`, then updated for the locally verified F03 GitHub phase-gate
+control-plane implementation. F03 is automation, not product runtime.
+The machine-readable record is `plans/implementation-inventory.json`; this
+prose is a synchronized human-readable projection.
 
 ## Current Evidence
 
@@ -96,19 +95,19 @@ counted as runtime implementation.
   `29511515229`: API, web, and runtime-smoke jobs all succeeded. F02 is
   `PASSED / Continue`. Exporters, backend, product metrics, learner identifiers,
   V17A behavior, containers, and deployment remain absent.
-- F03 is formally defined as a portable container and non-production preview
-  baseline. Its reviewed order is API OCI artifact, web/private-binding
-  topology, then one exact-revision ephemeral preview. F03 is `NOT_STARTED`;
-  this definition adds no executable behavior or exit-gate evidence.
-- GitHub remains the source, CI, and exact-revision acceptance control plane.
-  The user reports a Vercel Git connection; Vercel is the provisional deployment
-  preview candidate because current official support includes OCI container
-  Services and private bindings. No local link, CLI, or deployment config is
-  verified; those surfaces are Beta. F03 preserves the approved portable
-  container boundary and defers provider topology to its later slices. No
-  deployment is implemented. A pre-existing Git integration may nevertheless
-  auto-create an unverified preview on push; that provider side effect is not
-  F03 evidence and cannot advance F03-03.
+- F03 is now `IMPLEMENTED_UNVERIFIED` as the GitHub Phase-Gate Control Plane.
+  Its versioned policy, clean exact-head fail-closed validator, deterministic
+  lane projection, and 133 adversarial tests pass locally. The full 383-test API
+  gate remains at 97% branch-aware coverage; web and runtime gates pass.
+  Independent verification is accepted after all material findings were
+  repaired. The implementation revision's exact five GitHub checks remain
+  pending, followed by a separate acceptance-state revision whose own exact
+  five checks must pass.
+- GitHub remains the source, CI, exact-revision acceptance, and integration
+  control plane. Vercel deployment is outside F03 and remains a separately
+  gated F04 boundary from issue #3. A pre-existing integration may create an
+  unverified provider side effect on push; it is neither F03 evidence nor phase
+  progress.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This amendment does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -126,7 +125,7 @@ counted as runtime implementation.
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
-| F03 | Foundation | `NOT_STARTED` | Definition reviewed; F03-01 API OCI artifact is the next later slice |
+| F03 | Foundation | `IMPLEMENTED_UNVERIFIED` | Local and independent gates pass; both exact five-check revisions remain |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -175,18 +174,19 @@ browser-asset confidentiality gate.
 Accepted F02-03 adds the automated real-process correlation, safe-root,
 concurrency, failure, confidentiality, event-volume, resource, and lifecycle
 assertion.
-The F03 definition adds no runtime behavior. The repository still has no OCI
-artifact, container harness, deployment manifest, local Vercel link, or remote
-deployment. It also has no persistent telemetry, authentication, learner or role
-state, events/outbox/replay, competency graph, curriculum, assessment, tutoring,
-LLM access, mastery, readiness, unique work, simulation, provenance, privacy
-lifecycle, jobs, or telemetry backend.
+F03 adds repository automation only: a standard-library policy validator,
+deterministic projection, and exact-head CI jobs. The repository still has no
+OCI artifact, container harness, deployment manifest, local Vercel link, or
+verified remote deployment. It also has no persistent telemetry, authentication,
+learner or role state, events/outbox/replay, competency graph, curriculum,
+assessment, tutoring, LLM access, mastery, readiness, unique work, simulation,
+provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-After this definition amendment passes exact GitHub Actions, stop. On a later
-invocation, revalidate F03 and implement only F03-01: the locked, non-root
-FastAPI OCI artifact and provider-neutral container smoke. Do not add the web or
-Vercel topology, publish an image, or intentionally invoke deployment. Any
-integration-triggered preview remains unverified, is not F03 evidence, and
-cannot advance F03-03. Do not treat F00-F03 as V00 evidence.
+After independent verification, publish the bounded F03 implementation revision
+and repair it until API quality, Web quality, Runtime smoke, Phase gate, and Gate
+projection all pass for that exact SHA. Then create a separate acceptance-state
+revision recording the immutable implementation evidence, require that newer
+SHA's own five checks, record both runs in pull request #1, and stop before F04.
+Do not treat F00-F03 as V00 evidence.

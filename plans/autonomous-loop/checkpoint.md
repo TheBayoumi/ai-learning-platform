@@ -2,65 +2,130 @@
 
 ## Current phase and gate
 
-Foundation phases F00-F02 are `PASSED / Continue`. F02's controller revision
+Foundation phases F00-F02 are `PASSED / Continue`. F02 controller revision
 `8963101805d6f29f4701c91764b5563f07ff07c8` passed exact GitHub Actions run
-`29511515229`. F03 is now defined but `NOT_STARTED`; its first eligible slice is
-`F03-01 - FastAPI portable OCI artifact` on a later invocation.
+`29511515229`.
+
+`F03 - GitHub Phase-Gate Control Plane` is `IMPLEMENTED_UNVERIFIED` with a null
+gate decision. Pull request #1 is the persistent integration and evidence PR.
+The exact entry head is `5b19455034583da0d0ec40c82edf70423b93b2df`;
+its run `29514959237` passed API quality (`87677547747`), Web quality
+(`87677547757`), and Runtime smoke (`87677707977`) only. It predates the two F03
+jobs and cannot accept F03.
 
 The validation lane remains `V00 - Candidate Role Evidence`,
 `WAITING_EXTERNAL / Revise`; V01 remains locked. No human review is pending.
 
-## Lane recomputation
+## Durable steering and issue boundary
 
-The controlled V00 inbox still contains only its README and retains the empty
-evidence fingerprint. V00 still lacks qualifying symmetric demand evidence, two
-qualified practitioner confirmations, a confirmed channel owner able to reach
-20-50 eligible adults, and acceptable measured expected-cost evidence. Those
-inputs cannot be self-certified, so no V00 rerun or later validation phase is
-eligible.
+The latest durable steering comment on pull request #1 makes GitHub the source,
+CI, exact-revision, and integration control plane; requires separate
+implementation and acceptance-state revisions; and rejects previous-head,
+pending, failed, skipped, cancelled, or stale checks. GitHub issue #2 is the
+complete F03 contract. GitHub issue #3 reserves the later F04 Vercel deployment
+baseline and remains locked until F03 is accepted.
 
-The foundation lane had no approved phase after F02. Parallel architecture and
-roadmap reviews therefore selected a narrow, reversible roadmap amendment:
-`F03 - Portable Container Runtime and Non-Production Preview Baseline`.
+The obsolete container/preview definition at the entry head has been replaced.
+F03 adds no deployment or Vercel configuration. Any preview created by an
+already-connected provider is an unverified side effect, not phase evidence.
 
-## F03 amendment
+## Agent reconciliation
 
-F03 preserves the approved containers-on-managed-PaaS boundary and separates
-three independently gated slices:
+`architecture_guardian` and `roadmap_gate_reviewer` independently identified the
+same decisive conflict: local F03 deployment text contradicted issue #2 and the
+PR steering. Both recommended deriving dependencies from the roadmap rather
+than duplicating them in policy, fail-closed exact-head validation, explicit
+lane isolation, and separate implementation and acceptance revisions.
 
-1. F03-01 builds and smokes only a locked, non-root FastAPI OCI artifact.
-2. F03-02 adds the web artifact and a private server-only API binding while
-   preserving the existing loopback parser unchanged.
-3. F03-03 verifies one exact-revision ephemeral Vercel preview.
+Architecture review additionally recommended immutable blocker classes,
+structured claim/effect rules, full-SHA-pinned read-only workflow actions, and a
+final projection job that revalidates repository state and upstream results.
+Roadmap review clarified that Q2-Q4 are horizons, not autonomously progressed
+phases, and that an acceptance commit cannot embed its own future run IDs. The
+integrated implementation adopts these points and records the acceptance run in
+PR evidence after it completes.
 
-Official Vercel documentation inspected on 2026-07-16 describes OCI container
-services, private bindings, and multi-service previews, but those surfaces are
-Beta. They are a replaceable preview candidate, not a production selection. The
-API must remain private, and F03 adds no public API, CORS, persistence,
-credentials, product state, role state, or V00 evidence.
+`verification_reviewer` independently reproduced the targeted and full API
+gates. It found material fail-closed gaps in unknown explicit dependency IDs,
+upstream-result source binding, coordinated external-blocker reclassification,
+transition missing-output and blocker completeness, dirty-worktree SHA labeling,
+claim prerequisites, and workflow execution bypasses. All confirmed findings
+were repaired. Its final rerun passed 133 targeted tests, 383 full API tests at
+97% branch-aware coverage, Ruff, strict mypy, authoritative hashes, JSON, and
+diff checks with no open material finding.
 
-## Runtime and data boundary
+## Implemented controller
 
-This invocation changes only roadmap, plan, and controller records. It adds no
-Dockerfile, deployment manifest, Vercel configuration, source code, dependency,
-lockfile, workflow, migration, persistent data, or secret; it does not
-intentionally invoke a deployment. The reported pre-existing Vercel Git
-integration may still auto-create an unverified preview on push. That provider
-side effect is not F03 evidence and cannot advance F03-03.
-The accepted F00-F02 runtime remains unchanged.
+The bounded F03 implementation contains:
 
-## Risks
+- `plans/autonomous-loop/controller-policy.json`, a versioned policy for status,
+  gate, blocker, claim, exact-head, check-name, and bounded-input rules;
+- `ai_learning_platform_api.automation.phase_gate`, a standard-library,
+  non-mutating validator and deterministic projector;
+- a thin repository-root `scripts/phase_gate.py` entrypoint;
+- adversarial tests that mutate one repository invariant at a time;
+- explicit exact-head checkout with non-persisted credentials in all CI jobs;
+- `Phase gate` and final fail-closed `Gate projection` jobs; and
+- the exact implementation/acceptance loop in `AGENTS.md`.
 
-Vercel Services/container support is Beta, the reported repository connection
-has no verified local `.vercel` link or CLI, and a Docker-compatible local daemon
-has not been established. The tracked 66.3 MB archive remains an unrelated
-checkout-cost risk. F02's prior Ubuntu-only raw-marker source remains unknown,
-although the safe classifier and subsequent exact runs passed.
+The roadmap remains the sole phase/dependency source. The controller rejects
+malformed policy or JSON, dependency and lane violations, V00/V01 lock bypass,
+state/inventory/hash drift, missing passed evidence, external-to-human blocker
+conversion, unsupported readiness claims, privileged or merge-ref workflow
+drift, prior-head validation, and non-success upstream jobs.
+
+## Current evidence state
+
+Local and independent validation are complete. The adversarial controller suite
+passed 133 tests in 8.91 seconds; the complete API suite passed 383 tests in
+23.59 seconds at 97% branch-aware coverage; and Ruff plus native, Linux, and
+Win32 strict mypy passed across 30 files. The web lane passed locked install
+with zero vulnerabilities, lint, strict typecheck, all 97 tests, production
+build, and a 10-file/629,565-byte confidentiality scan. The real runtime smoke
+passed with 48 events, 21 correlations, 4 concurrent requests, 1,386 ms API
+liveness, 3,874 ms smoke, 51 ms shutdown, and both ports closed.
+
+The hardened CLI intentionally rejects the dirty implementation worktree with
+`worktree_not_exact_head`; clean exact-head Phase gate and Gate projection runs
+are deferred until the implementation commit exists. A pre-hardening
+20-iteration observation averaged 173.578 ms, peaked at 1,392,192 traced Python
+heap bytes, and emitted an 853-byte projection. Exact controller and CI duration
+will be refreshed from the clean commit and GitHub run. The parent will now
+publish one bounded implementation revision and repair every failed exact job
+without user approval.
+
+Only after that exact implementation revision passes will a separate commit
+project F03 as `PASSED / Continue` and record the implementation SHA, run, and
+job IDs. That acceptance-state commit must then pass its own exact five jobs.
+Its future run IDs will be recorded durably in pull request #1, avoiding a
+self-referential third repository commit.
+
+## Lane blockers and claims
+
+V00 still lacks four external blocker classes:
+
+- `v00.symmetric_demand`;
+- `v00.practitioner_confirmations`;
+- `v00.recruitment_channel`; and
+- `v00.measured_cost`.
+
+They cannot be fabricated or converted into a human technical-approval wait.
+F03 has no validation effect and makes no target, product, beta-entry, role-
+readiness, or complete-role-readiness claim.
+
+## Data, performance, and compatibility
+
+F03 reads bounded repository metadata only and uses no new dependency. It adds
+no database, migration, learner data, role data, secret, service, external
+request, LLM call, artifact upload, deployment, or runtime path. The API, web,
+OpenAPI, diagnostics, and F02 smoke contracts are unchanged. The initial
+controller observation is recorded above; GitHub job duration remains pending
+the exact implementation run.
 
 ## Exact next action
 
-Publish this definition-only amendment and require the exact pushed API, web,
-and runtime-smoke GitHub Actions jobs to pass. Then stop. On a later invocation,
-revalidate F03 entry conditions and implement only F03-01; do not add the web or
-Vercel topology or intentionally invoke deployment. Any integration-triggered
-preview remains unverified and is not F03 evidence.
+Commit the independently verified bounded implementation, run its clean
+exact-head Phase gate and Gate projection, push it, and repair until all five
+exact GitHub jobs pass. Then create and push the separate acceptance-state
+revision, require its own exact five jobs, record both runs in pull request #1,
+and stop before F04.

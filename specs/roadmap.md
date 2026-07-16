@@ -190,58 +190,50 @@ validation-lane review.
   Stop if useful diagnostics require raw sensitive content, product/domain
   identifiers, a vendor commitment, or a validation-gate bypass.
 
-### F03 - Portable Container Runtime and Non-Production Preview Baseline
+### F03 - GitHub Phase-Gate Control Plane
 
-**Class:** Technical foundation. **Effort:** 2-5 engineering days.
+**Class:** Technical foundation. **Effort:** 1-2 engineering days.
 
-- **Objective:** Package the existing role-neutral FastAPI and Next.js health
-  runtime as portable OCI services and prove one ephemeral non-production
-  preview without claiming staging, production, product, or role maturity.
-- **Smallest scope:** The existing health-only runtime. Build the API artifact
-  first; add the web artifact and private web-to-API binding separately; expose
-  only web; then verify one exact-revision preview. Provider, region, exact
-  Next.js mode, and production topology remain provisional.
-- **Entry conditions:** `F02` passes; containers on a managed PaaS remain the
-  approved runtime boundary; architecture and roadmap review confirm that the
-  phase is reversible and reusable across every plausible `V00` candidate;
-  current provider evidence supports a replaceable container preview; no V00
-  evidence is required; and no public API, persistent state, credential, or
-  production claim is needed.
-- **Outputs:** Locked, digest-pinned, non-root API and web OCI artifacts with
-  bounded build contexts; provider-neutral build and container-smoke commands;
-  `$PORT` and termination contracts; live, ready, OpenAPI, failure, cleanup,
-  image-size, startup, shutdown, memory, package, and vulnerability evidence;
-  a distinct confidential server-only deployment-binding configuration path;
-  a two-container private-network smoke; one replaceable Services adapter with
-  web-only public routing and a private API binding; one exact-revision preview;
-  recorded region, cold/warm timing, resource, request, estimated cost, Beta,
-  rollback, and provider-replacement evidence; and exact CI plus independent
-  verification.
-- **Non-goals:** Staging or production promotion, public API ingress, CORS,
-  browser-direct API calls, custom domains, DNS, production secrets or data,
-  authentication, authorization, database, migrations, persistence, storage,
-  events, replay, jobs, queues, LLM access, product analytics, persistent
-  telemetry, monitoring, alerting, V17A budgets, role or learner state, product
-  readiness, or V00/V01 evidence.
-- **Exit gate:** Both locked images build and run non-root; one identical
-  container gate proves health contracts, bounded failures, confidential
-  diagnostics, private routing, termination, cleanup, and resource observations;
-  malformed or ambiguous binding configuration fails closed; only web is public;
-  the exact pushed revision passes every F00-F02 and container job plus one
-  ephemeral preview; provider region, resource, timing, estimated cost, Beta,
-  rollback, and replacement evidence is recorded; and independent review finds
-  no sensitive data, public-API, persistence, product, validation, production-
-  hardening, or role-selection leakage.
+- **Objective:** Create a deterministic, fail-closed GitHub-hosted controller
+  that validates the exact checked-out revision, derives both lane projections
+  from versioned repository evidence, and autonomously accepts internally
+  decidable technical phases without chat approval.
+- **Smallest scope:** A versioned machine-readable policy; a standard-library,
+  non-mutating validator and deterministic Step Summary projection; exact-head
+  checkout for every job; two new jobs named `Phase gate` and `Gate projection`;
+  adversarial fixtures; and the implementation-head then acceptance-state-head
+  evidence loop on pull request #1.
+- **Entry conditions:** `F02` passes; pull request #1 and its durable steering
+  authorize exact-revision autonomous technical acceptance; GitHub issue #2 is
+  the approved controller contract; the existing API, web, and runtime checks
+  remain green; and V00 external evidence is neither required nor inferred.
+- **Outputs:** `plans/autonomous-loop/controller-policy.json`; strict roadmap,
+  state, inventory, workflow, hash, dependency, lane, blocker, claim, and exact-
+  head validation; fixed safe failures; deterministic JSON and GitHub Step
+  Summary projection; all five required jobs on pull request and automation-
+  branch pushes; operating-contract instructions; independent verification;
+  and immutable implementation plus acceptance-state evidence in PR #1.
+- **Non-goals:** Database, persistence, authentication, tenancy, role or learner
+  models, competency graph, curriculum, assessment, mastery, simulation,
+  readiness, LLM calls, product claims, V00 evidence, V01 unlock, containers,
+  deployment, Vercel configuration, provider selection, or F04 work.
+- **Exit gate:** An independently verified implementation revision passes exact
+  API quality, Web quality, Runtime smoke, Phase gate, and Gate projection jobs;
+  a separate acceptance-state revision records that immutable implementation
+  evidence and passes its own exact five jobs; pending, failed, skipped,
+  cancelled, stale, merge-ref-only, previous-head, or chat approval evidence is
+  rejected; state, inventory, plan, checkpoint, run log, and durable PR evidence
+  agree; V00 remains `WAITING_EXTERNAL / Revise`; V01 remains locked; and no F04
+  behavior is added.
 - **Dependencies:** `F02` only. F03 neither depends on nor satisfies `V00`, does
-  not unlock `V01`, does not authorize `V02`, and does not satisfy V16A, V16B,
-  V17A, beta-entry, or production-readiness gates.
-- **Decision:** Continue only when every exit condition passes. Revise failed
-  image, binding, confidentiality, lifecycle, resource, preview, or rollback
-  evidence. Narrow to the provider-neutral API artifact if web topology or Beta
-  provider capability is unavailable. Stop if useful deployment requires public
-  unauthenticated API access, secrets in Git, non-container runtime, persistent
-  state, role-specific work, or a validation-gate bypass.
-
+  not unlock `V01`, does not authorize `V02`, and cannot weaken or claim any
+  validation, product, readiness, beta-entry, or production gate.
+- **Decision:** Continue only after both immutable revisions pass every exact
+  required job. Revise a repairable policy, controller, test, workflow,
+  projection, documentation, or evidence defect. Narrow only if a smaller
+  deterministic control surface preserves every fail-closed invariant. Stop if
+  acceptance requires write authority, secrets, deployment, fabricated
+  evidence, validation weakening, or forbidden human technical approval.
 ## Initial Validation Sequence
 
 ### V00 - Candidate Role Evidence
