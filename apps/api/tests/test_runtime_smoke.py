@@ -693,11 +693,24 @@ def test_diagnostic_event_validator_rejects_schema_type_and_value_drift(
 
 
 @pytest.mark.parametrize(
-    "marker",
-    [*smoke.CONFIDENTIAL_MARKERS, "http://private.invalid", "/health/live"],
+    ("marker", "message"),
+    [
+        *((marker, "confidential") for marker in smoke.CONFIDENTIAL_MARKERS),
+        ("http://private.invalid", "raw_url"),
+        ("https://private.invalid", "raw_url"),
+        ("/health/live", "raw_health_path"),
+        ("authorization", "raw_authorization_header"),
+        ("cookie", "raw_cookie_header"),
+        ("traceparent", "raw_trace_header"),
+        ("x-f02-canary", "raw_canary_header"),
+        ("traceback", "raw_exception"),
+    ],
 )
-def test_captured_log_rejects_confidential_or_raw_values(marker: str) -> None:
-    with pytest.raises(smoke.SmokeFailure, match=r"confidential|forbidden raw"):
+def test_captured_log_rejects_confidential_or_raw_values(
+    marker: str,
+    message: str,
+) -> None:
+    with pytest.raises(smoke.SmokeFailure, match=message):
         smoke._validate_captured_log(marker.encode("ascii"))
 
 

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-16T14:45:07.103Z",
+  "generated_at": "2026-07-16T15:10:37.071Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
     "head": "4957e42c66d192fb53463a392eb7ccf4399d7ae5",
-    "working_tree": "F02-03 automated cross-process correlation, confidentiality, isolation, failure, resource, and lifecycle proof is locally verified; exact pushed GitHub Actions phase-exit evidence is pending, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
+    "working_tree": "F02-03 automated proof and safe Ubuntu-only failure classification are locally verified; exact pushed GitHub Actions phase-exit evidence is pending after run 29509035888 rejected the implementation runtime job, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -292,18 +292,20 @@
         "exact API quality job 87302552878: locked sync, both contracts, Ruff, strict mypy across 26 files, line endings, and all 186 tests in 2.45 seconds passed at 99% coverage",
         "exact web quality job 87302552907: locked install with zero vulnerabilities, lint, strict typecheck, all 97 tests in 8 files in 2.13 seconds, production build, and 10-file 629,565-byte browser confidentiality scan passed",
         "exact runtime-smoke job 87302713249: API live in 1,924 ms; 4 owned processes; 747,077,632 aggregate resident bytes; 17,013,419 Next.js bytes; smoke completed in 4,773 ms; shutdown completed in 252 ms; matching web/API trace IDs with distinct spans were observed; both ports closed",
-      "F02-03 automated proof: 102 focused runtime-smoke tests pass, including exact schemas and counts, safe-root replacement, overlapping concurrency, three failure-fixture outcomes, browser/body/header and captured-log canaries, streaming byte caps, retained process ownership, signal forwarding, forced-tree cleanup, and reap behavior",
-      "F02-03 full local API gate: 244 tests pass in 13.38 seconds at 97% total line and branch coverage; smoke.py is at 95%; both contracts, Ruff, and native/Linux/Windows strict mypy across 26 files pass",
-      "F02-03 final Windows runtime smoke: 21 correlated requests with 4 overlapping workers; 48 events; 12,638 diagnostic bytes within 14,223 captured stderr bytes; p50/p95/max 121/139/150 ms; API live in 1,540 ms; induced failures in 479 ms; total smoke 4,128 ms; shutdown 51 ms; both ports closed",
+      "F02-03 revised automated proof: 108 focused runtime-smoke tests pass, including exact schemas and counts, safe-root replacement, overlapping concurrency, three failure-fixture outcomes, browser/body/header and captured-log canaries, streaming byte caps, retained process ownership, signal forwarding, forced-tree cleanup, and reap behavior",
+      "F02-03 revised full local API gate: 250 tests pass in 11.75 seconds at 97% total line and branch coverage; smoke.py is at 95%; both contracts, Ruff, and native/Linux/Windows strict mypy across 26 files pass",
+      "F02-03 final Windows runtime smoke: 21 correlated requests with 4 overlapping workers; 48 events; 12,638 diagnostic bytes within 14,222 captured stderr bytes; p50/p95/max 126/138/140 ms; API live in 1,511 ms; induced failures in 479 ms; total smoke 4,269 ms; shutdown 51 ms; both ports closed",
       "F02-03 unchanged web gate: lint, strict typecheck, all 97 tests, production build in 8.4 seconds, and browser confidentiality scan over 10 files totaling 629,565 bytes pass",
-      "F02-03 independent verifier found seven lifecycle, concurrency, schema, and confidentiality defects that were repaired; its final rereview hit quota, so the parent performed the required fallback diff/gate audit and repaired one additional launch-to-capture interrupt race"
+      "F02-03 independent verifier found seven lifecycle, concurrency, schema, and confidentiality defects that were repaired; its final rereview hit quota, so the parent performed the required fallback diff/gate audit and repaired one additional launch-to-capture interrupt race",
+      "exact implementation run 29509035888: API job 87657348971 and web job 87657349046 passed; runtime-smoke job 87657590869 rejected an Ubuntu-only forbidden raw value after the private scenario succeeded, without exposing that value",
+      "F02-03 Revise response: fixed non-secret forbidden-category taxonomy preserves rejection and suppression; 108 focused and 250 full API tests plus the Windows root smoke pass locally; exact classified rerun pending"
       ],
       "missing_outputs": [
-        "exact pushed GitHub Actions API, web, and runtime-smoke phase-exit evidence for the F02-03 implementation revision"
+        "exact pushed GitHub Actions API, web, and runtime-smoke phase-exit evidence after the Ubuntu-only forbidden category is identified and repaired"
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Commit and push the exact F02-03 revision, then require all API, web, and runtime-smoke GitHub Actions jobs to pass before evaluating the F02 phase gate"
+      "next_smallest_action": "Commit and push the safe forbidden-category revision, inspect the exact Ubuntu runtime result, then repair without allowing raw content before evaluating the F02 phase gate"
     },
     {
       "id": "V00",

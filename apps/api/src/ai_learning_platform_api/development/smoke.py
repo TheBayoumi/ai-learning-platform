@@ -465,17 +465,18 @@ def _validate_captured_log(content: bytes) -> None:
     _assert_confidential_surface(content, surface="captured diagnostic output")
     lowered = content.lower()
     forbidden = (
-        b"http://",
-        b"https://",
-        b"/health/live",
-        b"authorization",
-        b"cookie",
-        b"traceparent",
-        b"x-f02-canary",
-        b"traceback",
+        (b"http://", "raw_url"),
+        (b"https://", "raw_url"),
+        (b"/health/live", "raw_health_path"),
+        (b"authorization", "raw_authorization_header"),
+        (b"cookie", "raw_cookie_header"),
+        (b"traceparent", "raw_trace_header"),
+        (b"x-f02-canary", "raw_canary_header"),
+        (b"traceback", "raw_exception"),
     )
-    if any(value in lowered for value in forbidden):
-        raise SmokeFailure("captured diagnostic output contained a forbidden raw value")
+    for value, reason in forbidden:
+        if value in lowered:
+            raise SmokeFailure(f"captured diagnostic output contained forbidden category {reason}")
 
 
 def _extract_diagnostic_events(content: bytes) -> list[tuple[dict[str, object], int]]:

@@ -43,20 +43,31 @@ launch-to-capture interruption regression.
 
 Final local evidence on the exact worktree includes:
 
-- focused runtime smoke tests: 102 passed;
-- full API suite: 244 passed in 13.38 seconds with 97% branch-aware coverage;
+- focused runtime smoke tests: 108 passed;
+- full API suite: 250 passed in 11.75 seconds with 97% branch-aware coverage;
 - `smoke.py`: 95% coverage; supervisor: 99% coverage;
 - web unit suite: 97 tests passed; lint, typecheck, and production build passed;
 - Windows root smoke: 48 bounded events, 21 correlated request pairs, four
-  concurrent requests, 4.128-second smoke duration, 51 ms shutdown, and both
+  concurrent requests, 4.269-second smoke duration, 51 ms shutdown, and both
   ports closed;
 - locked sync, both contract gates, Ruff, and native, Linux-targeted, and
   Win32-targeted mypy pass against the final documentation-ready diff.
 
+## First exact CI disposition
+
+Implementation SHA `82736aff83c0c4fce66b31095b65fdc7e57d1c5f` was
+correctly rejected by run `29509035888`: API job `87657348971` and web job
+`87657349046` passed, while runtime-smoke job `87657590869` rejected an
+Ubuntu-only forbidden raw marker after the private scenario succeeded. The
+controller disposition is `Revise`. The follow-up exposes only a fixed category,
+never the raw value, and retains the same rejection behavior.
+
 ## Remaining risks and blockers
 
-F02 has no known local implementation blocker; exact pushed CI is the remaining
-machine gate. V00 still lacks qualifying symmetric demand evidence, two
+Exact run 29509035888 passed API and web but failed runtime-smoke because
+the fresh Ubuntu stderr contained a forbidden raw category. The value remained
+suppressed. A fixed-category diagnostic revision is locally green and its exact
+pushed rerun is the remaining machine gate. V00 still lacks qualifying symmetric demand evidence, two
 qualified practitioner confirmations, a confirmed channel owner able to reach
 20-50 eligible adults, and acceptable measured expected-cost evidence. Those
 external inputs cannot be self-certified by this technical phase.

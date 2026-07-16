@@ -87,12 +87,13 @@ counted as runtime implementation.
   20 measured requests and a barrier-started four-request overlapping cohort;
   safe roots for two absent and one malformed contexts; and three isolated
   available, HTTP-failure, and invalid-JSON outcomes. The final Windows run
-  emitted exactly 48 events totaling 12,638 bytes inside 14,223 captured bytes,
-  measured 121/139/150 ms p50/p95/max, completed in 4,128 ms, shut down in 51
-  ms, and closed both ports. All 102 focused smoke tests, 244 full API tests at
-  97% coverage, 97 web tests, static checks, contracts, and the production build
-  pass locally. Exact pushed F02-03 CI remains the only missing phase-exit
-  evidence. Exporters, backend, product metrics, learner identifiers, and V17A
+  emitted exactly 48 events totaling 12,638 bytes inside 14,222 captured bytes,
+  measured 126/138/140 ms p50/p95/max, completed in 4,269 ms, shut down in 51
+  ms, and closed both ports. The revised classifier passes 108 focused smoke
+  tests and 250 full API tests at 97% coverage, 97 web tests, static checks, contracts, and the production build
+  pass locally. Exact run 29509035888 passed API and web but runtime-smoke
+  rejected an Ubuntu-only forbidden raw marker without revealing its value. The
+  fixed-category Revise rerun remains the missing phase-exit evidence. Exporters, backend, product metrics, learner identifiers, and V17A
   behavior remain absent.
 - GitHub remains the source, CI, and exact-revision acceptance control plane.
   The user reports a Vercel Git connection; Vercel is the provisional deployment

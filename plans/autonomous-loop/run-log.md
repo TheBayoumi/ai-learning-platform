@@ -362,3 +362,21 @@ F02-03 remains `IMPLEMENTED_UNVERIFIED` and the controller moves to
 `WAITING_EXTERNAL` for the exact pushed API, web, and runtime-smoke GitHub
 Actions jobs only. No user review is pending. F02 cannot pass and no deployment
 work can begin until that machine gate is accepted.
+Exact implementation revision `82736aff83c0c4fce66b31095b65fdc7e57d1c5f`
+then reached GitHub Actions run `29509035888`. API job `87657348971` passed
+locked synchronization, contracts, Ruff, strict mypy, line endings, and 244
+tests in 3.67 seconds at 97% coverage. Web job `87657349046` passed a
+zero-vulnerability install, lint, typecheck, all 97 tests in 2.14 seconds,
+production build, and the 10-file 629,565-byte browser confidentiality scan.
+Runtime-smoke job `87657590869` failed after the private scenario succeeded
+because its outer full-stderr scan detected an Ubuntu-only forbidden raw value.
+The value remained suppressed, so the Actions log exposed no confidential child
+content.
+
+The controller disposition is `Revise`. A fixed non-secret taxonomy now reports
+only the rejected class (`raw_url`, `raw_health_path`, raw header class, or
+`raw_exception`) while continuing to reject and suppress the value. That change
+passes 108 focused tests, 250 full API tests in 11.75 seconds at 97% coverage,
+Ruff, native/Linux/Win32 mypy, and a 4,269 ms Windows root smoke with 48 events,
+21 correlations, 51 ms shutdown, and closed ports. F02 remains `IN_PROGRESS`
+with a null gate pending the next exact pushed runtime result.

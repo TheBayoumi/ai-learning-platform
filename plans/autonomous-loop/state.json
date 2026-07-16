@@ -4,9 +4,9 @@
   "active_phase": "F02",
   "active_slice": "F02-03",
   "gate_decision": null,
-  "last_completed_action": "Implemented and locally verified only F02-03 runtime proof; repaired every confirmed independent-review finding, completed the required parent fallback audit after verifier quota exhaustion, and passed the final local gates. Exact pushed CI remains pending.",
-  "next_action": "Commit and push the exact F02-03 revision; accept it only after API, web, and runtime-smoke GitHub Actions pass, then publish the controller acceptance state and verify that exact revision.",
-  "stop_reason": "Exact pushed GitHub Actions evidence is pending for the F02-03 implementation revision; no user review is pending.",
+  "last_completed_action": "Rejected F02-03 implementation revision 82736aff83c0c4fce66b31095b65fdc7e57d1c5f after exact Actions run 29509035888 passed API and web but runtime-smoke detected an Ubuntu-only forbidden raw value; added a fixed non-secret rejection category and passed all local gates.",
+  "next_action": "Commit and push the safe forbidden-category revision, inspect the exact Ubuntu runtime category, and repair it without allowing or exposing raw content before reevaluating F02.",
+  "stop_reason": "Exact pushed GitHub Actions evidence is pending for the safe F02-03 forbidden-category revision; no user review is pending.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
@@ -23,11 +23,11 @@
     "active_phase": "F02",
     "status": "IN_PROGRESS",
     "gate_decision": null,
-    "next_action": "Require exact pushed API, web, and runtime-smoke CI for F02-03 before evaluating the F02 phase gate"
+    "next_action": "Require the exact classified Ubuntu runtime result, repair the rejected category, and pass API, web, and runtime-smoke CI before evaluating F02"
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-16T14:45:07.103Z"
+    "generated_at": "2026-07-16T15:10:37.071Z"
   },
   "external_blockers": [
     "Two qualified practitioner availability and validation confirmations",
@@ -60,8 +60,8 @@
     "specs/roadmap.md": "18eccf6aabd08c17e76b8737b96c53bbb43ea54064d44f116c7e9b9c2088f774",
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
-    "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "d999a02bed4ef8e6aba77988dacb0bffdc24efd04d0bdd1ec34368f8ca1da5d7",
-    "plans/implementation-inventory.json": "e44d13ce9f3ee4982c13d8fbfc0dcdf10f2a6ad7c92227e1eefacfcfd21002d8",
+    "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "6b81d219f5df66baf0f27daa3f6543c4b855f720bbc26b041de92c2482c4223e",
+    "plans/implementation-inventory.json": "fd54ca8a5106d40220b5dd1b2c46ab44b6feb69917c3c14792e7f3b2f54ebf8d",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "e8c0cba1aa32c676afe1a0bcb2e8bf96af6f72e384451baac708c5c3f3ef1b07",
@@ -70,5 +70,5 @@
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "run_number": 17,
   "last_run_started_at": "2026-07-15T08:53:10.669Z",
-  "last_run_completed_at": "2026-07-16T14:56:45.154Z"
+  "last_run_completed_at": "2026-07-16T15:11:17.746Z"
 }

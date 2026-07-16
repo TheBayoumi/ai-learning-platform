@@ -2,7 +2,7 @@
 
 **Phase:** `F02 - Cross-Process Correlation and Confidential Diagnostics Baseline`
 **Class:** Technical foundation
-**Status:** In progress - F02-01 and F02-02 accepted; F02-03 locally verified, exact pushed CI pending
+**Status:** In progress - F02-01 and F02-02 accepted; F02-03 under revision after exact Ubuntu confidentiality failure, classified rerun pending
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_EXTERNAL` / `Revise`; `V01` is locked.
 
@@ -269,7 +269,7 @@ accepts F02-02 propagation on Ubuntu but does not substitute for the automated
 success/failure, isolation, rendered-output, and resource assertions reserved
 for F02-03. F02 remains `IN_PROGRESS` with a null phase gate.
 
-## F02-03 Local Verification (exact CI pending)
+## F02-03 Local Verification and CI Revision
 
 The unchanged root command now launches the accepted runtime in an isolated
 inner process and treats every captured byte as untrusted. Its bounded streaming
@@ -284,17 +284,17 @@ overlap. It produced exactly 24 API and 24 web events: 21 valid cross-process
 pairs with matching trace IDs and distinct spans, two absent-context API roots,
 one malformed-context replacement root, and three isolated web fixture outcomes
 for available, HTTP-503 unavailable, and malformed-JSON invalid response. The
-final local observation was 12,638 diagnostic bytes inside 14,223 captured stderr
-bytes, p50/p95/max 121/139/150 ms, API live in 1,540 ms, induced failures in 479
-ms, total smoke in 4,128 ms, shutdown in 51 ms, and both ports closed. Windows
+final local observation was 12,638 diagnostic bytes inside 14,222 captured stderr
+bytes, p50/p95/max 126/138/140 ms, API live in 1,511 ms, induced failures in 479
+ms, total smoke in 4,269 ms, shutdown in 51 ms, and both ports closed. Windows
 process and resident-memory readings remain unavailable; exact Ubuntu CI owns
 those accepted values.
 
-The full local gate currently passes 244 API tests at 97% total branch-aware
+The revised local gate currently passes 250 API tests at 97% total branch-aware
 coverage, 97 web tests, both canonical contract checks, Ruff,
 strict native/Linux/Windows mypy across 26 files, lint, typecheck, and the
 production build with its 10-file, 629,565-byte browser confidentiality scan.
-The focused smoke module passes 102 tests. No dependency, workflow, public
+The focused smoke module passes 108 tests. No dependency, workflow, public
 schema, generated contract, migration, persistent store, exporter, egress,
 product identifier, or deployment configuration changed.
 
@@ -308,6 +308,22 @@ the parent performed the missing read-only diff and gate audit and also repaired
 the launch-to-capture interrupt race it found. F02 remains IN_PROGRESS with a
 null phase gate until the exact pushed API, web, and runtime-smoke jobs accept
 this revision.
+
+Exact implementation revision `82736aff83c0c4fce66b31095b65fdc7e57d1c5f`
+reached GitHub Actions run `29509035888`. API job `87657348971` passed all
+244 tests in 3.67 seconds at 97% coverage plus contracts, Ruff, strict mypy, and
+line endings. Web job `87657349046` passed all 97 tests in 2.14 seconds, zero
+vulnerabilities, lint, typecheck, a 3.9-second compile, and the 10-file,
+629,565-byte browser scan. Runtime job `87657590869` failed after the private
+scenario returned success because the outer full-stderr scan detected a
+forbidden raw value emitted only on the fresh Ubuntu runner. The gate suppressed
+the value exactly as designed, so no confidential content entered Actions logs.
+
+The phase disposition is `Revise`. The repair does not allow or redact any raw
+content: it maps each already-forbidden byte marker to a fixed non-secret reason
+such as `raw_url`, `raw_health_path`, `raw_trace_header`, or `raw_exception`.
+All values remain suppressed and rejected. The next exact CI run must identify
+the Ubuntu-only category safely before any content-specific fix or F02 passage.
 
 ## Failure Handling
 
