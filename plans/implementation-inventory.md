@@ -1,8 +1,9 @@
 # Implementation Inventory
 
-Generated from exact-CI-accepted F02-03 revision
-`16bf84c9919ccf16d1e06e1542245737bd61cde4` and GitHub Actions run
-`29510082305`, including two successful full-job reruns.
+Generated from exact-CI-accepted F02 controller revision
+`8963101805d6f29f4701c91764b5563f07ff07c8` and GitHub Actions run
+`29511515229`. F03 is definition-only and not counted as runtime
+implementation.
 The machine-readable record is
 `plans/implementation-inventory.json`; prose and controller state are not
 counted as runtime implementation.
@@ -90,21 +91,29 @@ counted as runtime implementation.
   `29510082305`; its initial API, web, and runtime jobs plus two controller-run
   full-chain retries all passed. The three Ubuntu runtime attempts each produced
   exactly 48 events, 21 correlations, four concurrent workers, four owned
-  processes, bounded output, and closed ports. F02 is `PASSED / Continue`.
-  Exporters, backend, product metrics, learner identifiers, V17A behavior, and
-  deployment remain absent.
+  processes, bounded output, and closed ports. F02 controller revision
+  `8963101805d6f29f4701c91764b5563f07ff07c8` then passed exact run
+  `29511515229`: API, web, and runtime-smoke jobs all succeeded. F02 is
+  `PASSED / Continue`. Exporters, backend, product metrics, learner identifiers,
+  V17A behavior, containers, and deployment remain absent.
+- F03 is formally defined as a portable container and non-production preview
+  baseline. Its reviewed order is API OCI artifact, web/private-binding
+  topology, then one exact-revision ephemeral preview. F03 is `NOT_STARTED`;
+  this definition adds no executable behavior or exit-gate evidence.
 - GitHub remains the source, CI, and exact-revision acceptance control plane.
   The user reports a Vercel Git connection; Vercel is the provisional deployment
-  candidate because current official support includes FastAPI Python Functions
-  and combined Next.js/FastAPI Services. No local link or deployment config is
-  verified, those surfaces are beta/constrained, and they conflict with the
-  currently approved container runtime unless a later gated phase reconciles or
-  amends that decision. No deployment is implemented in F02.
+  preview candidate because current official support includes OCI container
+  Services and private bindings. No local link, CLI, or deployment config is
+  verified; those surfaces are Beta. F03 preserves the approved portable
+  container boundary and defers provider topology to its later slices. No
+  deployment is implemented. A pre-existing Git integration may nevertheless
+  auto-create an unverified preview on push; that provider side effect is not
+  F03 evidence and cannot advance F03-03.
 - The externally created commit also tracks the unrelated 66,312,302-byte
-  `ai-learning-platform.7z`. This repair does not modify it; its repository and
+  `ai-learning-platform.7z`. This amendment does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
 - Four protected V00 Markdown working copies remain mixed-EOL locally while
-  their index blobs are LF and Git reports no content diff. This API repair does
+  their index blobs are LF and Git reports no content diff. This amendment does
   not rewrite validation evidence; a clean Linux checkout retains the indexed
   LF form.
 - V01-V22 and the Q2-Q4 horizons have no runtime implementation. Each is locked
@@ -117,6 +126,7 @@ counted as runtime implementation.
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
+| F03 | Foundation | `NOT_STARTED` | Definition reviewed; F03-01 API OCI artifact is the next later slice |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -165,15 +175,18 @@ browser-asset confidentiality gate.
 Accepted F02-03 adds the automated real-process correlation, safe-root,
 concurrency, failure, confidentiality, event-volume, resource, and lifecycle
 assertion.
-The repository has no persistent telemetry,
-authentication, learner or role state, events/outbox/replay, competency graph,
-curriculum, assessment, tutoring, LLM access, mastery, readiness, unique work,
-simulation, provenance, privacy lifecycle, jobs, telemetry backend, or
-deployment.
+The F03 definition adds no runtime behavior. The repository still has no OCI
+artifact, container harness, deployment manifest, local Vercel link, or remote
+deployment. It also has no persistent telemetry, authentication, learner or role
+state, events/outbox/replay, competency graph, curriculum, assessment, tutoring,
+LLM access, mastery, readiness, unique work, simulation, provenance, privacy
+lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-On a later invocation, recompute the validation and foundation lanes from this
-accepted F02 boundary and select only the earliest eligible approved phase. Do
-not treat F01 or F02 as V00 evidence, and do not begin deployment as an implicit
-next step.
+After this definition amendment passes exact GitHub Actions, stop. On a later
+invocation, revalidate F03 and implement only F03-01: the locked, non-root
+FastAPI OCI artifact and provider-neutral container smoke. Do not add the web or
+Vercel topology, publish an image, or intentionally invoke deployment. Any
+integration-triggered preview remains unverified, is not F03 evidence, and
+cannot advance F03-03. Do not treat F00-F03 as V00 evidence.

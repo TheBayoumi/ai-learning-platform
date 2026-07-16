@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-16T15:21:12.614Z",
+  "generated_at": "2026-07-16T15:52:50.827Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "16bf84c9919ccf16d1e06e1542245737bd61cde4",
-    "working_tree": "F02-03 is accepted at exact revision 16bf84c9919ccf16d1e06e1542245737bd61cde4 after run 29510082305 and two successful full-job reruns; controller publication CI is pending, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
+    "head": "8963101805d6f29f4701c91764b5563f07ff07c8",
+    "working_tree": "F02 controller acceptance revision 8963101805d6f29f4701c91764b5563f07ff07c8 passed exact run 29511515229; F03 is definition-only and NOT_STARTED, no deployment configuration is added or intentionally invoked, any integration-triggered preview is unverified and not F03 evidence, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -12,6 +12,7 @@
       "plans/F01-local-runtime-integration-and-api-contract-baseline.md",
       "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
       "apps/api/openapi/health.openapi.json",
+      "plans/F03-portable-container-runtime-and-non-production-preview-baseline.md",
       "apps/web/server/contracts/generated/health-response.ts",
       "apps/web/server/config/api-base.ts",
       "apps/web/server/diagnostics/health-diagnostics.ts",
@@ -48,7 +49,7 @@
       "domain event ledger, outbox, replay, projections, or jobs",
       "authentication, authorization, tenancy, privacy lifecycle, or deletion",
       "telemetry backend or exporter",
-      "object storage, LLM gateway, or deployment",
+      "object storage, LLM gateway, OCI artifacts, container runtime, or deployment",
       "Target or RoleProfile runtime model",
       "competency graph or Blueprint and ItemFamily runtime contracts",
       "learner model, diagnosis, curriculum, tutoring, or assessment",
@@ -300,12 +301,57 @@
       "exact implementation run 29509035888: API job 87657348971 and web job 87657349046 passed; runtime-smoke job 87657590869 rejected an Ubuntu-only forbidden raw value after the private scenario succeeded, without exposing that value",
       "F02-03 Revise response: fixed non-secret forbidden-category taxonomy preserves rejection and suppression; 108 focused and 250 full API tests plus the Windows root smoke pass locally",
       "exact classifier revision 16bf84c9919ccf16d1e06e1542245737bd61cde4 passed Actions run 29510082305: initial API job 87660936291, web job 87660936295, and runtime job 87661156124 all succeeded",
-      "controller repeatability gate: runtime jobs 87661534645 and 87661831197 plus their dependent API/web jobs succeeded; three Ubuntu attempts each kept 48 events, 21 correlations, 4 concurrent workers, 4 processes, bounded output, and closed ports; resident bytes ranged 841670656-844980224"
+      "controller repeatability gate: runtime jobs 87661534645 and 87661831197 plus their dependent API/web jobs succeeded; three Ubuntu attempts each kept 48 events, 21 correlations, 4 concurrent workers, 4 processes, bounded output, and closed ports; resident bytes ranged 841670656-844980224",
+      "exact controller revision 8963101805d6f29f4701c91764b5563f07ff07c8 passed Actions run 29511515229: API job 87665879457, web job 87665879508, and runtime-smoke job 87666108627 all succeeded"
       ],
       "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "No further F02 implementation; select a later eligible phase only on a future invocation"
+      "next_smallest_action": "No further F02 implementation; F03 is defined separately and begins only with F03-01 on a later invocation"
+    },
+    {
+      "id": "F03",
+      "name": "Portable Container Runtime and Non-Production Preview Baseline",
+      "lane": "foundation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "F02 passes on the exact controller revision",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+            "GitHub Actions run 29511515229 at revision 8963101805d6f29f4701c91764b5563f07ff07c8"
+          ]
+        },
+        {
+          "condition": "Containers on a managed PaaS remain the approved reversible runtime boundary",
+          "result": "PASSED",
+          "evidence": ["specs/tech-stack.md", "specs/roadmap.md"]
+        },
+        {
+          "condition": "Architecture and roadmap review confirm the phase is role-neutral and does not require V00 evidence",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F03-portable-container-runtime-and-non-production-preview-baseline.md",
+            "plans/autonomous-loop/checkpoint.md"
+          ]
+        },
+        {
+          "condition": "Current provider evidence supports a replaceable container preview without selecting production topology",
+          "result": "PASSED",
+          "evidence": ["Official Vercel Services, Docker, bindings, and pricing documentation inspected 2026-07-16"]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "F03-01 locked non-root FastAPI OCI artifact and provider-neutral container smoke",
+        "F03-02 portable web artifact, private API binding, and isolated two-container proof",
+        "F03-03 exact-revision ephemeral preview, rollback, region, resource, timing, and estimated-cost evidence"
+      ],
+      "external_blockers": ["Verified connected Vercel Services preview access is required only for F03-03 and does not block F03-01"],
+      "human_decisions": [],
+      "next_smallest_action": "On a later invocation, revalidate F03 and implement only F03-01; do not add web or Vercel topology or intentionally invoke deployment; any integration-triggered preview is unverified and cannot advance F03-03"
     },
     {
       "id": "V00",

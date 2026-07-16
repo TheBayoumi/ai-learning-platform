@@ -402,3 +402,53 @@ only a fixed safe category while remaining rejected. F02 is accepted as
 `PHASE_PASSED / Continue`. V00 remains `WAITING_EXTERNAL / Revise`, V01 stays
 locked, deployment remains deferred, and this invocation stops before another
 phase.
+
+## Run 18 - 2026-07-16 (definition completed)
+
+First confirmed that F02 controller revision
+`8963101805d6f29f4701c91764b5563f07ff07c8` passed exact GitHub Actions run
+`29511515229`. API job `87665879457` passed 250 tests at 97% coverage; web
+job `87665879508` passed 97 tests, its production build, zero-vulnerability
+audit, and the 10-file 629,565-byte browser confidentiality scan; runtime-smoke
+job `87666108627` passed with 48 events, 21 correlations, four workers, four
+owned processes, bounded resources, clean shutdown, and closed ports.
+
+Recomputed both lanes from that accepted boundary. The controlled V00 inbox
+still contains no evidence file, so V00 remains `WAITING_EXTERNAL / Revise` and
+V01 stays locked. No human review is pending. The foundation lane had no
+approved phase after F02, so the governing controller required a narrow roadmap
+amendment before any further implementation.
+
+Parallel read-only architecture and roadmap reviews agreed on a portable,
+role-neutral container baseline and no deployment in this invocation. Their
+scope recommendations differed: architecture proposed both images in the first
+slice, while roadmap review identified the API artifact as the smallest safe
+unit. The controller selected
+`F03 - Portable Container Runtime and Non-Production Preview Baseline`, with
+F03-01 limited to the FastAPI OCI artifact, F03-02 reserved for the web/private
+binding topology, and F03-03 reserved for one exact-revision Vercel preview.
+
+Official Vercel Services, container, binding, and pricing documentation inspected
+on 2026-07-16 supports a plausible OCI/private-service preview while the
+capabilities remain Beta. F03 therefore preserves provider-neutral images, keeps
+the API private, leaves the current loopback parser unchanged until F03-02, and
+does not approve Vercel for production.
+
+This invocation changes only the roadmap, the F03 ExecPlan, and controller
+records. It adds no source, dependency, lockfile, workflow, Dockerfile,
+deployment configuration, migration, or secret; it does not intentionally
+invoke a deployment. The reported Vercel Git integration may auto-create an
+unverified preview on push. That provider side effect is not F03 evidence and
+cannot advance F03-03. F03 remains `NOT_STARTED`; F03-01 is eligible only on a
+later invocation after this definition amendment passes its exact publication
+gate.
+
+Independent verification returned `Revise` on two documentation-only findings:
+the first draft categorically denied a remote deployment even though the reported
+pre-existing Git integration may auto-create a preview on push, and two inventory
+sentences still described this amendment as a repair. The records now distinguish
+no intentional deployment from an unverified provider side effect, explicitly
+exclude that side effect from F03/F03-03 evidence, and use amendment wording. The
+verifier otherwise confirmed the exact F02 run evidence, phase boundaries,
+protected V00 state, hashes, JSON, line endings, file whitelist, loopback/API
+privacy constraints, and official provider claims.

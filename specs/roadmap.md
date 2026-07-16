@@ -190,6 +190,58 @@ validation-lane review.
   Stop if useful diagnostics require raw sensitive content, product/domain
   identifiers, a vendor commitment, or a validation-gate bypass.
 
+### F03 - Portable Container Runtime and Non-Production Preview Baseline
+
+**Class:** Technical foundation. **Effort:** 2-5 engineering days.
+
+- **Objective:** Package the existing role-neutral FastAPI and Next.js health
+  runtime as portable OCI services and prove one ephemeral non-production
+  preview without claiming staging, production, product, or role maturity.
+- **Smallest scope:** The existing health-only runtime. Build the API artifact
+  first; add the web artifact and private web-to-API binding separately; expose
+  only web; then verify one exact-revision preview. Provider, region, exact
+  Next.js mode, and production topology remain provisional.
+- **Entry conditions:** `F02` passes; containers on a managed PaaS remain the
+  approved runtime boundary; architecture and roadmap review confirm that the
+  phase is reversible and reusable across every plausible `V00` candidate;
+  current provider evidence supports a replaceable container preview; no V00
+  evidence is required; and no public API, persistent state, credential, or
+  production claim is needed.
+- **Outputs:** Locked, digest-pinned, non-root API and web OCI artifacts with
+  bounded build contexts; provider-neutral build and container-smoke commands;
+  `$PORT` and termination contracts; live, ready, OpenAPI, failure, cleanup,
+  image-size, startup, shutdown, memory, package, and vulnerability evidence;
+  a distinct confidential server-only deployment-binding configuration path;
+  a two-container private-network smoke; one replaceable Services adapter with
+  web-only public routing and a private API binding; one exact-revision preview;
+  recorded region, cold/warm timing, resource, request, estimated cost, Beta,
+  rollback, and provider-replacement evidence; and exact CI plus independent
+  verification.
+- **Non-goals:** Staging or production promotion, public API ingress, CORS,
+  browser-direct API calls, custom domains, DNS, production secrets or data,
+  authentication, authorization, database, migrations, persistence, storage,
+  events, replay, jobs, queues, LLM access, product analytics, persistent
+  telemetry, monitoring, alerting, V17A budgets, role or learner state, product
+  readiness, or V00/V01 evidence.
+- **Exit gate:** Both locked images build and run non-root; one identical
+  container gate proves health contracts, bounded failures, confidential
+  diagnostics, private routing, termination, cleanup, and resource observations;
+  malformed or ambiguous binding configuration fails closed; only web is public;
+  the exact pushed revision passes every F00-F02 and container job plus one
+  ephemeral preview; provider region, resource, timing, estimated cost, Beta,
+  rollback, and replacement evidence is recorded; and independent review finds
+  no sensitive data, public-API, persistence, product, validation, production-
+  hardening, or role-selection leakage.
+- **Dependencies:** `F02` only. F03 neither depends on nor satisfies `V00`, does
+  not unlock `V01`, does not authorize `V02`, and does not satisfy V16A, V16B,
+  V17A, beta-entry, or production-readiness gates.
+- **Decision:** Continue only when every exit condition passes. Revise failed
+  image, binding, confidentiality, lifecycle, resource, preview, or rollback
+  evidence. Narrow to the provider-neutral API artifact if web topology or Beta
+  provider capability is unavailable. Stop if useful deployment requires public
+  unauthenticated API access, secrets in Git, non-container runtime, persistent
+  state, role-specific work, or a validation-gate bypass.
+
 ## Initial Validation Sequence
 
 ### V00 - Candidate Role Evidence

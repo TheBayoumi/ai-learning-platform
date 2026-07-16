@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
-  "status": "WAITING_EXTERNAL",
-  "active_phase": "V00",
-  "active_slice": null,
-  "gate_decision": "Revise",
-  "last_completed_action": "Accepted F02 at classifier revision 16bf84c9919ccf16d1e06e1542245737bd61cde4 after exact Actions run 29510082305 and two additional successful full-job reruns; F02 is PHASE_PASSED / Continue.",
-  "next_action": "On a later invocation, recompute both lanes from the accepted F02 boundary and select only the earliest eligible approved phase; do not restart F02 or begin deployment implicitly.",
-  "stop_reason": "F02 passed its exact-revision gate; V00 still awaits external evidence, and this invocation stops before another phase.",
+  "status": "READY",
+  "active_phase": "F03",
+  "active_slice": "F03-01",
+  "gate_decision": null,
+  "last_completed_action": "Defined and independently reviewed F03 as a provider-neutral portable-container and non-production-preview baseline; added no runtime or deployment configuration and intentionally invoked no deployment.",
+  "next_action": "On a later invocation, revalidate F03 and implement only F03-01 FastAPI portable OCI artifact; do not add web or Vercel topology or intentionally invoke deployment; any integration-triggered preview is unverified and cannot advance F03-03.",
+  "stop_reason": "The required roadmap amendment is complete; this definition-only invocation stops before intentional F03 implementation or deployment work.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
@@ -20,14 +20,14 @@
     ]
   },
   "foundation_track": {
-    "active_phase": "F02",
-    "status": "PHASE_PASSED",
-    "gate_decision": "Continue",
-    "next_action": "No further F02 work; on a later invocation select only the earliest eligible approved phase after recomputing both lanes"
+    "active_phase": "F03",
+    "status": "NOT_STARTED",
+    "gate_decision": null,
+    "next_action": "On a later invocation, revalidate entry conditions and implement only F03-01 FastAPI portable OCI artifact"
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-16T15:21:12.614Z"
+    "generated_at": "2026-07-16T15:52:50.827Z"
   },
   "external_blockers": [
     "Two qualified practitioner availability and validation confirmations",
@@ -44,31 +44,33 @@
   ],
   "human_decisions_required": [],
   "deployment_maturity_intent": {
-    "status": "DEFERRED_UNTIL_SEPARATE_PHASE",
+    "status": "F03_DEFINED_PREVIEW_ONLY",
     "github_role": "Source, CI, and exact-revision acceptance gate",
-    "runtime_candidate": "Vercel Python Functions plus Next.js/FastAPI Services, provisionally",
-    "connection_evidence": "User reports the Git repository is connected in Vercel; no local .vercel link or vercel.json is present",
-    "constitution_constraint": "The approved runtime remains containers on a managed PaaS; a later deployment phase must reconcile or explicitly amend the Vercel function topology",
-    "reason": "Vercel currently supports FastAPI and combined services, but deployment, beta constraints, region, secrets, data/jobs, rollback, cost, and exact Next.js mode are outside F02"
+    "runtime_candidate": "Provider-neutral OCI containers with Vercel Services as a replaceable ephemeral-preview adapter",
+    "connection_evidence": "User reports the Git repository is connected in Vercel; no local .vercel link, vercel.json, or Vercel CLI is present",
+    "automatic_preview_boundary": "A branch push may trigger the reported pre-existing Git integration; any resulting preview is unverified, not intentionally invoked here, not F03 evidence, and cannot advance F03-03",
+    "constitution_constraint": "The approved runtime remains portable containers on a managed PaaS; the API stays private and no non-container fallback is F03 evidence",
+    "reason": "Official Vercel Services, container, binding, and pricing documentation supports a plausible Beta preview, but implementation, access, region, secrets, rollback, cost, and production selection remain separately gated"
   },
-  "last_verified_commit": "16bf84c9919ccf16d1e06e1542245737bd61cde4",
+  "last_verified_commit": "8963101805d6f29f4701c91764b5563f07ff07c8",
   "authoritative_file_hashes": {
     "AGENTS.md": "d7a3a4309183f42f05fa336e8283270b3cda204a159c827e8ee44783de2ca820",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
     "specs/mission.md": "955bb67629921c200199ba5e66b009c84504250abf67b47a541a2682ac8df5a6",
     "specs/tech-stack.md": "b15abb17ce919a3e4413091033d410b39fffa9ba0bfcd66c7276075f0f5c275f",
-    "specs/roadmap.md": "18eccf6aabd08c17e76b8737b96c53bbb43ea54064d44f116c7e9b9c2088f774",
+    "specs/roadmap.md": "57ae3b8a11b09d16d2b69e174315cb6ac6adb4f0465441d68e05db8f2b64fd5f",
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
     "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "b8d743abee02a1ec33fecfcc9304b856a733cca25016076609bd349e1841f5cf",
-    "plans/implementation-inventory.json": "83c9673459a29ba3ef46845f48d59ede726af77ee5695d563c1b1708f53491e7",
+    "plans/F03-portable-container-runtime-and-non-production-preview-baseline.md": "87ed76686900b345be036174281821132e8e8ee84084fd76b5dc4448a4f76e8f",
+    "plans/implementation-inventory.json": "6239880afc9c442363d8b138c318c3775a2ecaf4ef8f0cf520842fd3b4d36604",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "e8c0cba1aa32c676afe1a0bcb2e8bf96af6f72e384451baac708c5c3f3ef1b07",
     "docs/validation/V00-candidate-role-evidence.md": "fa4563e988ebbe97c7ed2bf4185574a81880cdca5be7ebe43e5174459dfdf069"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 17,
-  "last_run_started_at": "2026-07-15T08:53:10.669Z",
-  "last_run_completed_at": "2026-07-16T15:23:35.683Z"
+  "run_number": 18,
+  "last_run_started_at": "2026-07-16T15:52:50.827Z",
+  "last_run_completed_at": "2026-07-16T16:00:45.818Z"
 }
