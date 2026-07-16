@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-15T08:20:11.948Z",
+  "generated_at": "2026-07-16T14:45:07.103Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "b6550c58f4342a82197455f53eb064a32306e8fc",
-    "working_tree": "F02-02 server-only web propagation and bounded diagnostics are accepted on exact pushed CI; this controller-only update advances eligibility to F02-03 for a later invocation, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
+    "head": "4957e42c66d192fb53463a392eb7ccf4399d7ae5",
+    "working_tree": "F02-03 automated cross-process correlation, confidentiality, isolation, failure, resource, and lifecycle proof is locally verified; exact pushed GitHub Actions phase-exit evidence is pending, the tracked ai-learning-platform.7z is untouched, and protected V00 evidence paths remain unchanged",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -38,6 +38,7 @@
       "app-local exporter-free W3C context and one allowlisted confidential event for GET /health/live, accepted on exact F02-01 CI",
       "server-only web client context propagation and one bounded confidential health-completion event, accepted on exact F02-02 CI",
       "production browser-asset confidentiality scan for fixed web diagnostic and API-configuration markers",
+      "automated real-process correlation, safe-root, concurrency, induced-failure, confidentiality, event-volume, resource, and cleanup gate, locally verified with exact CI pending",
       "static Next.js App Router technical shell",
       "locked API and web dependency workflows",
       "format, lint, strict type, test, coverage, build, and CI quality gates"
@@ -46,7 +47,7 @@
       "database schema, ORM, migrations, or persistence",
       "domain event ledger, outbox, replay, projections, or jobs",
       "authentication, authorization, tenancy, privacy lifecycle, or deletion",
-      "automated cross-process correlation assertion, telemetry backend, or exporter",
+      "telemetry backend or exporter",
       "object storage, LLM gateway, or deployment",
       "Target or RoleProfile runtime model",
       "competency graph or Blueprint and ItemFamily runtime contracts",
@@ -255,9 +256,11 @@
         "apps/api/src/ai_learning_platform_api/main.py",
         "apps/api/src/ai_learning_platform_api/logging.py",
         "apps/api/src/ai_learning_platform_api/development/supervisor.py",
+        "apps/api/src/ai_learning_platform_api/development/smoke.py",
         "apps/api/tests/test_api_diagnostics.py",
         "apps/api/tests/test_app.py",
         "apps/api/tests/test_dev_supervisor.py",
+        "apps/api/tests/test_runtime_smoke.py",
         "apps/web/package.json",
         "apps/web/package-lock.json",
         "apps/web/server/diagnostics/health-diagnostics.ts",
@@ -288,14 +291,19 @@
         "exact revision b6550c58f4342a82197455f53eb064a32306e8fc completed GitHub Actions run 29400137315 successfully in 1 minute 33 seconds",
         "exact API quality job 87302552878: locked sync, both contracts, Ruff, strict mypy across 26 files, line endings, and all 186 tests in 2.45 seconds passed at 99% coverage",
         "exact web quality job 87302552907: locked install with zero vulnerabilities, lint, strict typecheck, all 97 tests in 8 files in 2.13 seconds, production build, and 10-file 629,565-byte browser confidentiality scan passed",
-        "exact runtime-smoke job 87302713249: API live in 1,924 ms; 4 owned processes; 747,077,632 aggregate resident bytes; 17,013,419 Next.js bytes; smoke completed in 4,773 ms; shutdown completed in 252 ms; matching web/API trace IDs with distinct spans were observed; both ports closed"
+        "exact runtime-smoke job 87302713249: API live in 1,924 ms; 4 owned processes; 747,077,632 aggregate resident bytes; 17,013,419 Next.js bytes; smoke completed in 4,773 ms; shutdown completed in 252 ms; matching web/API trace IDs with distinct spans were observed; both ports closed",
+      "F02-03 automated proof: 102 focused runtime-smoke tests pass, including exact schemas and counts, safe-root replacement, overlapping concurrency, three failure-fixture outcomes, browser/body/header and captured-log canaries, streaming byte caps, retained process ownership, signal forwarding, forced-tree cleanup, and reap behavior",
+      "F02-03 full local API gate: 244 tests pass in 13.38 seconds at 97% total line and branch coverage; smoke.py is at 95%; both contracts, Ruff, and native/Linux/Windows strict mypy across 26 files pass",
+      "F02-03 final Windows runtime smoke: 21 correlated requests with 4 overlapping workers; 48 events; 12,638 diagnostic bytes within 14,223 captured stderr bytes; p50/p95/max 121/139/150 ms; API live in 1,540 ms; induced failures in 479 ms; total smoke 4,128 ms; shutdown 51 ms; both ports closed",
+      "F02-03 unchanged web gate: lint, strict typecheck, all 97 tests, production build in 8.4 seconds, and browser confidentiality scan over 10 files totaling 629,565 bytes pass",
+      "F02-03 independent verifier found seven lifecycle, concurrency, schema, and confidentiality defects that were repaired; its final rereview hit quota, so the parent performed the required fallback diff/gate audit and repaired one additional launch-to-capture interrupt race"
       ],
       "missing_outputs": [
-        "F02-03 cross-process correlation, confidentiality, isolation, resource, and exact-CI exit evidence"
+        "exact pushed GitHub Actions API, web, and runtime-smoke phase-exit evidence for the F02-03 implementation revision"
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "On a later invocation, revalidate entry and implement only F02-03 cross-process proof and phase exit"
+      "next_smallest_action": "Commit and push the exact F02-03 revision, then require all API, web, and runtime-smoke GitHub Actions jobs to pass before evaluating the F02 phase gate"
     },
     {
       "id": "V00",

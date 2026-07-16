@@ -2,7 +2,7 @@
 
 **Phase:** `F02 - Cross-Process Correlation and Confidential Diagnostics Baseline`
 **Class:** Technical foundation
-**Status:** In progress - F02-01 and F02-02 accepted; F02-03 not started
+**Status:** In progress - F02-01 and F02-02 accepted; F02-03 locally verified, exact pushed CI pending
 **Decision owner:** Primary agent
 **Validation lane:** `V00` remains `WAITING_EXTERNAL` / `Revise`; `V01` is locked.
 
@@ -269,6 +269,46 @@ accepts F02-02 propagation on Ubuntu but does not substitute for the automated
 success/failure, isolation, rendered-output, and resource assertions reserved
 for F02-03. F02 remains `IN_PROGRESS` with a null phase gate.
 
+## F02-03 Local Verification (exact CI pending)
+
+The unchanged root command now launches the accepted runtime in an isolated
+inner process and treats every captured byte as untrusted. Its bounded streaming
+pipe stores at most 262,145 bytes, suppresses child stdout, rejects duplicate or
+malformed JSON, enforces exact API, web, process-log, and private-summary schemas,
+and scans the full capture plus response bodies and headers for raw transport,
+configuration, exception, trace, or four-class canary material.
+
+The real Windows proof passed with 21 correlated requests, including 20 measured
+requests and a barrier-started four-request cohort whose in-flight intervals
+overlap. It produced exactly 24 API and 24 web events: 21 valid cross-process
+pairs with matching trace IDs and distinct spans, two absent-context API roots,
+one malformed-context replacement root, and three isolated web fixture outcomes
+for available, HTTP-503 unavailable, and malformed-JSON invalid response. The
+final local observation was 12,638 diagnostic bytes inside 14,223 captured stderr
+bytes, p50/p95/max 121/139/150 ms, API live in 1,540 ms, induced failures in 479
+ms, total smoke in 4,128 ms, shutdown in 51 ms, and both ports closed. Windows
+process and resident-memory readings remain unavailable; exact Ubuntu CI owns
+those accepted values.
+
+The full local gate currently passes 244 API tests at 97% total branch-aware
+coverage, 97 web tests, both canonical contract checks, Ruff,
+strict native/Linux/Windows mypy across 26 files, lint, typecheck, and the
+production build with its 10-file, 629,565-byte browser confidentiality scan.
+The focused smoke module passes 102 tests. No dependency, workflow, public
+schema, generated contract, migration, persistent store, exporter, egress,
+product identifier, or deployment configuration changed.
+
+Independent verification found seven concrete defects across the draft:
+possible orphaning on outer cancellation, premature removal of failed API
+ownership, missing available-state markers, nondeterministic concurrency, an
+unscanned response-header surface, boolean acceptance as schema version 1, and
+a post-exit-only capture cap. Each was repaired and regression-tested. The
+reviewer's final rereview was unavailable after quota exhaustion; per AGENTS.md,
+the parent performed the missing read-only diff and gate audit and also repaired
+the launch-to-capture interrupt race it found. F02 remains IN_PROGRESS with a
+null phase gate until the exact pushed API, web, and runtime-smoke jobs accept
+this revision.
+
 ## Failure Handling
 
 - Malformed external context never crashes a request or poisons another request.
@@ -357,6 +397,6 @@ F02 creates no persistent data or migration.
 
 ## Exact Next Action
 
-On a later invocation, revalidate the entry gate and implement only `F02-03 -
-Cross-process proof and phase exit`. Do not start F02-03, evaluate the F02 phase
-gate, or add deployment configuration in this invocation.
+Commit and push the exact F02-03 implementation revision, then require its API,
+web, and runtime-smoke GitHub Actions jobs to pass before evaluating the F02
+phase gate. Do not add deployment configuration or begin another phase.

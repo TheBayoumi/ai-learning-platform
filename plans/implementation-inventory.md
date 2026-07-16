@@ -1,9 +1,10 @@
 # Implementation Inventory
 
-Generated from exact-CI-accepted F02-02 implementation revision
-`b6550c58f4342a82197455f53eb064a32306e8fc`. The machine-readable record is
-`plans/implementation-inventory.json`. Roadmap prose and controller state are
-not counted as runtime implementation.
+Generated from the locally verified F02-03 worktree based on exact-CI-accepted
+F02-02 controller revision `4957e42c66d192fb53463a392eb7ccf4399d7ae5`.
+Exact F02-03 GitHub Actions evidence is pending. The machine-readable record is
+`plans/implementation-inventory.json`; prose and controller state are not
+counted as runtime implementation.
 
 ## Current Evidence
 
@@ -78,9 +79,21 @@ not counted as runtime implementation.
   lint, strict typecheck, the production build, and browser confidentiality
   scan; runtime smoke observed matching web/API trace IDs with distinct spans,
   four processes, 747,077,632 resident bytes, 1,924 ms API liveness, 4,773 ms
-  total smoke, 252 ms shutdown, and both ports closed. F02-03, exporters,
-  backend, product metrics, learner
-  identifiers, and V17A behavior remain absent.
+  total smoke, 252 ms shutdown, and both ports closed. F02-03 is now locally
+  implemented in the unchanged root smoke command: an isolated outer wrapper
+  streams stderr through a 256 KiB cap, validates exact private/event schemas,
+  scans response bodies, response headers, and all captured bytes, and reports
+  only aggregate evidence. The proof executes 21 correlated requests, including
+  20 measured requests and a barrier-started four-request overlapping cohort;
+  safe roots for two absent and one malformed contexts; and three isolated
+  available, HTTP-failure, and invalid-JSON outcomes. The final Windows run
+  emitted exactly 48 events totaling 12,638 bytes inside 14,223 captured bytes,
+  measured 121/139/150 ms p50/p95/max, completed in 4,128 ms, shut down in 51
+  ms, and closed both ports. All 102 focused smoke tests, 244 full API tests at
+  97% coverage, 97 web tests, static checks, contracts, and the production build
+  pass locally. Exact pushed F02-03 CI remains the only missing phase-exit
+  evidence. Exporters, backend, product metrics, learner identifiers, and V17A
+  behavior remain absent.
 - GitHub remains the source, CI, and exact-revision acceptance control plane.
   The user reports a Vercel Git connection; Vercel is the provisional deployment
   candidate because current official support includes FastAPI Python Functions
@@ -104,7 +117,7 @@ not counted as runtime implementation.
 | --- | --- | --- | --- |
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
-| F02 | Foundation | `IN_PROGRESS` | F02-01 and F02-02 accepted; F02-03 remains |
+| F02 | Foundation | `IN_PROGRESS` | F02-03 locally verified; exact pushed phase-exit CI pending |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -150,6 +163,9 @@ app-local W3C context/span and fixed allowlisted event for API liveness, with no
 exporter or global provider. Accepted F02-02 adds one private web client
 span, server-only W3C propagation, one fixed safe web event, and a production
 browser-asset confidentiality gate.
+Locally verified F02-03 adds the automated real-process correlation, safe-root,
+concurrency, failure, confidentiality, event-volume, resource, and lifecycle
+assertion; exact pushed CI is pending.
 The repository has no persistent telemetry,
 authentication, learner or role state, events/outbox/replay, competency graph,
 curriculum, assessment, tutoring, LLM access, mastery, readiness, unique work,
@@ -158,7 +174,7 @@ deployment.
 
 ## Next Inventory Update
 
-On a later invocation, revalidate entry and implement only F02-03 cross-process
-proof and phase exit. Keep F02 `IN_PROGRESS` with a null phase gate until that
-slice and the complete exit gate pass. Do not treat F01 or F02 as evidence for
-V00.
+Commit and push the exact F02-03 implementation, then update this inventory only
+after all API, web, and runtime-smoke GitHub Actions jobs pass. Keep F02
+`IN_PROGRESS` with a null gate until then, and do not treat F01 or F02 as V00
+evidence.

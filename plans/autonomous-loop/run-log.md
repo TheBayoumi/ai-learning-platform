@@ -320,3 +320,45 @@ a null phase gate because F02-03 and the complete exit gate remain absent. The
 controller returns to `READY`, with F02-03 eligible only on a later invocation.
 V00 remains `WAITING_EXTERNAL / Revise`, V01 remains locked, and no deployment
 configuration was added.
+
+## Run 17 - 2026-07-16 (started)
+
+Revalidated the F02-03 entry gate from clean synchronized revision
+`4957e42c66d192fb53463a392eb7ccf4399d7ae5`, whose F02-02 controller
+publication passed exact GitHub Actions run `29401670748`. Started only
+`F02-03 - Runtime proof`. V00 remains `WAITING_EXTERNAL / Revise`, V01 remains
+locked, F02 retains a null phase gate, and Vercel deployment remains outside
+this invocation.
+
+Extended the unchanged root smoke command with an isolated private runtime proof.
+It validates 24 API and 24 web exact-schema events, 21 correlated request pairs,
+W3C parent relationships, safe roots, distinct spans, explicit absent and
+malformed context, and 20 measured requests whose first four overlap at a
+barrier. Ephemeral downstream servers prove available, unavailable, and invalid
+response classification. Bounded child stderr, browser response bodies, and
+headers are scanned for diagnostic or trace leakage. Cancellation, timeout,
+induced shutdown, capture overflow, descendant cleanup, process reaping, and
+port closure are covered without changing supervisor behavior, public schemas,
+web runtime behavior, dependencies, lockfiles, workflows, or deployment.
+
+Independent verification found seven concrete lifecycle, confidentiality,
+concurrency, header, schema, and capture-bound defects; all were repaired and
+regression tested. A second verifier pass was unavailable because the agent
+quota was exhausted, so the controller performed the required read-only fallback
+diff audit and repaired one additional launch-to-capture interruption race.
+
+The focused runtime suite passes 102 tests. The complete API suite passes 244
+tests in 13.38 seconds with 97% branch-aware coverage (`smoke.py` 95%,
+supervisor 99%). Both contract checks, locked synchronization, Ruff, native,
+Linux-targeted, and Win32-targeted strict mypy, all 97 web tests, lint,
+typecheck, production build, and browser confidentiality checks passed during
+local development. The final Windows root smoke observed 48 events, 21
+correlations, four overlapping requests, 4,128 ms total smoke, 51 ms shutdown,
+and closed both ports. Locked sync, both contract gates, Ruff, and native,
+Linux-targeted, and Win32-targeted mypy were repeated and passed against the
+exact publication diff.
+
+F02-03 remains `IMPLEMENTED_UNVERIFIED` and the controller moves to
+`WAITING_EXTERNAL` for the exact pushed API, web, and runtime-smoke GitHub
+Actions jobs only. No user review is pending. F02 cannot pass and no deployment
+work can begin until that machine gate is accepted.

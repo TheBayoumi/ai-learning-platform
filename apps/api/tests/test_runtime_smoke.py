@@ -6,11 +6,16 @@ import http.client
 import io
 import json
 import os
+import signal
 import socket
+import subprocess
 import sys
-from collections.abc import Sequence
+import threading
+import time
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import asdict
 from pathlib import Path
-from typing import ClassVar, TextIO
+from typing import ClassVar, TextIO, cast
 
 import pytest
 
@@ -70,16 +75,22 @@ class FakeHttpResult:
         content_type: str | None = "application/json; charset=utf-8",
         content_length: str | None = None,
         body: bytes = b"{}",
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         self.status = status
         self._headers = {
             "content-type": content_type,
             "content-length": content_length,
         }
+        if headers is not None:
+            self._headers.update(headers)
         self._body = body
 
     def getheader(self, name: str) -> str | None:
         return self._headers[name]
+
+    def getheaders(self) -> list[tuple[str, str]]:
+        return [(name, value) for name, value in self._headers.items() if value is not None]
 
     def read(self, amount: int) -> bytes:
         return self._body[:amount]
@@ -179,6 +190,7 @@ def _runtime(
     controller: FakeController | None = None,
     clock: FakeClock | None = None,
     requester: smoke.Requester | None = None,
+    metadata_requester: smoke.MetadataRequester | None = None,
     launcher: smoke.Launcher | None = None,
     port_probe: smoke.PortProbe = lambda _port: False,
     signals: dev_supervisor.ShutdownSignals | None = None,
@@ -195,6 +207,7 @@ def _runtime(
             platform="posix",
             launcher=actual_launcher,
             requester=requester or _requester(canonical),
+            metadata_requester=metadata_requester or smoke.request_loopback_with_headers,
             port_probe=port_probe,
             resource_observer=resource_observer
             or (
@@ -211,6 +224,116 @@ def _runtime(
         actual_controller,
         actual_clock,
     )
+
+
+def _trace_id(value: int) -> str:
+    return f"{value:032x}"
+
+
+def _span_id(value: int) -> str:
+    return f"{value:016x}"
+
+
+def _api_diagnostic(
+    value: int,
+    *,
+    parent_context: str,
+) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "event": smoke.API_DIAGNOSTIC_EVENT,
+        "service": "api",
+        "operation": "health_live",
+        "outcome": "ok",
+        "reason": "ok",
+        "parent_context": parent_context,
+        "trace_id": _trace_id(value),
+        "span_id": _span_id(10_000 + value),
+        "status_code": 200,
+        "duration_ms": value % 7,
+    }
+
+
+def _web_diagnostic(
+    value: int,
+    *,
+    outcome: str = "ok",
+    result: str = "available",
+    reason: str = "ok",
+    status_code: int = 200,
+) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "event": smoke.WEB_DIAGNOSTIC_EVENT,
+        "service": "web",
+        "operation": "health_live",
+        "outcome": outcome,
+        "result": result,
+        "reason": reason,
+        "trace_id": _trace_id(value),
+        "span_id": _span_id(20_000 + value),
+        "status_code": status_code,
+        "duration_ms": value % 11,
+    }
+
+
+def _diagnostic_capture(
+    *,
+    correlated_requests: int,
+    include_inner: bool = False,
+) -> bytes:
+    events: list[dict[str, object]] = []
+    for value in range(10, 10 + correlated_requests):
+        events.extend(
+            (
+                _web_diagnostic(value),
+                _api_diagnostic(value, parent_context="valid"),
+            )
+        )
+    events.extend(
+        (
+            _api_diagnostic(1_000, parent_context="absent"),
+            _api_diagnostic(1_001, parent_context="absent"),
+            _api_diagnostic(1_002, parent_context="invalid"),
+            _web_diagnostic(2_000),
+            _web_diagnostic(
+                2_001,
+                outcome="error",
+                result="unavailable",
+                reason="http_status",
+                status_code=503,
+            ),
+            _web_diagnostic(
+                2_002,
+                outcome="error",
+                result="invalid_response",
+                reason="invalid_json",
+                status_code=200,
+            ),
+        )
+    )
+    lines = [
+        json.dumps(event, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        for event in reversed(events)
+    ]
+    if include_inner:
+        inner = smoke.InnerSmokeObservation(
+            runtime=smoke.SmokeObservation(1, 2, 3, 4, 5, 6, 7, 1),
+            scenario=smoke.DiagnosticScenarioObservation(
+                correlated_requests=smoke.FIXED_LATENCY_SAMPLE_COUNT + 1,
+                latency_sample_count=smoke.FIXED_LATENCY_SAMPLE_COUNT,
+                concurrent_request_count=smoke.CONCURRENT_REQUEST_WORKERS,
+                correlated_latency_p50_ms=11,
+                correlated_latency_p95_ms=19,
+                correlated_latency_max_ms=23,
+                induced_failure_ms=31,
+            ),
+        )
+        lines.append(
+            b"[smoke-inner] passed "
+            + json.dumps(asdict(inner), sort_keys=True, separators=(",", ":")).encode("utf-8")
+        )
+    return b"\r\n".join(lines) + b"\r\n"
 
 
 def test_request_loopback_is_literal_bounded_and_normalizes_media_type(
@@ -234,7 +357,32 @@ def test_request_loopback_is_literal_bounded_and_normalizes_media_type(
         {"Accept": "application/json"},
     )
     assert connection.closed
-    assert response == smoke.HttpResponse(200, "application/json", b"{}")
+    assert response == smoke.HttpResponse(
+        200,
+        "application/json",
+        b"{}",
+        (("content-type", "application/json; charset=utf-8"), ("content-length", "2")),
+    )
+
+
+def test_request_loopback_with_headers_forwards_only_the_given_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    FakeHttpConnection.instances = []
+    FakeHttpConnection.result = FakeHttpResult(body=b"{}")
+    monkeypatch.setattr(http.client, "HTTPConnection", FakeHttpConnection)
+
+    smoke.request_loopback_with_headers(
+        8000,
+        "/health/live",
+        {"Accept": "application/json", "Traceparent": smoke.MALFORMED_TRACEPARENT},
+    )
+
+    assert FakeHttpConnection.instances[-1].request_call == (
+        "GET",
+        "/health/live",
+        {"Accept": "application/json", "Traceparent": smoke.MALFORMED_TRACEPARENT},
+    )
 
 
 @pytest.mark.parametrize("content_length", ["invalid", "-1", str(smoke.MAX_RESPONSE_BYTES + 1)])
@@ -261,6 +409,21 @@ def test_request_loopback_rejects_oversize_read_and_allows_absent_media_type(
 
     FakeHttpConnection.result = FakeHttpResult(content_type=None, body=b"{}")
     assert smoke.request_loopback(8000, "/").media_type is None
+
+
+def test_request_loopback_bounds_response_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(http.client, "HTTPConnection", FakeHttpConnection)
+    FakeHttpConnection.result = FakeHttpResult(
+        headers={f"x-{index}": "ok" for index in range(smoke.MAX_RESPONSE_HEADER_COUNT)}
+    )
+    with pytest.raises(smoke.SmokeFailure, match="too many response headers"):
+        smoke.request_loopback(8000, "/")
+
+    FakeHttpConnection.result = FakeHttpResult(
+        headers={"x-large": "x" * smoke.MAX_RESPONSE_HEADER_BYTES}
+    )
+    with pytest.raises(smoke.SmokeFailure, match="headers exceed the byte limit"):
+        smoke.request_loopback(8000, "/")
 
 
 @pytest.mark.parametrize(
@@ -307,6 +470,24 @@ def test_health_and_openapi_require_exact_contracts() -> None:
             _web_response(_available_html() + '<i data-api-state="unavailable"></i>'),
             "forbidden state",
         ),
+        (
+            smoke.HttpResponse(
+                200,
+                "text/html",
+                _available_html().encode("utf-8"),
+                (("x-trace_id", _trace_id(1)),),
+            ),
+            "headers exposed",
+        ),
+        (
+            smoke.HttpResponse(
+                200,
+                "text/html",
+                _available_html().encode("utf-8"),
+                (("x-private", smoke.RESPONSE_DETAIL_CANARY),),
+            ),
+            "confidential test metadata",
+        ),
     ],
 )
 def test_web_contract_fails_closed(response: smoke.HttpResponse, message: str) -> None:
@@ -316,6 +497,386 @@ def test_web_contract_fails_closed(response: smoke.HttpResponse, message: str) -
 
 def test_web_contract_accepts_only_accessible_available_state() -> None:
     smoke._assert_available_web(_web_response())
+
+
+def test_invalid_web_contract_is_accessible_and_confidential() -> None:
+    response = _web_response(
+        _available_html()
+        .replace('data-api-state="available"', 'data-api-state="invalid-response"')
+        .replace("Local API available", "Local API response invalid")
+    )
+    smoke._assert_invalid_web(response)
+
+
+@pytest.mark.parametrize(
+    ("assertion", "response", "message"),
+    [
+        (
+            smoke._assert_unavailable_web,
+            smoke.HttpResponse(500, "text/html", b""),
+            "HTTP 500",
+        ),
+        (
+            smoke._assert_unavailable_web,
+            smoke.HttpResponse(200, "application/json", b"{}"),
+            "media type",
+        ),
+        (
+            smoke._assert_unavailable_web,
+            smoke.HttpResponse(200, "text/html", b"\xff"),
+            "UTF-8",
+        ),
+        (
+            smoke._assert_unavailable_web,
+            _web_response("<main>Local API unavailable</main>"),
+            "accessible unavailable",
+        ),
+        (
+            smoke._assert_unavailable_web,
+            _web_response(
+                _available_html()
+                .replace('data-api-state="available"', 'data-api-state="unavailable"')
+                .replace("Local API available", "Local API unavailable")
+                + '<i data-api-state="available"></i>'
+            ),
+            "forbidden state",
+        ),
+        (
+            smoke._assert_invalid_web,
+            smoke.HttpResponse(500, "text/html", b""),
+            "HTTP 500",
+        ),
+        (
+            smoke._assert_invalid_web,
+            smoke.HttpResponse(200, "application/json", b"{}"),
+            "media type",
+        ),
+        (
+            smoke._assert_invalid_web,
+            smoke.HttpResponse(200, "text/html", b"\xff"),
+            "UTF-8",
+        ),
+        (
+            smoke._assert_invalid_web,
+            _web_response("<main>Local API response invalid</main>"),
+            "accessible invalid-response",
+        ),
+        (
+            smoke._assert_invalid_web,
+            _web_response(
+                _available_html()
+                .replace('data-api-state="available"', 'data-api-state="invalid-response"')
+                .replace("Local API available", "Local API response invalid")
+                + '<i data-api-state="unavailable"></i>'
+            ),
+            "forbidden state",
+        ),
+    ],
+)
+def test_failure_web_contracts_fail_closed(
+    assertion: Callable[[smoke.HttpResponse], None],
+    response: smoke.HttpResponse,
+    message: str,
+) -> None:
+    with pytest.raises(smoke.SmokeFailure, match=message):
+        assertion(response)
+
+
+def test_diagnostic_service_preparation_uses_real_otel_configuration_canaries() -> None:
+    services = (_service("api"), _service("web"))
+
+    prepared = smoke._prepare_diagnostic_services(services)
+
+    assert services[0].environment == {}
+    assert prepared[0].environment["OTEL_SERVICE_NAME"] == smoke.CONFIGURATION_CANARY
+    assert prepared[1].environment["OTEL_RESOURCE_ATTRIBUTES"] == (
+        f"f02.canary={smoke.CONFIGURATION_CANARY}"
+    )
+
+
+def test_diagnostic_parser_and_correlator_are_order_independent_and_byte_exact() -> None:
+    content = _diagnostic_capture(correlated_requests=2)
+
+    smoke._validate_captured_log(content)
+    proof = smoke._assert_diagnostic_proof(content, correlated_requests=2)
+    raw_events = smoke._extract_diagnostic_events(content)
+
+    assert proof == smoke.DiagnosticProofObservation(
+        correlated_requests=2,
+        diagnostic_event_count=10,
+        diagnostic_event_bytes=sum(len(line) for line in content.splitlines()),
+        api_diagnostic_bytes=sum(
+            size for event, size in raw_events if event["event"] == smoke.API_DIAGNOSTIC_EVENT
+        ),
+        web_diagnostic_bytes=sum(
+            size for event, size in raw_events if event["event"] == smoke.WEB_DIAGNOSTIC_EVENT
+        ),
+        captured_stderr_bytes=len(content),
+    )
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b'{"event":"api.health.request.completed","event":"api.health.request.completed"}\n',
+        b'prefix api.health.request.completed {"event":"process.log"}\n',
+        b'["web.health.request.completed"]\n',
+        b'{"event":"api.health.request.completed"\n',
+    ],
+)
+def test_diagnostic_parser_rejects_duplicate_prefixed_or_corrupt_marker_lines(
+    content: bytes,
+) -> None:
+    with pytest.raises(smoke.SmokeFailure, match=r"duplicate|corrupt|invalid JSON"):
+        smoke._extract_diagnostic_events(content)
+
+
+def test_diagnostic_parser_rejects_oversized_event() -> None:
+    event = _api_diagnostic(10, parent_context="valid")
+    event["padding"] = "x" * smoke.MAX_DIAGNOSTIC_EVENT_BYTES
+    content = json.dumps(event).encode("utf-8") + b"\n"
+
+    with pytest.raises(smoke.SmokeFailure, match="byte limit"):
+        smoke._extract_diagnostic_events(content)
+
+
+def test_diagnostic_parser_ignores_non_event_noise_and_bounds_total_capture() -> None:
+    process_log = json.dumps(
+        {
+            "schema_version": 1,
+            "event": "process.log",
+            "service": "api",
+            "outcome": "status",
+            "reason": "unstructured_suppressed",
+            "severity": "info",
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+    assert smoke._extract_diagnostic_events(b"not json\n{invalid\n[]\n" + process_log) == []
+    with pytest.raises(smoke.SmokeFailure, match="byte limit"):
+        smoke._validate_captured_log(b"x" * (smoke.MAX_CAPTURE_BYTES + 1))
+    with pytest.raises(smoke.SmokeFailure, match="process output"):
+        smoke._extract_diagnostic_events(process_log.replace(b'"severity":"info"', b'"raw":1'))
+    with pytest.raises(smoke.SmokeFailure, match="process output"):
+        smoke._extract_diagnostic_events(
+            process_log.replace(b'"schema_version":1', b'"schema_version":true')
+        )
+    with pytest.raises(smoke.SmokeFailure, match="corrupt event"):
+        smoke._extract_diagnostic_events(b'{"event":"unknown"}\n')
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("schema_version", 2, "schema"),
+        ("event", smoke.WEB_DIAGNOSTIC_EVENT, "wrong service output"),
+        ("service", "worker", "service"),
+        ("operation", "raw_path", "operation"),
+        ("trace_id", 1, "field type"),
+        ("trace_id", "0" * 32, "trace identifier"),
+        ("trace_id", "A" * 32, "trace identifier"),
+        ("span_id", "0" * 16, "trace identifier"),
+        ("status_code", True, "field type"),
+        ("status_code", 99, "status code"),
+        ("duration_ms", -1, "duration"),
+    ],
+)
+def test_diagnostic_event_validator_rejects_schema_type_and_value_drift(
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    event = _api_diagnostic(10, parent_context="valid")
+    event[field] = value
+    with pytest.raises(smoke.SmokeFailure, match=message):
+        smoke._validate_event(event, event_name=smoke.API_DIAGNOSTIC_EVENT)
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [*smoke.CONFIDENTIAL_MARKERS, "http://private.invalid", "/health/live"],
+)
+def test_captured_log_rejects_confidential_or_raw_values(marker: str) -> None:
+    with pytest.raises(smoke.SmokeFailure, match=r"confidential|forbidden raw"):
+        smoke._validate_captured_log(marker.encode("ascii"))
+
+
+def test_diagnostic_proof_rejects_allowlist_trace_and_count_drift() -> None:
+    events = [json.loads(line) for line in _diagnostic_capture(correlated_requests=2).splitlines()]
+    events[0]["raw_url"] = "suppressed"
+    allowlist_drift = b"\n".join(
+        json.dumps(event, separators=(",", ":")).encode("utf-8") for event in events
+    )
+    with pytest.raises(smoke.SmokeFailure, match="allowlist"):
+        smoke._assert_diagnostic_proof(allowlist_drift, correlated_requests=2)
+
+    events = [json.loads(line) for line in _diagnostic_capture(correlated_requests=2).splitlines()]
+    events[0]["trace_id"] = _trace_id(10)
+    reused_trace = b"\n".join(
+        json.dumps(event, separators=(",", ":")).encode("utf-8") for event in events
+    )
+    with pytest.raises(smoke.SmokeFailure, match=r"leaked|reused|matches"):
+        smoke._assert_diagnostic_proof(reused_trace, correlated_requests=2)
+
+    with pytest.raises(smoke.SmokeFailure, match="volume"):
+        smoke._assert_diagnostic_proof(
+            _diagnostic_capture(correlated_requests=1), correlated_requests=2
+        )
+
+
+def test_diagnostic_proof_rejects_every_correlation_and_isolation_drift() -> None:
+    def reject(
+        mutate: Callable[[list[dict[str, object]], list[dict[str, object]]], None],
+        message: str,
+    ) -> None:
+        events = [
+            cast(dict[str, object], json.loads(line))
+            for line in _diagnostic_capture(correlated_requests=2).splitlines()
+        ]
+        api_events = [event for event in events if event["event"] == smoke.API_DIAGNOSTIC_EVENT]
+        web_events = [event for event in events if event["event"] == smoke.WEB_DIAGNOSTIC_EVENT]
+        mutate(api_events, web_events)
+        content = b"\n".join(
+            json.dumps(event, separators=(",", ":")).encode("utf-8") for event in events
+        )
+        with pytest.raises(smoke.SmokeFailure, match=message):
+            smoke._assert_diagnostic_proof(content, correlated_requests=2)
+
+    reject(
+        lambda api, _web: api[1].update(trace_id=api[0]["trace_id"]),
+        "API request context",
+    )
+    reject(
+        lambda api, _web: api[1].update(span_id=api[0]["span_id"]),
+        "API span",
+    )
+    reject(
+        lambda _api, web: web[1].update(trace_id=web[0]["trace_id"]),
+        "web request context",
+    )
+    reject(
+        lambda _api, web: web[1].update(span_id=web[0]["span_id"]),
+        "web span",
+    )
+    reject(
+        lambda api, _web: next(event for event in api if event["parent_context"] == "valid").update(
+            parent_context="absent"
+        ),
+        "classifications",
+    )
+    reject(
+        lambda api, _web: api[0].update(outcome="error"),
+        "API diagnostic outcome",
+    )
+    reject(
+        lambda _api, web: next(event for event in web if event["trace_id"] == _trace_id(10)).update(
+            trace_id=_trace_id(9_000)
+        ),
+        "did not correlate",
+    )
+    reject(
+        lambda _api, web: next(event for event in web if event["trace_id"] == _trace_id(10)).update(
+            result="unavailable"
+        ),
+        "correlated web",
+    )
+    reject(
+        lambda _api, web: next(
+            event for event in web if event["trace_id"] == _trace_id(2_001)
+        ).update(reason="timeout"),
+        "induced web",
+    )
+    reject(
+        lambda api, web: next(event for event in web if event["trace_id"] == _trace_id(10)).update(
+            span_id=next(event for event in api if event["trace_id"] == _trace_id(10))["span_id"]
+        ),
+        "spans were not distinct",
+    )
+    reject(
+        lambda api, _web: next(
+            event for event in api if event["parent_context"] == "invalid"
+        ).update(trace_id=smoke.MALFORMED_PARENT_TRACE_ID),
+        "safe root",
+    )
+    reject(
+        lambda api, _web: next(
+            event for event in api if event["parent_context"] == "absent"
+        ).update(trace_id=_trace_id(2_000)),
+        "safe-root API context",
+    )
+
+
+def test_inner_observation_parser_is_fixed_and_consistent() -> None:
+    content = _diagnostic_capture(
+        correlated_requests=smoke.FIXED_LATENCY_SAMPLE_COUNT + 1,
+        include_inner=True,
+    )
+
+    observation = smoke._extract_inner_observation(content)
+
+    assert observation.runtime.resident_bytes == 5
+    assert observation.scenario.latency_sample_count == smoke.FIXED_LATENCY_SAMPLE_COUNT
+
+    drifted = content.replace(b'"next_bytes_delta":1', b'"next_bytes_delta":2')
+    with pytest.raises(smoke.SmokeFailure, match="cache observation"):
+        smoke._extract_inner_observation(drifted)
+
+
+def test_inner_observation_parser_rejects_missing_corrupt_and_schema_drift() -> None:
+    content = _diagnostic_capture(
+        correlated_requests=smoke.FIXED_LATENCY_SAMPLE_COUNT + 1,
+        include_inner=True,
+    )
+    prefix = b"[smoke-inner] passed "
+    result_line = next(line for line in content.splitlines() if line.startswith(prefix))
+    value = cast(dict[str, object], json.loads(result_line[len(prefix) :]))
+
+    with pytest.raises(smoke.SmokeFailure, match="missing or duplicated"):
+        smoke._extract_inner_observation(b"")
+    with pytest.raises(smoke.SmokeFailure, match="missing or duplicated"):
+        smoke._extract_inner_observation(result_line + b"\n" + result_line)
+    with pytest.raises(smoke.SmokeFailure, match="invalid"):
+        smoke._extract_inner_observation(prefix + b"{")
+
+    def encoded(changed: dict[str, object]) -> bytes:
+        return prefix + json.dumps(changed, separators=(",", ":")).encode("utf-8")
+
+    with pytest.raises(smoke.SmokeFailure, match="fixed schema"):
+        smoke._extract_inner_observation(encoded({"runtime": {}}))
+
+    runtime_drift = json.loads(json.dumps(value))
+    runtime_drift["runtime"].pop("api_live_ms")
+    with pytest.raises(smoke.SmokeFailure, match="runtime observation"):
+        smoke._extract_inner_observation(encoded(runtime_drift))
+
+    scenario_drift = json.loads(json.dumps(value))
+    scenario_drift["scenario"].pop("induced_failure_ms")
+    with pytest.raises(smoke.SmokeFailure, match="diagnostic observation"):
+        smoke._extract_inner_observation(encoded(scenario_drift))
+
+    negative = json.loads(json.dumps(value))
+    negative["runtime"]["api_live_ms"] = -1
+    with pytest.raises(smoke.SmokeFailure, match="invalid measurement"):
+        smoke._extract_inner_observation(encoded(negative))
+
+    nullable = json.loads(json.dumps(value))
+    nullable["runtime"]["process_count"] = None
+    nullable["runtime"]["resident_bytes"] = None
+    assert smoke._extract_inner_observation(encoded(nullable)).runtime.process_count is None
+
+    inconsistent = json.loads(json.dumps(value))
+    inconsistent["scenario"]["correlated_latency_p50_ms"] = 100
+    with pytest.raises(smoke.SmokeFailure, match="fixed latency"):
+        smoke._extract_inner_observation(encoded(inconsistent))
+
+
+def test_nearest_rank_uses_the_fixed_sample_without_interpolation() -> None:
+    values = list(range(1, 21))
+    assert smoke._nearest_rank(values, 0.50) == 10
+    assert smoke._nearest_rank(values, 0.95) == 19
+    assert smoke._nearest_rank(values, 1.00) == 20
+    with pytest.raises(smoke.SmokeFailure, match="empty"):
+        smoke._nearest_rank([], 0.95)
 
 
 def test_directory_bytes_is_zero_when_absent_and_sums_files(tmp_path: Path) -> None:
@@ -375,6 +936,36 @@ def test_port_probe_reports_only_a_listening_loopback_socket() -> None:
     finally:
         listener.close()
     assert not smoke._port_is_open(port)
+
+
+def test_failure_proof_server_scripts_response_detail_failure_and_invalid_json() -> None:
+    server = smoke._FailureProofServer()
+    thread = threading.Thread(
+        target=server.serve_forever,
+        kwargs={"poll_interval": 0.01},
+        daemon=True,
+    )
+    thread.start()
+    try:
+        missing = smoke.request_loopback(dev_supervisor.API_PORT, "/missing")
+        available = smoke.request_loopback(dev_supervisor.API_PORT, "/health/live")
+        unavailable = smoke.request_loopback(dev_supervisor.API_PORT, "/health/live")
+        invalid = smoke.request_loopback(dev_supervisor.API_PORT, "/health/live")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=1)
+
+    assert missing.status == 404
+    assert json.loads(available.body)["detail"] == smoke.RESPONSE_DETAIL_CANARY
+    assert unavailable.status == 503
+    assert unavailable.body == smoke.FAILURE_TEXT_CANARY.encode("ascii")
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(invalid.body)
+    assert server.response_count == 3
+    server.handle_error(object(), object())
+    assert not thread.is_alive()
+    assert not smoke._port_is_open(dev_supervisor.API_PORT)
 
 
 def test_linux_resource_observation_is_group_scoped_and_tolerates_proc_races(
@@ -453,6 +1044,181 @@ def test_runtime_smoke_passes_contract_measures_cache_and_cleans_up(tmp_path: Pa
         next_bytes_delta=5,
     )
     assert [item.service.name for item in controller.calls[0]] == ["api", "web"]
+
+
+def test_runtime_diagnostic_scenario_exercises_concurrency_roots_and_fixture_states(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository_root, canonical = _create_repository(tmp_path)
+    web_calls = 0
+    call_lock = threading.Lock()
+    request_barrier = threading.Barrier(smoke.CONCURRENT_REQUEST_WORKERS)
+
+    def state_response(state: str, label: str) -> smoke.HttpResponse:
+        html = (
+            _available_html()
+            .replace('data-api-state="available"', f'data-api-state="{state}"')
+            .replace("Local API available", label)
+        )
+        return _web_response(html)
+
+    def metadata_request(
+        port: int,
+        _path: str,
+        headers: Mapping[str, str],
+    ) -> smoke.HttpResponse:
+        nonlocal web_calls
+        if port == dev_supervisor.API_PORT:
+            return _json_response({"status": "ok", "detail": "process is live"})
+        with call_lock:
+            web_calls += 1
+            call = web_calls
+        probe_index = headers.get("X-F02-Probe-Index")
+        if probe_index is not None and int(probe_index) < smoke.CONCURRENT_REQUEST_WORKERS:
+            request_barrier.wait(timeout=1.0)
+        if call <= smoke.FIXED_LATENCY_SAMPLE_COUNT + 1:
+            return _web_response()
+        if call == smoke.FIXED_LATENCY_SAMPLE_COUNT + 2:
+            return state_response("unavailable", "Local API unavailable")
+        return state_response("invalid-response", "Local API response invalid")
+
+    class FakeFailureServer:
+        response_count = 3
+
+        def serve_forever(self, *, poll_interval: float) -> None:
+            assert poll_interval == smoke.POLL_INTERVAL_SECONDS
+
+        def shutdown(self) -> None:
+            pass
+
+        def server_close(self) -> None:
+            pass
+
+    monkeypatch.setattr(smoke, "_FailureProofServer", FakeFailureServer)
+    launched: list[dev_supervisor.ServiceSpec] = []
+
+    def launch(
+        service: dev_supervisor.ServiceSpec,
+        _platform: dev_supervisor.PlatformFamily,
+    ) -> FakeProcess:
+        launched.append(service)
+        return FakeProcess(100 + len(launched))
+
+    runtime, controller, _clock = _runtime(
+        repository_root,
+        canonical,
+        launcher=launch,
+        metadata_requester=metadata_request,
+    )
+    runtime._monotonic = time.monotonic
+
+    observation = runtime.run_diagnostic()
+
+    scenario = observation.scenario
+    assert scenario.correlated_requests == smoke.FIXED_LATENCY_SAMPLE_COUNT + 1
+    assert scenario.latency_sample_count == smoke.FIXED_LATENCY_SAMPLE_COUNT
+    assert scenario.concurrent_request_count == smoke.CONCURRENT_REQUEST_WORKERS
+    assert (
+        0
+        <= scenario.correlated_latency_p50_ms
+        <= scenario.correlated_latency_p95_ms
+        <= scenario.correlated_latency_max_ms
+    )
+    assert scenario.induced_failure_ms >= 0
+    assert web_calls == smoke.FIXED_LATENCY_SAMPLE_COUNT + 3
+    assert launched[0].environment["OTEL_SERVICE_NAME"] == smoke.CONFIGURATION_CANARY
+    assert [[item.service.name for item in call] for call in controller.calls] == [
+        ["api"],
+        ["web"],
+    ]
+
+
+def test_concurrent_diagnostic_proof_requires_in_flight_overlap(tmp_path: Path) -> None:
+    repository_root, canonical = _create_repository(tmp_path)
+    runtime, _controller, _clock = _runtime(
+        repository_root,
+        canonical,
+        metadata_requester=lambda _port, _path, _headers: _web_response(),
+    )
+
+    with pytest.raises(smoke.SmokeFailure, match="did not overlap in flight"):
+        runtime._exercise_concurrent_health_requests()
+
+
+def test_runtime_diagnostic_helpers_fail_safely_and_require_a_scenario(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository_root, canonical = _create_repository(tmp_path)
+    runtime, _controller, _clock = _runtime(
+        repository_root,
+        canonical,
+        metadata_requester=lambda _port, _path, _headers: (_ for _ in ()).throw(
+            OSError(smoke.REQUEST_CANARY)
+        ),
+    )
+    with pytest.raises(smoke.SmokeFailure, match="safe") as raised:
+        runtime._request_with_metadata(
+            3000,
+            "/private",
+            {"X-Canary": smoke.REQUEST_CANARY},
+            safe_path="/safe",
+        )
+    assert smoke.REQUEST_CANARY not in str(raised.value)
+
+    monkeypatch.setattr(smoke, "PORT_CLOSE_TIMEOUT_SECONDS", 0.1)
+    runtime._port_probe = lambda _port: True
+    assert not runtime._wait_for_port_closed(8000)
+
+    observation = smoke.SmokeObservation(1, 2, 3, 4, 5, 6, 7, 1)
+    monkeypatch.setattr(
+        runtime,
+        "_run",
+        lambda *, diagnostic_proof: (observation, None),
+    )
+    with pytest.raises(smoke.SmokeFailure, match="did not produce"):
+        runtime.run_diagnostic()
+
+    web_only = [
+        dev_supervisor.ManagedProcess(_service("web"), FakeProcess(102)),
+    ]
+    with pytest.raises(smoke.SmokeFailure, match="API process was unavailable"):
+        runtime._exercise_induced_failures(web_only)
+
+
+def test_induced_failure_reports_controller_and_stub_failures_safely(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository_root, canonical = _create_repository(tmp_path)
+    raising_controller = FakeController(raises=True)
+    runtime, _controller, _clock = _runtime(
+        repository_root,
+        canonical,
+        controller=raising_controller,
+    )
+    managed = [
+        dev_supervisor.ManagedProcess(_service("api"), FakeProcess(101)),
+        dev_supervisor.ManagedProcess(_service("web"), FakeProcess(102)),
+    ]
+    with pytest.raises(smoke.SmokeFailure, match="shutdown did not complete"):
+        runtime._exercise_induced_failures(managed)
+    assert [item.service.name for item in managed] == ["api", "web"]
+
+    runtime, _controller, _clock = _runtime(repository_root, canonical)
+    monkeypatch.setattr(
+        smoke,
+        "_FailureProofServer",
+        lambda: (_ for _ in ()).throw(OSError(smoke.FAILURE_TEXT_CANARY)),
+    )
+    managed = [
+        dev_supervisor.ManagedProcess(_service("api"), FakeProcess(101)),
+        dev_supervisor.ManagedProcess(_service("web"), FakeProcess(102)),
+    ]
+    with pytest.raises(smoke.SmokeFailure, match="stub could not start") as raised:
+        runtime._exercise_induced_failures(managed)
+    assert smoke.FAILURE_TEXT_CANARY not in str(raised.value)
 
 
 def test_runtime_retries_only_startup_connection_errors(tmp_path: Path) -> None:
@@ -728,32 +1494,281 @@ def test_main_has_fixed_arguments_and_stable_exit_codes(
 ) -> None:
     assert smoke.main(["unexpected"]) == 2
     assert "accepts no arguments" in capsys.readouterr().err
+    assert smoke._runtime_main(["unexpected"]) == 2
+    assert "accepts no arguments" in capsys.readouterr().err
 
     class PassingRuntime:
         def __init__(self, **_kwargs: object) -> None:
             pass
 
-        def run(self) -> smoke.SmokeObservation:
-            return smoke.SmokeObservation(1, 2, 3, 4, 5, 6, 7, 1)
+        def run_diagnostic(self) -> smoke.InnerSmokeObservation:
+            return smoke.InnerSmokeObservation(
+                runtime=smoke.SmokeObservation(1, 2, 3, 4, 5, 6, 7, 1),
+                scenario=smoke.DiagnosticScenarioObservation(
+                    correlated_requests=21,
+                    latency_sample_count=20,
+                    concurrent_request_count=4,
+                    correlated_latency_p50_ms=8,
+                    correlated_latency_p95_ms=13,
+                    correlated_latency_max_ms=21,
+                    induced_failure_ms=34,
+                ),
+            )
 
     monkeypatch.setattr(smoke, "_install_interrupt_handlers", lambda _signals, _platform: None)
     monkeypatch.setattr(smoke, "RuntimeSmoke", PassingRuntime)
     monkeypatch.setattr(sys, "argv", ["smoke.py"])
-    assert smoke.main() == 0
-    output = capsys.readouterr().out
-    assert "[smoke] passed" in output
-    assert '"resident_bytes": 5' in output
+    assert smoke._runtime_main() == 0
+    assert '"resident_bytes": 5' in capsys.readouterr().err
 
     class FailingRuntime:
         def __init__(self, **_kwargs: object) -> None:
             pass
 
-        def run(self) -> smoke.SmokeObservation:
+        def run_diagnostic(self) -> smoke.InnerSmokeObservation:
             raise smoke.SmokeFailure("safe failure")
 
     monkeypatch.setattr(smoke, "RuntimeSmoke", FailingRuntime)
-    assert smoke.main([]) == 1
+    assert smoke._runtime_main([]) == 1
     assert "safe failure" in capsys.readouterr().err
+
+    content = _diagnostic_capture(
+        correlated_requests=smoke.FIXED_LATENCY_SAMPLE_COUNT + 1,
+        include_inner=True,
+    )
+
+    process = cast(subprocess.Popen[bytes], object())
+    monkeypatch.setattr(smoke, "_launch_inner_runtime", lambda _platform: process)
+    monkeypatch.setattr(
+        smoke,
+        "_capture_inner_runtime",
+        lambda _process, _platform: (0, content, False, False),
+    )
+    assert smoke.main([]) == 0
+    output = capsys.readouterr().out
+    assert "[smoke] passed" in output
+    assert '"resident_bytes": 5' in output
+
+    private_content = content + smoke.FAILURE_TEXT_CANARY.encode("ascii")
+
+    monkeypatch.setattr(
+        smoke,
+        "_capture_inner_runtime",
+        lambda _process, _platform: (1, private_content, False, False),
+    )
+    assert smoke.main([]) == 1
+    error = capsys.readouterr().err
+    assert "captured output was suppressed" in error
+    assert smoke.FAILURE_TEXT_CANARY not in error
+
+    monkeypatch.setattr(
+        smoke,
+        "_capture_inner_runtime",
+        lambda _process, _platform: (1, private_content, True, False),
+    )
+    assert smoke.main([]) == 1
+    error = capsys.readouterr().err
+    assert "exceeded the byte limit" in error
+    assert smoke.FAILURE_TEXT_CANARY not in error
+
+    monkeypatch.setattr(
+        smoke,
+        "_capture_inner_runtime",
+        lambda _process, _platform: (1, b"", False, True),
+    )
+    assert smoke.main([]) == 1
+    assert "could not be captured" in capsys.readouterr().err
+
+    monkeypatch.setattr(
+        smoke,
+        "_launch_inner_runtime",
+        lambda _platform: (_ for _ in ()).throw(OSError("private path")),
+    )
+    assert smoke.main([]) == 1
+    error = capsys.readouterr().err
+    assert "could not be launched or captured" in error
+    assert "private path" not in error
+
+    monkeypatch.setattr(smoke, "_launch_inner_runtime", lambda _platform: process)
+    monkeypatch.setattr(
+        smoke,
+        "_capture_inner_runtime",
+        lambda _process, _platform: (0, private_content, False, False),
+    )
+    assert smoke.main([]) == 1
+    error = capsys.readouterr().err
+    assert "confidential test metadata" in error
+    assert smoke.FAILURE_TEXT_CANARY not in error
+
+
+def test_inner_launcher_suppresses_stdout_and_isolates_the_parent_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+    process = cast(subprocess.Popen[bytes], object())
+
+    def launch(_command: Sequence[str], **kwargs: object) -> subprocess.Popen[bytes]:
+        calls.append(kwargs)
+        return process
+
+    monkeypatch.setattr(subprocess, "Popen", launch)
+    assert smoke._launch_inner_runtime("windows") is process
+    assert calls[-1]["stdout"] == subprocess.DEVNULL
+    assert calls[-1]["stderr"] == subprocess.PIPE
+    assert calls[-1]["creationflags"] == int(
+        getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+    )
+    assert "start_new_session" not in calls[-1]
+
+    assert smoke._launch_inner_runtime("posix") is process
+    assert calls[-1]["start_new_session"] is True
+    assert "creationflags" not in calls[-1]
+
+
+def test_outer_wait_relays_interrupt_and_bounds_inner_cleanup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class InterruptingProcess:
+        pid = 42
+
+        def __init__(self, *, interrupts: int = 1, timeouts: int = 0) -> None:
+            self.calls = 0
+            self.signals: list[int] = []
+            self.interrupts = interrupts
+            self.timeouts = timeouts
+            self.killed = False
+
+        def wait(self, timeout: float | None = None) -> int:
+            self.calls += 1
+            if self.interrupts:
+                self.interrupts -= 1
+                raise KeyboardInterrupt
+            if self.timeouts:
+                self.timeouts -= 1
+                raise subprocess.TimeoutExpired("inner", timeout or 0.0)
+            return 1
+
+        def send_signal(self, value: int) -> None:
+            self.signals.append(value)
+
+        def kill(self) -> None:
+            self.killed = True
+
+    process = InterruptingProcess()
+    result = smoke._wait_for_inner_runtime(
+        cast(subprocess.Popen[bytes], process),
+        "windows",
+    )
+    assert result == 1
+    assert process.signals == [int(getattr(signal, "CTRL_BREAK_EVENT", 1))]
+
+    group_signals: list[tuple[int, int]] = []
+    monkeypatch.setitem(
+        vars(os),
+        "killpg",
+        lambda process_id, signal_number: group_signals.append((process_id, signal_number)),
+    )
+    posix_process = InterruptingProcess()
+    assert (
+        smoke._wait_for_inner_runtime(
+            cast(subprocess.Popen[bytes], posix_process),
+            "posix",
+        )
+        == 1
+    )
+    assert group_signals == [(42, int(signal.SIGINT))]
+
+    monkeypatch.setitem(
+        vars(os),
+        "killpg",
+        lambda _process_id, _signal_number: (_ for _ in ()).throw(OSError("gone")),
+    )
+    assert (
+        smoke._wait_for_inner_runtime(
+            cast(subprocess.Popen[bytes], InterruptingProcess()),
+            "posix",
+        )
+        == 1
+    )
+
+    timed_out = InterruptingProcess(timeouts=3)
+    assert smoke._wait_for_inner_runtime(cast(subprocess.Popen[bytes], timed_out), "windows") == 1
+    assert timed_out.signals == [int(getattr(signal, "CTRL_BREAK_EVENT", 1))] * 2
+    assert timed_out.killed
+
+    repeatedly_interrupted = InterruptingProcess(interrupts=3)
+    assert (
+        smoke._wait_for_inner_runtime(
+            cast(subprocess.Popen[bytes], repeatedly_interrupted),
+            "windows",
+        )
+        == 1
+    )
+    assert repeatedly_interrupted.killed
+
+    class CompletedProcess:
+        def wait(self, timeout: float | None = None) -> int:
+            assert timeout == smoke.POLL_INTERVAL_SECONDS
+            return 0
+
+    assert (
+        smoke._wait_for_inner_runtime(
+            cast(subprocess.Popen[bytes], CompletedProcess()),
+            "windows",
+        )
+        == 0
+    )
+
+
+def test_bounded_capture_stops_storing_after_limit_and_requests_cleanup() -> None:
+    class CapturedProcess:
+        pid = 42
+
+        def __init__(self) -> None:
+            self.stderr = io.BytesIO(b"x" * (smoke.MAX_CAPTURE_BYTES * 2))
+            self.signals: list[int] = []
+
+        def wait(self, timeout: float | None = None) -> int:
+            return 1
+
+        def send_signal(self, signal_number: int) -> None:
+            self.signals.append(signal_number)
+
+        def kill(self) -> None:
+            pass
+
+    process = CapturedProcess()
+    return_code, content, overflowed, read_failed = smoke._capture_inner_runtime(
+        cast(subprocess.Popen[bytes], process),
+        "windows",
+    )
+
+    assert return_code == 1
+    assert len(content) == smoke.MAX_CAPTURE_BYTES + 1
+    assert overflowed
+    assert not read_failed
+
+
+def test_outer_interrupt_handlers_translate_and_restore(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed: list[tuple[int, object]] = []
+    monkeypatch.setattr(signal, "SIGBREAK", 99, raising=False)
+    monkeypatch.setattr(signal, "getsignal", lambda signal_number: f"old-{signal_number}")
+    monkeypatch.setattr(
+        signal,
+        "signal",
+        lambda signal_number, handler: installed.append((signal_number, handler)),
+    )
+
+    with smoke._outer_interrupt_handlers("windows"):
+        active_handlers = installed.copy()
+
+    assert [item[0] for item in active_handlers] == [int(signal.SIGTERM), 99]
+    for _signal_number, handler in active_handlers:
+        with pytest.raises(KeyboardInterrupt):
+            cast(Callable[[int, object], None], handler)(1, None)
+    assert installed[-2:] == [(99, "old-99"), (int(signal.SIGTERM), f"old-{int(signal.SIGTERM)}")]
 
 
 def test_interrupt_handlers_reuse_supervisor_signal_primitive(
@@ -777,3 +1792,128 @@ def test_documentation_and_ci_use_the_exact_same_root_command() -> None:
     assert command in (repository_root / ".github" / "workflows" / "ci.yml").read_text(
         encoding="utf-8"
     )
+
+
+def test_outer_capture_failure_reaps_owned_inner_before_returning(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    process = cast(subprocess.Popen[bytes], object())
+    cleanup_events: list[threading.Event] = []
+    monkeypatch.setattr(smoke, "_launch_inner_runtime", lambda _platform: process)
+
+    def reap(
+        actual_process: subprocess.Popen[bytes],
+        _platform: dev_supervisor.PlatformFamily,
+        stop_requested: threading.Event | None = None,
+    ) -> int:
+        assert actual_process is process
+        assert stop_requested is not None and stop_requested.is_set()
+        cleanup_events.append(stop_requested)
+        return 1
+
+    monkeypatch.setattr(smoke, "_wait_for_inner_runtime", reap)
+    monkeypatch.setattr(
+        smoke,
+        "_capture_inner_runtime",
+        lambda _process, _platform: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+    assert smoke.main([]) == 1
+    assert "interrupted and reaped" in capsys.readouterr().err
+
+    monkeypatch.setattr(
+        smoke,
+        "_capture_inner_runtime",
+        lambda _process, _platform: (_ for _ in ()).throw(RuntimeError("private failure")),
+    )
+    assert smoke.main([]) == 1
+    error = capsys.readouterr().err
+    assert "could not be launched or captured" in error
+    assert "private failure" not in error
+    assert len(cleanup_events) == 2
+
+
+def test_posix_force_cleanup_discovers_descendants_and_has_a_kill_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def write_stat(process_id: int, parent_id: int) -> None:
+        process_root = tmp_path / str(process_id)
+        process_root.mkdir()
+        (process_root / "stat").write_text(
+            f"{process_id} (worker {process_id}) S {parent_id} {process_id} 0",
+            encoding="utf-8",
+        )
+
+    write_stat(10, 1)
+    write_stat(11, 10)
+    write_stat(12, 11)
+    write_stat(13, 1)
+    assert smoke._posix_descendant_process_ids(10, proc_root=tmp_path) == (11, 12)
+
+    killed_processes: list[tuple[int, int]] = []
+    killed_groups: list[tuple[int, int]] = []
+    monkeypatch.setattr(smoke, "_posix_descendant_process_ids", lambda _process_id: (11, 12))
+    monkeypatch.setattr(
+        os,
+        "kill",
+        lambda process_id, signal_number: killed_processes.append((process_id, signal_number)),
+    )
+    monkeypatch.setitem(
+        vars(os),
+        "killpg",
+        lambda process_id, signal_number: killed_groups.append((process_id, signal_number)),
+    )
+
+    class ForceProcess:
+        pid = 10
+
+        def __init__(self) -> None:
+            self.killed = False
+
+        def kill(self) -> None:
+            self.killed = True
+
+    process = ForceProcess()
+    smoke._force_inner_runtime(cast(subprocess.Popen[bytes], process), "posix")
+    assert killed_processes == [(12, smoke._FORCE_SIGNAL), (11, smoke._FORCE_SIGNAL)]
+    assert killed_groups == [(10, smoke._FORCE_SIGNAL)]
+    assert not process.killed
+
+    monkeypatch.setitem(
+        vars(os),
+        "killpg",
+        lambda _process_id, _signal_number: (_ for _ in ()).throw(OSError("gone")),
+    )
+    smoke._force_inner_runtime(cast(subprocess.Popen[bytes], process), "posix")
+    assert process.killed
+
+
+def test_capture_without_a_pipe_requests_cleanup_and_fails_closed() -> None:
+    class MissingStreamProcess:
+        pid = 42
+        stderr = None
+
+        def __init__(self) -> None:
+            self.signals: list[int] = []
+
+        def wait(self, timeout: float | None = None) -> int:
+            assert timeout == smoke.INNER_CLEANUP_TIMEOUT_SECONDS / 2
+            return 1
+
+        def send_signal(self, signal_number: int) -> None:
+            self.signals.append(signal_number)
+
+        def kill(self) -> None:
+            pass
+
+    process = MissingStreamProcess()
+    return_code, content, overflowed, read_failed = smoke._capture_inner_runtime(
+        cast(subprocess.Popen[bytes], process),
+        "windows",
+    )
+    assert return_code == 1
+    assert content == b""
+    assert not overflowed
+    assert read_failed
+    assert process.signals == [int(getattr(signal, "CTRL_BREAK_EVENT", 1))]

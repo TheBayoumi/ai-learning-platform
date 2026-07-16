@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
-  "status": "READY",
+  "status": "WAITING_EXTERNAL",
   "active_phase": "F02",
   "active_slice": "F02-03",
   "gate_decision": null,
-  "last_completed_action": "Accepted only F02-02 server-to-server propagation at implementation revision b6550c58f4342a82197455f53eb064a32306e8fc after exact GitHub Actions run 29400137315 passed API, web, and runtime-smoke jobs.",
-  "next_action": "On a later invocation, revalidate entry and implement only F02-03 cross-process proof and phase exit.",
-  "stop_reason": "F02-02 is accepted; this invocation stops before F02-03, the F02 phase gate, deployment, V00 evidence, or V01 work.",
+  "last_completed_action": "Implemented and locally verified only F02-03 runtime proof; repaired every confirmed independent-review finding, completed the required parent fallback audit after verifier quota exhaustion, and passed the final local gates. Exact pushed CI remains pending.",
+  "next_action": "Commit and push the exact F02-03 revision; accept it only after API, web, and runtime-smoke GitHub Actions pass, then publish the controller acceptance state and verify that exact revision.",
+  "stop_reason": "Exact pushed GitHub Actions evidence is pending for the F02-03 implementation revision; no user review is pending.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
@@ -23,11 +23,11 @@
     "active_phase": "F02",
     "status": "IN_PROGRESS",
     "gate_decision": null,
-    "next_action": "On a later invocation, revalidate entry and implement only F02-03 cross-process proof and phase exit"
+    "next_action": "Require exact pushed API, web, and runtime-smoke CI for F02-03 before evaluating the F02 phase gate"
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-15T08:20:11.948Z"
+    "generated_at": "2026-07-16T14:45:07.103Z"
   },
   "external_blockers": [
     "Two qualified practitioner availability and validation confirmations",
@@ -51,7 +51,7 @@
     "constitution_constraint": "The approved runtime remains containers on a managed PaaS; a later deployment phase must reconcile or explicitly amend the Vercel function topology",
     "reason": "Vercel currently supports FastAPI and combined services, but deployment, beta constraints, region, secrets, data/jobs, rollback, cost, and exact Next.js mode are outside F02"
   },
-  "last_verified_commit": "b6550c58f4342a82197455f53eb064a32306e8fc",
+  "last_verified_commit": "4957e42c66d192fb53463a392eb7ccf4399d7ae5",
   "authoritative_file_hashes": {
     "AGENTS.md": "d7a3a4309183f42f05fa336e8283270b3cda204a159c827e8ee44783de2ca820",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
@@ -60,15 +60,15 @@
     "specs/roadmap.md": "18eccf6aabd08c17e76b8737b96c53bbb43ea54064d44f116c7e9b9c2088f774",
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
-    "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "40907e96b4e273471fdb8163702f7b0a73dce5598841378b40a197ce3864ef7d",
-    "plans/implementation-inventory.json": "b240b6a21c614a9c3a2352d3b26ca82779dd22a68336e2390a7c28adeb83f01f",
+    "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "d999a02bed4ef8e6aba77988dacb0bffdc24efd04d0bdd1ec34368f8ca1da5d7",
+    "plans/implementation-inventory.json": "e44d13ce9f3ee4982c13d8fbfc0dcdf10f2a6ad7c92227e1eefacfcfd21002d8",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "e8c0cba1aa32c676afe1a0bcb2e8bf96af6f72e384451baac708c5c3f3ef1b07",
     "docs/validation/V00-candidate-role-evidence.md": "fa4563e988ebbe97c7ed2bf4185574a81880cdca5be7ebe43e5174459dfdf069"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 16,
-  "last_run_started_at": "2026-07-14T22:42:12.072Z",
-  "last_run_completed_at": "2026-07-15T08:20:11.948Z"
+  "run_number": 17,
+  "last_run_started_at": "2026-07-15T08:53:10.669Z",
+  "last_run_completed_at": "2026-07-16T14:56:45.154Z"
 }

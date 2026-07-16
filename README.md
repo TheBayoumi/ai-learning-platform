@@ -209,3 +209,13 @@ diagnostic or API-configuration markers enter browser assets. This diagnostic
 baseline is not monitoring, analytics, audit evidence, a production
 observability approval, or a deployment configuration; Vercel deployment
 remains a separate gated decision.
+
+F02-03 keeps the same root command and makes it the automated phase-exit proof.
+The public wrapper suppresses child stdout, streams stderr through a 256 KiB
+in-memory cap, validates exact API/web event schemas, and fails on raw URL,
+header, body, exception, environment, canary, or browser-visible trace material.
+It runs 20 measured health requests with a four-request overlapping cohort, plus
+one startup correlation, explicit absent and malformed API contexts, and three
+isolated success/failure fixture outcomes. A passing aggregate reports only
+counts, byte totals, lifecycle/resource observations, and p50/p95/max timings.
+F02-03 is not accepted until that exact pushed revision passes GitHub Actions.

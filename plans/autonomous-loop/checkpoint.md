@@ -5,156 +5,69 @@
 Validation remains `V00 - Candidate Role Evidence`, `WAITING_EXTERNAL / Revise`.
 Foundation remains `F02 - Cross-Process Correlation and Confidential Diagnostics
 Baseline`, `IN_PROGRESS`, with a null phase gate. `F02-01 - API diagnostic
-context` is accepted. `F02-02 - Server-to-server propagation` is implemented
-and accepted on exact pushed CI. F02-03 is eligible only on a later invocation.
-V01 stays locked, and the global controller is `READY`.
+context` and `F02-02 - Server-to-server propagation` are accepted on exact
+pushed CI. `F02-03 - Runtime proof` is implemented and locally verified; its
+exact pushed GitHub Actions evidence is still pending. V01 stays locked.
 
-## Verified acceptance gates
+The accepted opening controller revision is
+`4957e42c66d192fb53463a392eb7ccf4399d7ae5`, which passed exact GitHub
+Actions run `29401670748`. F00 and F01 remain passed.
 
-F02-01 implementation revision
-`1cd879ef9a37dc04a28c09e7fed23d40441fdb3c` passed exact GitHub Actions run
-`29372599433`. Controller publication revision
-`7ac1fb3c938472a8c803e1ee98a772b42f92cdb8` then passed run `29373234548`
-across API, web, and runtime-smoke jobs. The worktree was clean and synchronized
-at that revision before F02-02 dependencies changed. F00 and F01 remain passed.
+## F02-03 implementation
 
-F02-02 implementation revision
-`b6550c58f4342a82197455f53eb064a32306e8fc` passed exact GitHub Actions run
-`29400137315` across API, web, and runtime-smoke jobs in 1 minute 33 seconds.
+The unchanged root smoke command now launches the private runtime smoke in an
+isolated process/session and proves the complete API-to-web diagnostic path with
+real processes. It validates bounded exact-schema JSON events, W3C trace
+relations, distinct spans, safe roots, explicit absent and malformed context,
+20 measured requests with a four-request overlap barrier, and three ephemeral
+downstream outcomes: available, unavailable, and invalid response.
 
-Architecture and roadmap reviews independently returned `Continue` for only
-F02-02. They required one explicit app-local client span, official W3C
-propagation, one fixed safe event, no global registration or automatic
-instrumentation, no browser output, unchanged F01 behavior, independent review,
-and exact pushed CI. They explicitly excluded F02-03, API changes, exporters,
-telemetry storage, product identifiers, V00/V01 changes, and deployment.
+The public aggregate remains confidential and bounded. Child output, HTTP body,
+and response headers are scanned for diagnostic or trace leakage. Cancellation,
+timeouts, induced shutdown, bounded capture, descendant cleanup, port closure,
+and process reaping are regression tested. No exporter, telemetry backend,
+storage, product identifier, learner identifier, supervisor behavior, public
+schema, web runtime behavior, dependency, lockfile, workflow, or deployment
+surface changed.
 
-## Last completed action
+## Review and verification
 
-Implemented and accepted F02-02. The Next.js server now owns one private,
-exporter-free OpenTelemetry client span around its existing health adapter,
-starts it from explicit root context, and copies exactly one canonical
-`traceparent` from the official W3C propagator into the server-only fetch. The
-adapter emits one frozen allowlisted `web.health.request.completed` line with
-fixed classifications, validated trace/span IDs, status, and duration. It keeps
-the one-attempt timeout, abort, cache, credentials, redirect, media-type, JSON,
-contract, and public-result behavior unchanged. All instrumentation failures are
-diagnostic-only, and unexpected adapter failures are rethrown unchanged after a
-generic completion.
+Architecture and roadmap reviewers independently returned `Continue` for only
+F02-03. The independent verification review identified cancellation/reaping,
+managed-process ownership, diagnostic marker scanning, concurrency overlap,
+header capture, schema strictness, and capture-bound issues. Each confirmed
+finding was repaired and covered by regression tests. The verifier could not
+complete a second pass because the agent quota was exhausted, so the controller
+performed the required read-only fallback diff audit and added one further
+launch-to-capture interruption regression.
 
-The production build now scans `.next/static` for unique diagnostic and API
-configuration markers. No context or diagnostic field was added to
-`HealthCheckResult`, `ApiAvailability`, page props, rendered UI, public health
-schema, or generated validator. No global provider, context manager, exporter,
-processor, worker, storage, egress, database, migration, product behavior, or
-deployment configuration was added.
+Final local evidence on the exact worktree includes:
 
-## Changed files
+- focused runtime smoke tests: 102 passed;
+- full API suite: 244 passed in 13.38 seconds with 97% branch-aware coverage;
+- `smoke.py`: 95% coverage; supervisor: 99% coverage;
+- web unit suite: 97 tests passed; lint, typecheck, and production build passed;
+- Windows root smoke: 48 bounded events, 21 correlated request pairs, four
+  concurrent requests, 4.128-second smoke duration, 51 ms shutdown, and both
+  ports closed;
+- locked sync, both contract gates, Ruff, and native, Linux-targeted, and
+  Win32-targeted mypy pass against the final documentation-ready diff.
 
-- Exact web dependencies and lock: `apps/web/package.json` and
-  `apps/web/package-lock.json`.
-- New server diagnostic boundary:
-  `apps/web/server/diagnostics/health-diagnostics.ts`.
-- Existing adapter wiring: `apps/web/server/health/health-adapter.ts`.
-- Enforced browser scan:
-  `apps/web/scripts/check-browser-confidentiality.mjs`.
-- Focused, resource, adapter, and presentation tests under `apps/web/tests/`.
-- Operator documentation, F02 ExecPlan, implementation inventory, and durable
-  controller records.
+## Remaining risks and blockers
 
-No API source, workflow, OpenAPI artifact, generated health validator, schema,
-migration, V00 evidence, product artifact, or tracked
-`ai-learning-platform.7z` content changed.
+F02 has no known local implementation blocker; exact pushed CI is the remaining
+machine gate. V00 still lacks qualifying symmetric demand evidence, two
+qualified practitioner confirmations, a confirmed channel owner able to reach
+20-50 eligible adults, and acceptable measured expected-cost evidence. Those
+external inputs cannot be self-certified by this technical phase.
 
-## Local validation results
+## External acceptance gate
 
-- `npm ci` passed in 66,659 ms and `npm audit` reported zero vulnerabilities. It
-  repeated allow-script warnings for already locked `sharp` and
-  `unrs-resolver`.
-- Web lint and strict typecheck pass. All 61 focused diagnostics, adapter,
-  runtime, page, shell, and resource tests pass; the complete suite passes all
-  97 tests in 8 files.
-- A clean `npm run build` passed in 9,619 ms and produced 4,335,774 `.next`
-  bytes. Its enforced browser scan checked 10 assets totaling 629,565 bytes and
-  found no diagnostic or API-configuration marker. A temporary banned marker
-  made the scan fail nonzero; after removal, the clean scan passed again.
-- The exact dependency tree resolves direct API/core/trace-SDK pins plus
-  resources and semantic conventions. The five package directories contain
-  14,822,615 bytes; manifest/lock growth is 240/2,697 bytes. Next.js shares its
-  optional OpenTelemetry API peer, so future global registration or automatic
-  instrumentation must review the singleton boundary; F02-02 registers neither.
-- Hostile ambient SDK-disable, always-off sampler, service, and resource values
-  cannot override the explicit sampled private root or enter diagnostics. A
-  valid nonempty response-detail canary is accepted but absent from the emitted
-  event.
-- A 20-warmup, 500-call observation emitted exactly 500 events at 260 bytes
-  each. Baseline p50/p95/max was 0.049/0.120/2.463 ms; instrumented was
-  0.095/0.210/0.709 ms. These are observations, not budgets.
-- API locked sync/lock, both canonical contract checks, Ruff format/lint, and
-  native/Linux/Windows strict mypy pass all 26 source/test/script files.
-- The unchanged full API suite passes 186 tests in 17.07 seconds at 99% total
-  line and branch coverage.
-- Windows cross-process smoke passed: API live in 1,936 ms, total smoke in
-  4,031 ms, shutdown in 155 ms, both ports closed, and process/memory readings
-  unavailable. Its logs showed the same validated trace ID across the web and
-  API events with distinct span IDs; F02-03 must turn that observation into an
-  automated exit assertion.
-- Independent final verification returned `ACCEPT` with no actionable finding
-  after reproducing the dependency, behavior, confidentiality, scope, and full
-  web gates.
-- `git diff --check`, line-ending, scope, secret, and controller JSON checks
-  pass. Authoritative hashes are refreshed after these controller edits.
+F02-03 is not accepted from local evidence alone. The next action is to commit
+and push this exact revision, require the API, web, and runtime-smoke GitHub
+Actions jobs to pass, inspect the Ubuntu runtime aggregate and resource fields,
+then publish the controller acceptance state in a second commit and require its
+own exact Actions run to pass.
 
-## Exact pushed-CI results
-
-- API quality job `87302552878` passed locked synchronization, both contracts,
-  Ruff, strict mypy across 26 files, line endings, and 186 tests in 2.45 seconds
-  at 99% coverage.
-- Web quality job `87302552907` passed locked install with zero vulnerabilities,
-  lint, strict typecheck, 97 tests in 8 files in 2.13 seconds, and the production
-  build. Compile completed in 3.6 seconds; the confidentiality gate scanned 10
-  browser files totaling 629,565 bytes.
-- Runtime-smoke job `87302713249` passed with API live in 1,924 ms, four owned
-  processes, 747,077,632 aggregate resident bytes, 17,013,419 Next.js bytes,
-  total smoke in 4,773 ms, shutdown in 252 ms, matching web/API trace IDs with
-  distinct spans, and both ports closed.
-- The Ubuntu 500-call observation emitted exactly 500 260-byte events;
-  baseline p50/p95/max was 0.045/0.115/4.392 ms and instrumented was
-  0.088/0.229/7.106 ms. These remain observations, not budgets.
-
-## Deployment maturity intent
-
-GitHub remains source, CI, and exact-revision acceptance. The user reports a
-Vercel Git connection, so Vercel is the provisional deployment candidate rather
-than GitHub Pages. No local Vercel link or deployment configuration is verified,
-and a later gated phase must reconcile its function topology with the approved
-container-managed-PaaS decision. Deployment is not part of F02.
-
-## Unresolved findings
-
-F02-03 and the complete F02 exit gate remain absent. The matching trace in the
-runtime smoke is not yet an automated success/failure, isolation,
-rendered-output, or resource assertion. The tracked 66.3 MB archive remains a
-repository/checkout-cost risk outside this slice. V00 still lacks all four
-required external evidence groups.
-
-## External and human blockers
-
-F02 has none. V00 still requires qualifying demand evidence, two qualified
-practitioner confirmations, a real 20-50-adult recruitment channel, and
-acceptable measured expected-cost evidence. No technical/controller decision
-requires human review; constitutionally required external evidence cannot be
-self-certified by Codex.
-
-## Rollback point
-
-Opening revision `7ac1fb3c938472a8c803e1ee98a772b42f92cdb8` on
-`automation/v00-phase-loop`. Removing the three web pins, diagnostic module,
-adapter wiring, focused tests, browser scan, and F02-02 documentation restores
-the accepted F02-01/F01 runtime. No data rollback exists.
-
-## Exact next action
-
-On a later invocation, revalidate entry and implement only F02-03 cross-process
-proof and phase exit. Do not start F02-03, evaluate the F02 phase gate, alter
-V00/V01, or add Vercel deployment configuration in this invocation.
+The Vercel deployment intent remains recorded but is outside this slice. No
+deployment may begin until F02-03 has passed its exact-revision phase gate.
