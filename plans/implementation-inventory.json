@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-17T17:14:57.000Z",
+  "generated_at": "2026-07-17T18:29:40.000Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
     "head": "fe49b609767e27d52fae999c229502ed98866dff",
@@ -518,18 +518,17 @@
         "apps/web/.gitignore"
       ],
       "tests": [
-        "No application code changed; F00-F03 local and CI evidence remains applicable unchanged"
+        "No application code changed; F00-F03 local and CI evidence remains applicable unchanged",
+        "Real Vercel preview deployment dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5 (target=preview, region=iad1) reached readyState=READY for exact commit 787534a16506c45c9b953e95dd33aa6c1b8aa35a; GitHub commit status success (\"Deployment has completed\"); user visually confirmed the deployed page renders the F01/F02 health-status surface showing API unavailable/offline as expected, since no API origin is configured for this web-tier-only deployment"
       ],
       "missing_outputs": [
-        "Preview deployment of the exact implementation head with GitHub-linked check evidence",
-        "Deployed health-status surface verified to report API-unavailable safely",
         "Browser-asset confidentiality scan run against the real deployed build",
         "Demonstrated rollback to a prior accepted deployment with evidence",
         "Separate acceptance-state revision passing its own required checks"
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Push a new commit to trigger a real Vercel preview deployment tied to the exact PR head SHA, then verify GitHub-linked check evidence",
+      "next_smallest_action": "Demonstrate rollback to a prior accepted preview deployment, then publish the acceptance-state revision",
       "gate_decision": null,
       "blocker_ids": [],
       "claims": [],

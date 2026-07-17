@@ -4,8 +4,8 @@
   "active_phase": "F03",
   "active_slice": "F04-topology-decision-and-definition",
   "gate_decision": "Continue",
-  "last_completed_action": "Verified the Vercel-GitHub Git integration is live (link.type=github, link.repo=ai-learning-platform via GET /v9/projects/{id}) after the user authorized a GitHub Login Connection and ran vercel git connect. Found and fixed a real defect: rootDirectory was \".\" (repo root, fails Next.js detection); corrected to \"apps/web\" via PATCH /v9/projects/{id}, confirmed via follow-up GET.",
-  "next_action": "Push this evidence-recording revision to trigger a real Vercel preview deployment tied to the exact commit SHA, then verify GitHub-linked check evidence, safe API-unavailable behavior, confidentiality, and rollback.",
+  "last_completed_action": "Confirmed the real deployment defect: GitHub could not verify an account for the commit author (neither work nor personal email were verified on TheBayoumi). Fixed by switching the repo-local git identity to GitHub noreply, amending and force-pushing the unmerged commit. Deployment dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5 reached READY. User visually confirmed the deployed page correctly shows API unavailable/offline.",
+  "next_action": "Trigger a second deployment and demonstrate rollback to the first accepted one, then publish the F04 acceptance-state revision.",
   "stop_reason": "F04 definition is complete and IN_PROGRESS. Implementation is blocked on a real Vercel-GitHub Login Connection, a browser OAuth action only the user can perform. F03 remains PASSED / Continue. V00 remains WAITING_EXTERNAL / Revise; V01 remains locked.",
   "validation_track": {
     "active_phase": "V00",
@@ -27,7 +27,7 @@
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-17T17:14:57.000Z"
+    "generated_at": "2026-07-17T18:29:40.000Z"
   },
   "external_blockers": [
     "v00.symmetric_demand",
@@ -53,7 +53,7 @@
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
     "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "b8d743abee02a1ec33fecfcc9304b856a733cca25016076609bd349e1841f5cf",
-    "plans/implementation-inventory.json": "5645fdc96d49d0a2a0d4fe0bd0563b1af682e2c781cdd91661b8669c9a4a1fd3",
+    "plans/implementation-inventory.json": "90213b0ef50318b8698523583b589ecf1a66d5915720003f24fc0e1a80fb8930",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "597e36eeec0a61abb46607de8bc3405f283a9dea6265e98e516c02c6efe99877",
@@ -63,7 +63,7 @@
     "plans/autonomous-loop/controller-policy.json": "8c3847c32dfa812fb84002254e857c2ac0342ec49dabba668d9614d971fe5c2b",
     "plans/autonomous-loop/goal.md": "9730037369348994c6e5c059ed77d032d12cc58f210100a72f812880e922310a",
     "plans/autonomous-loop/checkpoint.md": "63fd2b564eac58496acd28a1a01d73b151ce767c627a2cdf3173321caf9f523e",
-    "plans/autonomous-loop/run-log.md": "932d70a9e18a543ac72a4f498cfbc2efc710eac40fceb099cf96c6151c3d8be9",
+    "plans/autonomous-loop/run-log.md": "ea39b703fefbad0adda0f5b10fbb98e0d699005cce4e1b3296f8527fdb2c598a",
     "apps/api/src/ai_learning_platform_api/automation/__init__.py": "83192a0bb62273eecdbd9ad33ac8bbe2c13641c38cc68740e6e927d4cbe3025f",
     "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "8e48b53c2194af095b2042d5ba3b8b18343664839aaf647597b77e51d8daaa9c",
     "apps/api/tests/test_phase_gate.py": "74d3987081518711cb90564c78837b648e17e4872b0766fb123c6e693239c897",
@@ -72,9 +72,9 @@
     "plans/F04-vercel-deployment-baseline.md": "fdc27f32d4a3fe95a0d8a8a2d337067003c462cbce8ed38c21795c1499a8c41b"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 22,
-  "last_run_started_at": "2026-07-17T17:14:57.000Z",
-  "last_run_completed_at": "2026-07-17T17:14:57.000Z",
+  "run_number": 23,
+  "last_run_started_at": "2026-07-17T18:29:40.000Z",
+  "last_run_completed_at": "2026-07-17T18:29:40.000Z",
   "future_phase_boundary": {
     "phase": "F04",
     "status": "ELIGIBLE_AFTER_F03",

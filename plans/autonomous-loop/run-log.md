@@ -649,3 +649,21 @@ never set by the executor) does not match the email verified on the
 `TheBayoumi` GitHub/Vercel account, matching Vercel's documented
 committer-association block. The user reports this is now fixed; this
 revision retriggers a fresh deployment attempt to confirm.
+
+### Real deployment succeeded; health-status surface verified
+
+The blocked deployment's actual cause was confirmed by GitHub itself:
+"GitHub couldn't verify an account for the commit" -- neither the work email
+nor the user's personal Gmail address were verified on the `TheBayoumi`
+GitHub account. Switched the local (repo-scoped only) git identity to
+GitHub's guaranteed noreply address
+(`107598562+TheBayoumi@users.noreply.github.com`), amended and
+force-pushed the affected unmerged commit (`f5206e2` -> `787534a`, content
+unchanged, confirmed via `git diff`). The resulting deployment
+`dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5` reached `readyState=READY`
+(target=preview, region=iad1); GitHub commit status `success` ("Deployment
+has completed"). The user visually confirmed (browser access bypasses
+Vercel's Deployment Protection SSO wall, which blocked the executor's own
+fetch attempts) that the deployed page renders the F01/F02 health-status
+surface showing API unavailable/offline, the correct and expected behavior
+since this web-tier-only deployment has no API origin configured.
