@@ -122,13 +122,19 @@ prose is a synchronized human-readable projection.
   verification (`gh secret list`, GitHub check-runs, and commit-status
   queries) confirmed no Vercel secret or connected project existed before
   this phase began. A real Vercel account, organization, and project
-  (`web`, scoped to `apps/web`) now exist locally via the Vercel CLI, with
-  `.vercel/` and `.env.local` confirmed git-ignored and untracked. Connecting
-  Vercel's GitHub Git integration requires authorizing a GitHub Login
-  Connection on the Vercel account through the Vercel dashboard, a
-  browser-based action only the account owner can complete; this is F04's
-  next blocking dependency. No FastAPI deployment, PaaS vendor selection, or
-  V00/V01 evidence is introduced.
+  (`web`, scoped to `apps/web`) now exist via the Vercel CLI, with
+  `.vercel/` and `.env.local` confirmed git-ignored and untracked. The user
+  authorized a GitHub Login Connection on the Vercel account and ran
+  `vercel git connect`, which succeeded; verified via the Vercel REST API
+  that `link.type=github`, `link.repo=ai-learning-platform`. A real defect
+  was found and fixed: the project's Root Directory was `.` (repo root,
+  which fails Next.js detection); corrected to `apps/web` via
+  `PATCH /v9/projects/{id}`, confirmed via a follow-up `GET`. No GitHub
+  Actions secret was created; Vercel's native GitHub App integration needs
+  none. Remaining work is a real preview deployment, verified safe
+  API-unavailable behavior, rollback evidence, and the acceptance-state
+  revision. No FastAPI deployment, PaaS vendor selection, or V00/V01
+  evidence is introduced.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This amendment does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.

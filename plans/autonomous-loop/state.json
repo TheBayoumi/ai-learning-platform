@@ -4,8 +4,8 @@
   "active_phase": "F03",
   "active_slice": "F04-topology-decision-and-definition",
   "gate_decision": "Continue",
-  "last_completed_action": "Formally defined F04 in specs/roadmap.md and plans/F04-vercel-deployment-baseline.md. Recorded the required topology decision: specs/tech-stack.md approves containers on a managed PaaS as the backend runtime (binding); only the vendor is Provisional. F04 selects Option 2 from GitHub issue #3 (Vercel hosts only the Next.js web tier). Verified directly, not assumed, that no Vercel secret or connected project existed before this phase. A real Vercel account, org, and project now exist locally via the Vercel CLI, confirmed git-ignored. Connecting Vercel's GitHub Git integration failed with 'You need to add a Login Connection to your GitHub account first' -- a browser-based action only the account owner can complete.",
-  "next_action": "User authorizes a GitHub Login Connection on the Vercel account via the Vercel dashboard, then confirms so the Vercel-GitHub Git integration can be connected for apps/web and a real preview deployment with GitHub-linked check evidence can be produced.",
+  "last_completed_action": "Verified the Vercel-GitHub Git integration is live (link.type=github, link.repo=ai-learning-platform via GET /v9/projects/{id}) after the user authorized a GitHub Login Connection and ran vercel git connect. Found and fixed a real defect: rootDirectory was \".\" (repo root, fails Next.js detection); corrected to \"apps/web\" via PATCH /v9/projects/{id}, confirmed via follow-up GET.",
+  "next_action": "Push this evidence-recording revision to trigger a real Vercel preview deployment tied to the exact commit SHA, then verify GitHub-linked check evidence, safe API-unavailable behavior, confidentiality, and rollback.",
   "stop_reason": "F04 definition is complete and IN_PROGRESS. Implementation is blocked on a real Vercel-GitHub Login Connection, a browser OAuth action only the user can perform. F03 remains PASSED / Continue. V00 remains WAITING_EXTERNAL / Revise; V01 remains locked.",
   "validation_track": {
     "active_phase": "V00",
@@ -27,7 +27,7 @@
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-17T13:12:18.000Z"
+    "generated_at": "2026-07-17T17:14:57.000Z"
   },
   "external_blockers": [
     "v00.symmetric_demand",
@@ -53,7 +53,7 @@
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
     "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "b8d743abee02a1ec33fecfcc9304b856a733cca25016076609bd349e1841f5cf",
-    "plans/implementation-inventory.json": "e02cbb9ff014e2c9fa86e8a2b5e13686e020f9daf183fa260f0cdbea087ad12c",
+    "plans/implementation-inventory.json": "5645fdc96d49d0a2a0d4fe0bd0563b1af682e2c781cdd91661b8669c9a4a1fd3",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "597e36eeec0a61abb46607de8bc3405f283a9dea6265e98e516c02c6efe99877",
@@ -68,13 +68,13 @@
     "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "8e48b53c2194af095b2042d5ba3b8b18343664839aaf647597b77e51d8daaa9c",
     "apps/api/tests/test_phase_gate.py": "74d3987081518711cb90564c78837b648e17e4872b0766fb123c6e693239c897",
     "scripts/phase_gate.py": "6f4b92f92ece4a9c1a93df6e8b07212f7387138f419ef494a166e00c6d3fb709",
-    "plans/implementation-inventory.md": "fd68d1f626e3b46a2e11fb677e9a6de98d47a16ca078a66e726e3f910728a7f8",
-    "plans/F04-vercel-deployment-baseline.md": "f5146fd3beb36763725914efef09f0691a274696e6aae3e1c0ce5772a29213df"
+    "plans/implementation-inventory.md": "728a101fbff0464a7bc62806a3786261e5b25a8b13e50e118762dd09ad349436",
+    "plans/F04-vercel-deployment-baseline.md": "fdc27f32d4a3fe95a0d8a8a2d337067003c462cbce8ed38c21795c1499a8c41b"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 21,
-  "last_run_started_at": "2026-07-17T13:12:18.000Z",
-  "last_run_completed_at": "2026-07-17T13:13:21.000Z",
+  "run_number": 22,
+  "last_run_started_at": "2026-07-17T17:14:57.000Z",
+  "last_run_completed_at": "2026-07-17T17:14:57.000Z",
   "future_phase_boundary": {
     "phase": "F04",
     "status": "ELIGIBLE_AFTER_F03",

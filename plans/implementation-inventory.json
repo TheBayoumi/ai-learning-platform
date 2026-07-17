@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-17T13:12:18.000Z",
+  "generated_at": "2026-07-17T17:14:57.000Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
     "head": "fe49b609767e27d52fae999c229502ed98866dff",
@@ -505,8 +505,11 @@
         },
         {
           "condition": "A real Vercel account, project, and GitHub Login Connection exist to enable GitHub-linked preview deployment checks",
-          "result": "PENDING",
-          "evidence": []
+          "result": "PASSED",
+          "evidence": [
+            "vercel git connect succeeded: project prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN linked to github.com/TheBayoumi/ai-learning-platform (link.type=github, productionBranch=main)",
+            "Root Directory misconfiguration (was \".\", repo root) fixed via Vercel REST API PATCH to \"apps/web\"; confirmed via GET showing rootDirectory=apps/web, framework=nextjs"
+          ]
         }
       ],
       "implemented_files": [
@@ -518,9 +521,6 @@
         "No application code changed; F00-F03 local and CI evidence remains applicable unchanged"
       ],
       "missing_outputs": [
-        "Vercel project Root Directory configuration verified",
-        "GitHub Login Connection authorized on the Vercel account (browser OAuth, user action only)",
-        "Vercel-GitHub Git integration connected for apps/web",
         "Preview deployment of the exact implementation head with GitHub-linked check evidence",
         "Deployed health-status surface verified to report API-unavailable safely",
         "Browser-asset confidentiality scan run against the real deployed build",
@@ -529,7 +529,7 @@
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "User authorizes a GitHub Login Connection on the Vercel account (vercel.com dashboard), then confirms so the GitHub Git integration can be connected for apps/web",
+      "next_smallest_action": "Push a new commit to trigger a real Vercel preview deployment tied to the exact PR head SHA, then verify GitHub-linked check evidence",
       "gate_decision": null,
       "blocker_ids": [],
       "claims": [],

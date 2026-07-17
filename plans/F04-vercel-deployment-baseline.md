@@ -3,9 +3,11 @@
 **Phase:** `F04 - Vercel Deployment Baseline`
 **Class:** Technical foundation
 **Status:** `IN_PROGRESS`. Phase formally defined in `specs/roadmap.md` and this
-ExecPlan. Implementation is blocked pending a real, externally created Vercel
-account and project connected to this repository; no fabricated evidence is
-substituted.
+ExecPlan; definition revision confirmed via exact-head CI on pull request #5.
+A real Vercel account, project, and GitHub Git integration now exist and are
+verified connected to `apps/web` with the correct Root Directory. Remaining
+work is a real preview deployment, verified safe API-unavailable behavior,
+rollback evidence, and the separate acceptance-state revision.
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** A pull request on `automation/f04-vercel-deployment-baseline`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -126,33 +128,32 @@ F04 passes only when:
 `V01`, does not select a PaaS vendor for the API, and makes no
 production-readiness, SLA, or commercial-launch claim.
 
-## Blocking Dependency: External Vercel Account and Project
+## External Dependency: Vercel Account, Project, and GitHub Connection (resolved)
 
-This phase requires a real Vercel account and a real Vercel project
-connected to `TheBayoumi/ai-learning-platform`, scoped to `apps/web`. This
-cannot be created, fabricated, or simulated by the executor:
+This phase required a real Vercel account, project, and GitHub Git
+integration. This was resolved externally, not fabricated:
 
-- Creating a Vercel account is an identity- and billing-bound action only
-  the repository owner can perform.
-- Connecting a GitHub repository to a new Vercel project requires
-  authenticating to Vercel as the account owner (via the Vercel dashboard's
-  "Import Git Repository" flow, or the Vercel CLI with an owner-issued
-  token).
-- No GitHub secret (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) or
-  Vercel GitHub App installation currently exists on this repository
-  (verified directly, not assumed).
+- The user created a Vercel account, installed the CLI, logged in, and
+  linked project `web` (`prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN`), scoped to
+  `apps/web`. `.vercel/` and `.env.local` are confirmed git-ignored.
+- `vercel git connect` initially failed with "You need to add a Login
+  Connection to your GitHub account first" (browser OAuth). The user
+  authorized this in the Vercel dashboard and reran `vercel git connect`,
+  which succeeded.
+- Verified via the Vercel REST API (`GET /v9/projects/{id}`): `link.type` is
+  `github`, `link.repo` is `ai-learning-platform`, `link.org` is
+  `TheBayoumi`, `link.productionBranch` is `main`.
+- Found and fixed a real defect: the project's `rootDirectory` was `.` (repo
+  root), which would have broken every GitHub-triggered preview build with
+  "No Next.js version detected" (reproduced earlier when deploying from the
+  repo root). Fixed via `PATCH /v9/projects/{id}` with
+  `rootDirectory=apps/web`; confirmed via a follow-up `GET` showing
+  `rootDirectory=apps/web`, `framework=nextjs`.
 
-Vercel's standard, recommended GitHub integration (the Vercel GitHub App)
-requires no repository secrets at all: once the project is imported with
-`apps/web` as its root directory, Vercel automatically creates preview
-deployments for every pull request and posts deployment status checks to
-the exact commit SHA. This is the simplest path and is what this ExecPlan
-assumes unless the user directs otherwise.
-
-**Requested user action:** create (or identify an existing) Vercel account,
-import this GitHub repository as a new Vercel project with `apps/web` as the
-root directory, and confirm once the project exists. No token needs to be
-shared in chat; the GitHub App integration handles authentication natively.
+No GitHub Actions secret (`VERCEL_TOKEN`, `VERCEL_ORG_ID`,
+`VERCEL_PROJECT_ID`) was created; Vercel's native GitHub App integration
+requires none. Preview deployments and their GitHub check/deployment status
+are produced automatically by Vercel on push, tied to the exact commit SHA.
 
 ## Performance and Resources
 
