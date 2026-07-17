@@ -579,3 +579,32 @@ full API tests in 27.84 seconds at 97% overall coverage with `smoke.py` at
 95%. Ruff, native/Linux/Win32 mypy, both contracts, 24 hashes, final newlines,
 diff checks, and two real smokes also passed. Run `29523254781` remains repair
 evidence only; a new exact five-check implementation revision is required.
+
+### F03 exact implementation attempt 3 - accepted on both exact-head runs
+
+Pushed the accepted pre-capture runtime-log repair as implementation revision
+`fe49b609767e27d52fae999c229502ed98866dff`. Two exact-head GitHub Actions runs
+completed against that exact SHA: push run `29528587173` and pull-request run
+`29528587169`. All five required jobs succeeded in both runs: API quality
+(`87723081841` / `87723082409`), Web quality (`87723081644` / `87723082444`),
+Runtime smoke (`87723264188` / `87723243300`), Phase gate (`87723082122` /
+`87723082447`), and Gate projection (`87723443710` / `87723382365`) — ten job
+executions total, all `success`. This satisfies the implementation-side exit
+condition of the F03 acceptance sequence: a repaired implementation revision
+passing all five exact-head checks.
+
+### F03 acceptance-state revision published
+
+This revision updates the F03 ExecPlan, autonomous state, checkpoint, run log,
+and implementation inventory to record implementation revision
+`fe49b609767e27d52fae999c229502ed98866dff`'s exact five-job success and sets
+F03 to `PASSED / Continue`. No application, controller, or workflow code
+changed; only documentation and state/inventory records were updated, so the
+previously reproduced local API, web, runtime, and controller evidence for the
+unchanged implementation remains applicable. The controller-policy schema,
+hash, and consistency rules were re-validated locally against the updated
+`state.json` and `implementation-inventory.json` before this revision was
+committed. This acceptance-state revision's own exact five-job GitHub run is
+now required and will be recorded as durable pull request #1 evidence once
+observed. A successful implementation SHA does not automatically accept this
+later state-update SHA.

@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-16T19:08:11.325Z",
+  "generated_at": "2026-07-17T00:10:00.000Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
-    "head": "5b19455034583da0d0ec40c82edf70423b93b2df",
-    "working_tree": "F03 pre-capture runtime-log repair is independently accepted after 134 controller, 402 full API, 126 runtime, 47 supervisor, and two real smoke checks; the exact five-check implementation and acceptance revisions remain pending",
+    "head": "fe49b609767e27d52fae999c229502ed98866dff",
+    "working_tree": "F03 implementation revision fe49b609767e27d52fae999c229502ed98866dff passed all five required GitHub jobs on both its push and pull-request runs; this acceptance-state revision records F03 as PASSED / Continue and requires its own exact five-job GitHub run before durable confirmation in pull request #1",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -359,7 +359,7 @@
       "id": "F03",
       "name": "GitHub Phase-Gate Control Plane",
       "lane": "foundation",
-      "status": "IMPLEMENTED_UNVERIFIED",
+      "status": "PASSED",
       "entry_conditions": [
         {
           "condition": "F02 passes on its exact controller revision",
@@ -409,9 +409,11 @@
         },
         {
           "condition": "The exact implementation revision passes all five required GitHub jobs",
-          "result": "PENDING",
+          "result": "PASSED",
           "evidence": [
-            "Revision 34d5de2b5af15ec39e09b0f91ed5d358020dcfed run 29523254781 was rejected: API quality, Web quality, and Phase gate passed; Runtime smoke and Gate projection failed"
+            "Implementation revision fe49b609767e27d52fae999c229502ed98866dff",
+            "GitHub Actions push run 29528587173: API quality 87723081841, Web quality 87723081644, Runtime smoke 87723264188, Phase gate 87723082122, Gate projection 87723443710 all succeeded",
+            "GitHub Actions pull-request run 29528587169: API quality 87723082409, Web quality 87723082444, Runtime smoke 87723243300, Phase gate 87723082447, Gate projection 87723382365 all succeeded"
           ]
         }
       ],
@@ -445,20 +447,15 @@
         "GitHub run 29523254781 at 34d5de2b5af15ec39e09b0f91ed5d358020dcfed failed closed: API job 87705173886, web job 87705173871, and Phase gate job 87705173912 succeeded; Runtime smoke job 87705355479 and Gate projection job 87705481759 failed",
         "apps/api/tests/test_phase_gate.py: 134 passed in 9.80 seconds; controller module 97% branch-aware coverage in the full suite",
         "complete API suite: 402 passed in 26.69 seconds; 97% overall branch-aware coverage; smoke.py 95%",
-        "independent final verification: ACCEPT with no material finding after 126 runtime, 47 supervisor, 134 controller, and 402 full API tests plus two real smokes, static gates, 24 hashes, JSON, final newlines, and diff checks"
+        "independent final verification: ACCEPT with no material finding after 126 runtime, 47 supervisor, 134 controller, and 402 full API tests plus two real smokes, static gates, 24 hashes, JSON, final newlines, and diff checks",
+        "Exact implementation revision fe49b609767e27d52fae999c229502ed98866dff passed both GitHub Actions runs 29528587173 (push) and 29528587169 (pull_request): all five required jobs (API quality, Web quality, Runtime smoke, Phase gate, Gate projection) succeeded on the exact SHA in both runs"
       ],
-      "missing_outputs": [
-        "Exact implementation revision must pass all five required GitHub checks",
-        "Separate acceptance-state revision must pass all five required GitHub checks"
-      ],
+      "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Commit and push the independently accepted runtime-log repair, then require all five exact GitHub jobs",
-      "gate_decision": null,
-      "blocker_ids": [
-        "f03.implementation_checks",
-        "f03.acceptance_revision"
-      ],
+      "next_smallest_action": "No further F03 implementation; F04 Vercel deployment baseline is the next eligible foundation phase and is out of scope for this invocation",
+      "gate_decision": "Continue",
+      "blocker_ids": [],
       "claims": [],
       "gate_effects": {
         "satisfies": [],

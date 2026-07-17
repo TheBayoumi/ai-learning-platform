@@ -1,9 +1,11 @@
 # Implementation Inventory
 
-Generated from exact-CI-accepted F02 controller revision
-`8963101805d6f29f4701c91764b5563f07ff07c8` and GitHub Actions run
-`29511515229`, then updated for the locally verified F03 GitHub phase-gate
-control-plane implementation. F03 is automation, not product runtime.
+Generated from exact-CI-accepted F03 implementation revision
+`fe49b609767e27d52fae999c229502ed98866dff`, which passed GitHub Actions
+push run `29528587173` and pull-request run `29528587169` (API quality,
+Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded
+in both runs). This acceptance-state revision records F03 as `PASSED`.
+F03 is automation, not product runtime.
 The machine-readable record is `plans/implementation-inventory.json`; this
 prose is a synchronized human-readable projection.
 
@@ -95,25 +97,20 @@ prose is a synchronized human-readable projection.
   `29511515229`: API, web, and runtime-smoke jobs all succeeded. F02 is
   `PASSED / Continue`. Exporters, backend, product metrics, learner identifiers,
   V17A behavior, containers, and deployment remain absent.
-- F03 is `IMPLEMENTED_UNVERIFIED` as the GitHub Phase-Gate Control Plane. Its
-  versioned policy, clean exact-head fail-closed validator, deterministic lane
-  projection, and 134 adversarial tests pass locally. The full 384-test API gate
-  remains at 97% branch-aware coverage; web and runtime gates pass.
-  Implementation attempt `9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21` was
-  correctly rejected by run `29521143904` because raw Windows CRLF checkout
-  hashes did not match Linux LF bytes. Canonical-LF hashing and a regression are
-  implemented and independently accepted. Its revision
+- F03 is `PASSED` as the GitHub Phase-Gate Control Plane. Implementation
+  attempt `9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21` was correctly rejected by
+  run `29521143904` because raw Windows CRLF checkout hashes did not match
+  Linux LF bytes; canonical-LF hashing and a regression repaired it. Revision
   `34d5de2b5af15ec39e09b0f91ed5d358020dcfed` was rejected by exact run
   `29523254781` when Linux Runtime smoke captured a framework-owned raw URL;
-  API, web, and Phase gate passed, while Runtime smoke and Gate projection
-  failed. The corrected repair preserves F02's byte-for-byte outer validation
-  and maps only ordinary framework stderr before capture; structured, proof, and
-  marker candidates remain unchanged and every filter failure fails closed. The
-  full 402-test API replay passes at 97% coverage with `smoke.py` at 95%, 126
-  runtime tests, both real smokes, and all static gates. Independent follow-up
-  verification returned `ACCEPT` with no material finding; a new exact
-  five-check implementation revision remains pending, followed by the separate
-  acceptance-state revision.
+  the corrected repair preserves F02's byte-for-byte outer validation and maps
+  only ordinary framework stderr before capture. Implementation revision
+  `fe49b609767e27d52fae999c229502ed98866dff` then passed exact GitHub Actions
+  push run `29528587173` and pull-request run `29528587169`: API quality, Web
+  quality, Runtime smoke, Phase gate, and Gate projection all succeeded on the
+  exact SHA in both runs. This acceptance-state revision records that evidence,
+  sets F03 to `PASSED / Continue`, and requires its own exact five-job GitHub
+  run before durable confirmation in pull request #1.
 - GitHub remains the source, CI, exact-revision acceptance, and integration
   control plane. Vercel deployment is outside F03 and remains a separately
   gated F04 boundary from issue #3. A pre-existing integration may create an
@@ -136,7 +133,7 @@ prose is a synchronized human-readable projection.
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
-| F03 | Foundation | `IMPLEMENTED_UNVERIFIED` | Repair is independently accepted; both exact five-check revisions remain |
+| F03 | Foundation | `PASSED` | Implementation revision fe49b60 passed exact runs 29528587173/29528587169; acceptance revision's own five checks pending |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -195,9 +192,9 @@ provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-Publish the independently accepted bounded F03 implementation revision
-and repair it until API quality, Web quality, Runtime smoke, Phase gate, and Gate
-projection all pass for that exact SHA. Then create a separate acceptance-state
-revision recording the immutable implementation evidence, require that newer
-SHA's own five checks, record both runs in pull request #1, and stop before F04.
-Do not treat F00-F03 as V00 evidence.
+This acceptance-state revision records F03 as `PASSED / Continue` from
+implementation revision `fe49b609767e27d52fae999c229502ed98866dff`'s exact
+five-job success. Require this acceptance-state revision's own exact five
+GitHub jobs to pass, record both revisions and both accepted workflow runs in
+pull request #1, and stop before F04. Do not treat F00-F03 as V00 evidence.
+F04 becomes the next eligible foundation phase only in a future invocation.

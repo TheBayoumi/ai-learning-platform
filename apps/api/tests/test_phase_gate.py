@@ -398,7 +398,7 @@ def test_roadmap_parses_ranges_all_preceding_and_horizons(controller_root: Path)
         (lambda value: _phase(value, "F03").update(name="Wrong"), "roadmap_inventory_disagreement"),
         (lambda value: _phase(value, "F03").update(status="UNKNOWN"), "inventory_status_invalid"),
         (
-            lambda value: _phase(value, "F03").update(gate_decision="Continue"),
+            lambda value: _phase(value, "V01").update(gate_decision="Continue"),
             "nonterminal_gate_present",
         ),
         (
@@ -504,7 +504,7 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
     ("mutation", "code"),
     [
         (lambda value: value.update(schema_version=2), "state_schema_invalid"),
-        (lambda value: value.update(status="READY"), "state_controller_status_disagreement"),
+        (lambda value: value.update(status="RUNNING"), "state_controller_status_disagreement"),
         (lambda value: value.update(active_phase="F02"), "state_active_phase_disagreement"),
         (
             lambda value: cast(dict[str, Any], value["foundation_track"]).update(
@@ -514,7 +514,7 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
         ),
         (
             lambda value: cast(dict[str, Any], value["foundation_track"]).update(
-                gate_decision="Continue"
+                gate_decision="Revise"
             ),
             "state_inventory_gate_disagreement",
         ),
@@ -856,7 +856,11 @@ def test_additional_policy_guards(
             "external_blocker_class_invalid",
         ),
         (
-            lambda value: _phase(value, "F03").update(blocker_ids=["v00.symmetric_demand"]),
+            lambda value: _phase(value, "F03").update(
+                status="IMPLEMENTED_UNVERIFIED",
+                gate_decision=None,
+                blocker_ids=["v00.symmetric_demand"],
+            ),
             "foundation_blocker_class_invalid",
         ),
         (
@@ -937,7 +941,7 @@ def test_claim_prerequisites_are_enforced(controller_root: Path) -> None:
             "state_track_status_invalid",
         ),
         (
-            lambda value: value.update(gate_decision="Continue"),
+            lambda value: value.update(gate_decision="Revise"),
             "state_controller_gate_disagreement",
         ),
         (

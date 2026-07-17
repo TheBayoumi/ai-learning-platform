@@ -6,12 +6,15 @@ Foundation phases F00-F02 are `PASSED / Continue`. F02 controller revision
 `8963101805d6f29f4701c91764b5563f07ff07c8` passed exact GitHub Actions run
 `29511515229`.
 
-`F03 - GitHub Phase-Gate Control Plane` is `IMPLEMENTED_UNVERIFIED` with a null
-gate decision. Pull request #1 is the persistent integration and evidence PR.
-The exact entry head is `5b19455034583da0d0ec40c82edf70423b93b2df`;
-its run `29514959237` passed API quality (`87677547747`), Web quality
-(`87677547757`), and Runtime smoke (`87677707977`) only. It predates the two F03
-jobs and cannot accept F03.
+`F03 - GitHub Phase-Gate Control Plane` is `PASSED / Continue`. Pull request #1
+is the persistent integration and evidence PR. Implementation revision
+`fe49b609767e27d52fae999c229502ed98866dff` passed exact GitHub Actions push run
+`29528587173` and pull-request run `29528587169`: API quality, Web quality,
+Runtime smoke, Phase gate, and Gate projection all succeeded on the exact SHA
+in both runs (ten job executions total). This checkpoint revision is the
+separate acceptance-state commit; its own exact five-job GitHub run is the
+final confirmation step and will be recorded as durable PR evidence once
+observed.
 
 The validation lane remains `V00 - Candidate Role Evidence`,
 `WAITING_EXTERNAL / Revise`; V01 remains locked. No human review is pending.
@@ -23,7 +26,9 @@ CI, exact-revision, and integration control plane; requires separate
 implementation and acceptance-state revisions; and rejects previous-head,
 pending, failed, skipped, cancelled, or stale checks. GitHub issue #2 is the
 complete F03 contract. GitHub issue #3 reserves the later F04 Vercel deployment
-baseline and remains locked until F03 is accepted.
+baseline; it becomes eligible only after this acceptance-state revision's own
+exact five-job GitHub run is confirmed, and remains out of scope for this
+invocation regardless.
 
 The obsolete container/preview definition at the entry head has been replaced.
 F03 adds no deployment or Vercel configuration. Any preview created by an
@@ -163,9 +168,10 @@ Controller and exact GitHub durations are recorded per implementation attempt.
 
 ## Exact next action
 
-Commit the independently accepted runtime-log repair, run the clean exact-head
-Phase gate and Gate projection, push it, and repair until all five exact GitHub
-jobs pass. Then
-create and push the separate acceptance-state
-revision, require its own exact five jobs, record both successful revisions in
-pull request #1, and stop before F04.
+Push this acceptance-state revision and require its own exact five GitHub jobs
+(API quality, Web quality, Runtime smoke, Phase gate, Gate projection) to pass
+on its exact SHA. Repair any failure with a bounded new revision and repeat
+until they pass. Once confirmed, record both the implementation revision
+(`fe49b609767e27d52fae999c229502ed98866dff`) and this acceptance revision, with
+both accepted workflow runs, as durable evidence in pull request #1, and stop
+before F04.
