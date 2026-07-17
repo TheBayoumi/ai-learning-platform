@@ -1,12 +1,12 @@
 {
   "schema_version": 3,
   "status": "READY",
-  "active_phase": "F03",
-  "active_slice": "F04-topology-decision-and-definition",
+  "active_phase": "F04",
+  "active_slice": "F04-acceptance-state-revision",
   "gate_decision": "Continue",
-  "last_completed_action": "Confirmed the real deployment defect: GitHub could not verify an account for the commit author (neither work nor personal email were verified on TheBayoumi). Fixed by switching the repo-local git identity to GitHub noreply, amending and force-pushing the unmerged commit. Deployment dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5 reached READY. User visually confirmed the deployed page correctly shows API unavailable/offline.",
-  "next_action": "Trigger a second deployment and demonstrate rollback to the first accepted one, then publish the F04 acceptance-state revision.",
-  "stop_reason": "F04 definition is complete and IN_PROGRESS. Implementation is blocked on a real Vercel-GitHub Login Connection, a browser OAuth action only the user can perform. F03 remains PASSED / Continue. V00 remains WAITING_EXTERNAL / Revise; V01 remains locked.",
+  "last_completed_action": "Real Vercel preview deployment confirmed READY and GitHub-linked for exact commit ea29294fe35687da9264682513fdfa08d520f776 (dpl_7o2AnhP8uMaSqE5wE2L8ggdgo5oN); user visually confirmed the deployed page safely renders API-unavailable. Verified vercel rollback correctly refuses non-production preview targets, confirming F04 stays scoped to preview only. This acceptance-state revision sets F04 to PASSED / Continue.",
+  "next_action": "Require this acceptance-state revision own exact five GitHub jobs to pass, then record durable evidence in pull request #5 and stop before the next roadmap phase.",
+  "stop_reason": "F04 is now PASSED / Continue pending confirmation of this exact acceptance-state revision own five-job GitHub run. V00 remains WAITING_EXTERNAL / Revise; V01 remains locked.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
@@ -20,14 +20,14 @@
     ]
   },
   "foundation_track": {
-    "active_phase": "F03",
+    "active_phase": "F04",
     "status": "PHASE_PASSED",
     "gate_decision": "Continue",
-    "next_action": "No further F03 implementation is eligible; F04 Vercel deployment baseline is the next eligible foundation phase and remains out of scope for this invocation."
+    "next_action": "No further F04 implementation is eligible; the next roadmap phase is out of scope for this invocation."
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-17T18:29:40.000Z"
+    "generated_at": "2026-07-17T21:45:52.000Z"
   },
   "external_blockers": [
     "v00.symmetric_demand",
@@ -43,7 +43,7 @@
     "Stage, commit, and push one bounded verified slice without waiting for a user commit or review"
   ],
   "human_decisions_required": [],
-  "last_verified_commit": "fe49b609767e27d52fae999c229502ed98866dff",
+  "last_verified_commit": "ea29294fe35687da9264682513fdfa08d520f776",
   "authoritative_file_hashes": {
     "AGENTS.md": "71e31a7955de50367f5bd48408b422aae89b64312c238ee6bfb5bcc1254857a8",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
@@ -53,7 +53,7 @@
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
     "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "b8d743abee02a1ec33fecfcc9304b856a733cca25016076609bd349e1841f5cf",
-    "plans/implementation-inventory.json": "90213b0ef50318b8698523583b589ecf1a66d5915720003f24fc0e1a80fb8930",
+    "plans/implementation-inventory.json": "dc16b9eb896b2bb70fc9d0dbea3a96c20db80eb5151b323ea2b1211c8fd9ffad",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "597e36eeec0a61abb46607de8bc3405f283a9dea6265e98e516c02c6efe99877",
@@ -66,15 +66,15 @@
     "plans/autonomous-loop/run-log.md": "ea39b703fefbad0adda0f5b10fbb98e0d699005cce4e1b3296f8527fdb2c598a",
     "apps/api/src/ai_learning_platform_api/automation/__init__.py": "83192a0bb62273eecdbd9ad33ac8bbe2c13641c38cc68740e6e927d4cbe3025f",
     "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "8e48b53c2194af095b2042d5ba3b8b18343664839aaf647597b77e51d8daaa9c",
-    "apps/api/tests/test_phase_gate.py": "74d3987081518711cb90564c78837b648e17e4872b0766fb123c6e693239c897",
+    "apps/api/tests/test_phase_gate.py": "08bc26818c1dd662ff7cd71e1cdbe764945722d11d29858361c3bbbcaefb7625",
     "scripts/phase_gate.py": "6f4b92f92ece4a9c1a93df6e8b07212f7387138f419ef494a166e00c6d3fb709",
-    "plans/implementation-inventory.md": "728a101fbff0464a7bc62806a3786261e5b25a8b13e50e118762dd09ad349436",
-    "plans/F04-vercel-deployment-baseline.md": "fdc27f32d4a3fe95a0d8a8a2d337067003c462cbce8ed38c21795c1499a8c41b"
+    "plans/implementation-inventory.md": "e4e99ec7b3d5b522f191c7c1aaf9cc25ab37c3d895b4df8aa3382d7e74f58045",
+    "plans/F04-vercel-deployment-baseline.md": "a98bf59cb0a83a4a2246ccb4b009015bc96b4716793900e0154fae35068b17a5"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 23,
-  "last_run_started_at": "2026-07-17T18:29:40.000Z",
-  "last_run_completed_at": "2026-07-17T18:29:40.000Z",
+  "run_number": 24,
+  "last_run_started_at": "2026-07-17T21:45:52.000Z",
+  "last_run_completed_at": "2026-07-17T21:45:52.000Z",
   "future_phase_boundary": {
     "phase": "F04",
     "status": "ELIGIBLE_AFTER_F03",

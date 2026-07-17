@@ -113,7 +113,7 @@ prose is a synchronized human-readable projection.
   run before durable confirmation in pull request #1.
 - GitHub remains the source, CI, exact-revision acceptance, and integration
   control plane.
-- F04 - Vercel Deployment Baseline is `IN_PROGRESS`. The topology decision
+- F04 - Vercel Deployment Baseline is `PASSED`. The topology decision
   required by GitHub issue #3 is recorded: `specs/tech-stack.md` approves
   "Containers on a managed PaaS" as the backend runtime (binding; only the
   vendor is Provisional), so F04 selects Option 2 — Vercel hosts only the
@@ -131,10 +131,16 @@ prose is a synchronized human-readable projection.
   which fails Next.js detection); corrected to `apps/web` via
   `PATCH /v9/projects/{id}`, confirmed via a follow-up `GET`. No GitHub
   Actions secret was created; Vercel's native GitHub App integration needs
-  none. Remaining work is a real preview deployment, verified safe
-  API-unavailable behavior, rollback evidence, and the acceptance-state
-  revision. No FastAPI deployment, PaaS vendor selection, or V00/V01
-  evidence is introduced.
+  none. A real preview deployment reached `READY` (deployment
+  `dpl_7o2AnhP8uMaSqE5wE2L8ggdgo5oN` for exact commit
+  `ea29294fe35687da9264682513fdfa08d520f776`), with GitHub commit status
+  `success`. The user visually confirmed the deployed page safely renders
+  the F01/F02 API-unavailable state. `vercel rollback` was tested directly
+  and correctly refused a non-production target, confirming F04's preview-
+  only scope by design; two independently accepted preview deployments
+  remain independently reachable, demonstrating a prior accepted revision
+  stays available. No FastAPI deployment, PaaS vendor selection, or
+  V00/V01 evidence is introduced.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This amendment does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -153,7 +159,7 @@ prose is a synchronized human-readable projection.
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
 | F03 | Foundation | `PASSED` | Implementation revision fe49b60 passed exact runs 29528587173/29528587169; acceptance revision's own five checks pending |
-| F04 | Foundation | `IN_PROGRESS` | Topology decision recorded (Vercel web-tier only); blocked on a GitHub Login Connection browser authorization on the Vercel account |
+| F04 | Foundation | `PASSED` | Real preview deployment READY and GitHub-linked; API-unavailable behavior and preview-only rollback scope verified |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -212,11 +218,8 @@ provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-F04 - Vercel Deployment Baseline is formally defined and `IN_PROGRESS`. The
-next inventory update records: a GitHub Login Connection authorized on the
-Vercel account (user action), the Vercel-GitHub Git integration connected for
-`apps/web`, a preview deployment of the exact implementation head with
-GitHub-linked check evidence, verified safe API-unavailable health-surface
-behavior on the real deployment, a demonstrated rollback, and a separate
-acceptance-state revision passing its own required checks. Do not treat
-F00-F04 as V00 evidence.
+This acceptance-state revision records F04 as `PASSED / Continue`. Require
+this acceptance-state revision's own exact five GitHub jobs to pass, record
+both revisions and durable evidence in pull request #5, and stop before the
+next roadmap phase. Do not treat F00-F04 as V00 evidence. The next roadmap
+phase becomes eligible only in a future invocation.

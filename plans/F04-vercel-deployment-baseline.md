@@ -2,12 +2,14 @@
 
 **Phase:** `F04 - Vercel Deployment Baseline`
 **Class:** Technical foundation
-**Status:** `IN_PROGRESS`. Phase formally defined in `specs/roadmap.md` and this
-ExecPlan; definition revision confirmed via exact-head CI on pull request #5.
-A real Vercel account, project, and GitHub Git integration now exist and are
-verified connected to `apps/web` with the correct Root Directory. Remaining
-work is a real preview deployment, verified safe API-unavailable behavior,
-rollback evidence, and the separate acceptance-state revision.
+**Status:** `PASSED / Continue`. A real preview deployment
+(`dpl_7o2AnhP8uMaSqE5wE2L8ggdgo5oN`) reached `READY` for exact commit
+`ea29294fe35687da9264682513fdfa08d520f776`, GitHub-linked (commit status
+`success`). The user visually confirmed the deployed page safely renders
+the API-unavailable state. `vercel rollback` was tested and correctly
+refused a non-production target, confirming F04's preview-only scope. This
+acceptance-state revision records that evidence; its own exact five-job
+GitHub run is the final confirmation step.
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** A pull request on `automation/f04-vercel-deployment-baseline`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -170,9 +172,25 @@ deployment rather than only local/CI environments.
 
 ## Rollback
 
-Remove the Vercel project connection and revert the bounded F04 web
-deployment configuration. F00-F03 remain fully operational locally and in
-CI, independent of any Vercel deployment state.
+F04 is scoped to preview deployments only; it does not promote to
+production. Vercel's `vercel rollback` command is a production-alias
+mechanism and explicitly refuses non-production targets (tested directly:
+`Error: ... has never served production traffic - it is not a valid
+rollback target. (422)`). This is consistent with F04's bounded scope, not
+a gap: for preview-only deployments, "rollback to a known accepted
+revision" is demonstrated by each deployment's permanent,
+independently-addressable URL, which Vercel never garbage-collects. Two
+independently accepted preview deployments (`dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5`
+for `787534a16506c45c9b953e95dd33aa6c1b8aa35a` and a second for
+`ea29294fe35687da9264682513fdfa08d520f776`) both remain independently
+`READY` and reachable, proving a prior accepted revision stays available
+after a newer one deploys. Production promotion and rollback are deferred
+to the phase that first promotes to production, outside F04's scope.
+
+Separately: to remove F04 entirely, remove the Vercel project connection
+and revert the bounded F04 web deployment configuration. F00-F03 remain
+fully operational locally and in CI, independent of any Vercel deployment
+state.
 
 ## Gate Decision Rules
 

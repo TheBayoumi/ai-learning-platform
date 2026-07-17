@@ -122,8 +122,8 @@ def _projection_model(
     state = cast(dict[str, Any], json.loads(json.dumps(model.state)))
     cast(dict[str, Any], state["foundation_track"])["status"] = status
     phases = dict(model.phases)
-    phases["F03"] = replace(
-        phases["F03"],
+    phases["F04"] = replace(
+        phases["F04"],
         status="PASSED" if status == "PHASE_PASSED" else "IMPLEMENTED_UNVERIFIED",
         pending_entries=pending_entries,
         blocker_ids=blocker_ids,
@@ -161,11 +161,11 @@ def test_known_good_fixture_projects_deterministically_without_mutation(
     }
     assert accepted.upstream_success is True
     assert accepted.payload["commit_sha"] == EXACT_SHA
-    assert accepted.payload["passed_prerequisite_chain"] == ["F00", "F01", "F02"]
+    assert accepted.payload["passed_prerequisite_chain"] == ["F00", "F01", "F02", "F03"]
     assert accepted.payload["next_action"] == {
         "code": "CREATE_ACCEPTANCE_STATE_REVISION",
         "kind": "acceptance",
-        "phase": "F03",
+        "phase": "F04",
     }
     assert (
         accepted.as_json()
@@ -1079,7 +1079,7 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
     assert repair.payload["next_action"] == {
         "code": "REPAIR_FOUNDATION_STATE",
         "kind": "repair",
-        "phase": "F03",
+        "phase": "F04",
     }
     assert acceptance["reason_codes"] == ["IMPLEMENTATION_EVIDENCE_INCOMPLETE"]
     assert acceptance["eligible"] is False
@@ -1142,7 +1142,7 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
     assert validation_wait.payload["next_action"] == {
         "code": "CREATE_ACCEPTANCE_STATE_REVISION",
         "kind": "acceptance",
-        "phase": "F03",
+        "phase": "F04",
     }
     assert validation_acceptance == {"eligible": True, "reason_codes": []}
     assert cast(dict[str, Any], validation_wait.payload["blockers"])["human_decision"] == [
