@@ -1,0 +1,1663 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-07-17T00:10:00.000Z",
+  "repository": {
+    "branch": "automation/v00-phase-loop",
+    "head": "fe49b609767e27d52fae999c229502ed98866dff",
+    "working_tree": "F03 implementation revision fe49b609767e27d52fae999c229502ed98866dff passed all five required GitHub jobs on both its push and pull-request runs; this acceptance-state revision records F03 as PASSED / Continue and requires its own exact five-job GitHub run before durable confirmation in pull request #1",
+    "source_of_truth": [
+      "specs/roadmap.md",
+      "plans/autonomous-loop/state.json",
+      "plans/F00-repository-quality-foundation.md",
+      "plans/F01-local-runtime-integration-and-api-contract-baseline.md",
+      "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+      "apps/api/openapi/health.openapi.json",
+      "apps/web/server/contracts/generated/health-response.ts",
+      "apps/web/server/config/api-base.ts",
+      "apps/web/server/diagnostics/health-diagnostics.ts",
+      "apps/web/server/health/health-adapter.ts",
+      "apps/api/src/ai_learning_platform_api/development/smoke.py",
+      "docs/validation/V00-candidate-role-evidence.md",
+      "current source, manifests, lockfiles, and executable tests",
+      "plans/F03-github-phase-gate-control-plane.md",
+      "plans/autonomous-loop/controller-policy.json",
+      ".github/workflows/ci.yml",
+      "apps/api/src/ai_learning_platform_api/automation/phase_gate.py",
+      "apps/api/tests/test_phase_gate.py"
+    ]
+  },
+  "runtime_capabilities": {
+    "implemented": [
+      "FastAPI application factory",
+      "validated process settings",
+      "structured JSON process logging",
+      "configuration-only GET /health/live and GET /health/ready",
+      "generated FastAPI OpenAPI document",
+      "canonical byte-stable health OpenAPI artifact and non-mutating drift gate",
+      "OpenAPI-derived generated TypeScript health response type and runtime guard",
+      "validated server-only canonical loopback API-base configuration",
+      "replaceable bounded server-side liveness adapter",
+      "request-time server-rendered local API available, unavailable, and invalid-response states",
+      "development-only cross-platform API and web process supervisor with bounded owned-tree cleanup",
+      "deterministic local/CI cross-process health-contract smoke with bounded cleanup",
+      "app-local exporter-free W3C context and one allowlisted confidential event for GET /health/live, accepted on exact F02-01 CI",
+      "server-only web client context propagation and one bounded confidential health-completion event, accepted on exact F02-02 CI",
+      "production browser-asset confidentiality scan for fixed web diagnostic and API-configuration markers",
+      "automated real-process correlation, safe-root, concurrency, induced-failure, confidentiality, event-volume, resource, and cleanup gate, accepted on exact F02-03 CI plus two successful full-job reruns",
+      "static Next.js App Router technical shell",
+      "locked API and web dependency workflows",
+      "format, lint, strict type, test, coverage, build, and CI quality gates",
+      "versioned fail-closed GitHub phase policy, exact-head validator, deterministic lane projection, and five-job acceptance workflow"
+    ],
+    "not_implemented": [
+      "database schema, ORM, migrations, or persistence",
+      "domain event ledger, outbox, replay, projections, or jobs",
+      "authentication, authorization, tenancy, privacy lifecycle, or deletion",
+      "telemetry backend or exporter",
+      "object storage, LLM gateway, OCI artifacts, container runtime, or deployment",
+      "Target or RoleProfile runtime model",
+      "competency graph or Blueprint and ItemFamily runtime contracts",
+      "learner model, diagnosis, curriculum, tutoring, or assessment",
+      "mastery, evidence acceptance, retention, transfer, or readiness",
+      "simulations, unique work, artifact provenance, modification, or defense"
+    ]
+  },
+  "phases": [
+    {
+      "id": "F00",
+      "name": "Repository and Quality Foundation",
+      "lane": "foundation",
+      "status": "PASSED",
+      "entry_conditions": [
+        {
+          "condition": "Mission, technical constitution, and roadmap exist",
+          "result": "PASSED",
+          "evidence": [
+            "specs/mission.md",
+            "specs/tech-stack.md",
+            "specs/roadmap.md"
+          ]
+        },
+        {
+          "condition": "FastAPI and Next.js are approved, scope is role-neutral, and the automation branch started clean",
+          "result": "PASSED",
+          "evidence": [
+            "specs/tech-stack.md",
+            "plans/F00-repository-quality-foundation.md"
+          ]
+        }
+      ],
+      "implemented_files": [
+        "apps/api/",
+        "apps/web/",
+        ".github/workflows/ci.yml",
+        ".editorconfig",
+        ".gitattributes",
+        ".gitignore",
+        ".python-version",
+        ".nvmrc",
+        "README.md",
+        "plans/F00-repository-quality-foundation.md"
+      ],
+      "tests": [
+        "apps/api/tests/test_app.py: 5 passed; 96% API coverage",
+        "apps/web/tests/platform-shell.test.tsx: 1 passed",
+        "real Uvicorn live, ready, and OpenAPI smoke check",
+        "default Next.js Turbopack production build"
+      ],
+      "missing_outputs": [],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "No further action; F00 is passed",
+      "gate_decision": "Continue",
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "F01",
+      "name": "Local Runtime Integration and API Contract Baseline",
+      "lane": "foundation",
+      "status": "PASSED",
+      "entry_conditions": [
+        {
+          "condition": "F00 passes",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F00-repository-quality-foundation.md",
+            "plans/autonomous-loop/state.json"
+          ]
+        },
+        {
+          "condition": "F01 is formally defined and independently reviewed as reusable across every plausible V00 candidate",
+          "result": "PASSED",
+          "evidence": [
+            "specs/roadmap.md",
+            "plans/autonomous-loop/checkpoint.md"
+          ]
+        },
+        {
+          "condition": "Existing configuration-only health endpoints and static web shell remain verified",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F00-repository-quality-foundation.md",
+            "apps/api/tests/test_app.py",
+            "apps/web/tests/platform-shell.test.tsx"
+          ]
+        }
+      ],
+      "implemented_files": [
+        "plans/F01-local-runtime-integration-and-api-contract-baseline.md",
+        "apps/api/src/ai_learning_platform_api/contracts/",
+        "apps/api/src/ai_learning_platform_api/transport/http/health.py",
+        "apps/api/openapi/health.openapi.json",
+        "apps/api/tests/test_health_openapi_contract.py",
+        ".github/workflows/ci.yml",
+        "README.md",
+        "apps/api/README.md",
+        "apps/api/src/ai_learning_platform_api/contracts/health_typescript.py",
+        "apps/api/tests/test_health_typescript_contract.py",
+        "apps/web/server/contracts/generated/health-response.ts",
+        "apps/web/tests/health-response-contract.test.ts",
+        "apps/web/.env.example",
+        "apps/web/server/config/api-base.ts",
+        "apps/web/server/health/health-adapter.ts",
+        "apps/web/tests/api-base.test.ts",
+        "apps/web/tests/health-adapter.test.ts",
+        "apps/web/tests/server-only-stub.ts",
+        "apps/web/vitest.config.ts",
+        "apps/web/server/health/runtime-health.ts",
+        "apps/web/app/page.tsx",
+        "apps/web/app/globals.css",
+        "apps/web/components/platform-shell.tsx",
+        "apps/web/tests/runtime-health.test.ts",
+        "apps/web/tests/home-page.test.tsx",
+        "apps/web/tests/platform-shell.test.tsx",
+        "scripts/dev.py",
+        "apps/api/src/ai_learning_platform_api/development/",
+        "apps/api/tests/test_dev_supervisor.py",
+        "apps/api/tests/fixtures/process_tree_helper.py",
+        "apps/api/pyproject.toml",
+        "scripts/smoke.py",
+        "apps/api/src/ai_learning_platform_api/development/smoke.py",
+        "apps/api/tests/test_runtime_smoke.py"
+      ],
+      "tests": [
+        "apps/api/tests/test_health_openapi_contract.py: 10 passed; contract generator/checker has 100% line and branch coverage",
+        "full API suite: 15 passed; 98% total API line coverage",
+        "CLI checks: two canonical checks and two writes were byte-identical; missing and drifted artifacts exited 1 without mutation",
+        "independent verification: accepted F01-01 byte determinism, scope, tests, portability, and controller disposition",
+        "apps/api/tests/test_health_typescript_contract.py: 30 passed; generator has 100% line and branch coverage",
+        "full API suite: 45 passed; 99% total API line coverage",
+        "apps/web/tests/health-response-contract.test.ts: 3 passed; full web suite 4 passed; static production build passed",
+        "validator CLI checks: two checks and two writes were byte-identical; missing, stale, CRLF, and invalid-source cases failed without target mutation",
+        "independent verification: accepted schema derivation, validator semantics, determinism, portability, scope, and controller disposition",
+        "apps/web/tests/api-base.test.ts and health-adapter.test.ts: 52 focused tests passed; full web suite 56 passed",
+        "web lint, strict typecheck, and API-absent static production build passed; build completed in 8.3 seconds",
+        "both canonical generator checks passed; 40 focused API contract tests passed",
+        "npm ci completed in 32.2 seconds with zero audited vulnerabilities and no manifest or lockfile change",
+        "independent verification: accepted F01-03 server-only boundaries, URL policy, adapter semantics, tests, confidentiality, dependency history, scope, and lane protection",
+        "F01-04 focused runtime, page, and presentation tests: 19 passed; full web suite: 74 passed",
+        "web lint and strict typecheck passed; both canonical generator checks passed",
+        "API-absent production build passed in 8.7 seconds and reported / as dynamic; browser assets contain no API configuration, origin, or health path",
+        "real API-absent production request returned the accessible unavailable state with HTTP 200 in 179 ms; 1440-by-1000 visual inspection passed",
+        "npm ci completed in 33.9 seconds with zero audited vulnerabilities and no manifest or lockfile change",
+        "independent verification: accepted F01-04 request-time rendering, timeout wiring, kind-only mapping, accessibility, confidentiality, visual hierarchy, dependency history, scope, and lane protection",
+        "F01-05 focused supervisor suite: 37 passed; supervisor has 96% line and branch coverage",
+        "full API suite: 82 passed; 97% total API line and branch coverage",
+        "API locked sync, format, lint, strict mypy, and both canonical contract checks passed",
+        "actual Windows lifecycle: listeners in 1,215 ms; 370,302,976 aggregate working-set bytes; clean shutdown in 370 ms with no owned PID or listener remaining",
+        "induced API bind failure: supervisor exited 1 in 1,057 ms, closed the owned web listener, and left the unrelated blocker alive",
+        "real graceful, stubborn, and leader-exited/live-descendant helper cleanup passed on Windows; equivalent POSIX tests are configured in the Ubuntu API lane",
+        "independent verification: accepted fixed commands, suspended-before-Job Windows ownership, POSIX groups, lifecycle/failure behavior, tests, resource evidence, CI scope, and V00/V01 protection",
+        "F01-06 focused smoke suite: 44 passed; smoke policy has 98% line and branch coverage",
+        "full API suite: 126 passed; 97% total API line and branch coverage",
+        "API locked sync, format, lint, strict mypy, and both canonical contract checks passed",
+        "full web suite: 74 passed; lint, strict typecheck, and API-absent dynamic production build passed before the unchanged web tree's final smoke run",
+        "actual Windows cross-process smoke: API live in 1,426 ms; all assertions in 3,614 ms; shutdown in 204 ms; both ports closed",
+        "browser assets contain no API environment name, loopback origin, or health path; no dependency, lockfile, migration, application storage, external API, or model call changed",
+        "local and CI use the exact command uv run --project apps/api --locked python scripts/smoke.py",
+        "independent verification accepted F01-06 after cache-diagnostic and shared-deadline repairs; V00/V01 protection remains intact",
+        "exact pushed revision 25994d214ed5b39d4b6c73ba0e075b10ee4a5a66 reached Ubuntu CI but API quality failed at strict mypy with 10 Windows-only ctypes attribute errors",
+        "local portability repair: native, --platform linux, and --platform win32 strict mypy each pass 23 source files without ignores",
+        "local repair validation: 82 focused supervisor/smoke tests and 127 full API tests pass; total line and branch coverage remains 97%",
+        "post-repair Windows smoke: API live in 2,265 ms; all assertions in 7,742 ms; shutdown in 204 ms; both ports closed",
+        "independent verification reproduced 38 supervisor tests including three real Windows lifecycle cases, 127 full API tests, 97% coverage, both contracts, lock validity, all three mypy targets, native Windows DLL/error access, scope boundaries, and secret hygiene; no code defect found",
+        "exact GitHub Actions run 29359471181 at revision 34fe4465e567a562f22b7c63bd6d5df29fdef09a: API sync, both contracts, Ruff, strict mypy, and 127 tests passed in 2.05 seconds, then coverage failed at 92% total and 84% supervisor",
+        "the same exact run passed web quality with 6 files and 74 tests; runtime smoke was skipped by the failed API dependency",
+        "local coverage-portability repair: 47 focused supervisor tests pass in 17.79 seconds; 136 full API tests pass in 18.96 seconds at 99% supervisor and total coverage without exclusions",
+        "local locked sync, both canonical checks, Ruff format and lint, lock validation, and native, --platform linux, and --platform win32 strict mypy pass",
+        "read-only coverage review accepted the behavior-driven fake-kernel success/failure matrix as the smallest meaningful repair while retaining real Windows lifecycle coverage",
+        "exact revision 2bc6dfa392725ea725dda6915a7d6ab68a246251 completed GitHub Actions run 29363263721 successfully on Ubuntu 24.04",
+        "exact API job 87188413086: both contracts, Ruff, strict mypy, line endings, and 136 tests in 2.18 seconds passed at 99% supervisor and total coverage",
+        "exact web job 87188412999: lint, strict typecheck, 6 files and 74 tests in 1.22 seconds, and dynamic production build passed; compile completed in 3.6 seconds",
+        "exact runtime-smoke job 87188555943: API live in 2,541 ms; 4 owned processes; 714,330,112 resident bytes; smoke completed in 6,359 ms; shutdown completed in 251 ms; both ports closed",
+        "independent final verification accepted the implementation, controller authorization, V00/V01 protection, and exact-run disposition with no blocking finding"
+      ],
+      "missing_outputs": [],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "No further F01 action; F02 is PASSED",
+      "gate_decision": "Continue",
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "F02",
+      "name": "Cross-Process Correlation and Confidential Diagnostics Baseline",
+      "lane": "foundation",
+      "status": "PASSED",
+      "entry_conditions": [
+        {
+          "condition": "F01 passes",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F01-local-runtime-integration-and-api-contract-baseline.md",
+            "plans/autonomous-loop/state.json",
+            "GitHub Actions run 29364393112 at revision 16eb34f86bbaeafbb70f03c2566e11d570d23a51"
+          ]
+        },
+        {
+          "condition": "OpenTelemetry-compatible correlation and structured diagnostics are approved, role-neutral, and backend-replaceable",
+          "result": "PASSED",
+          "evidence": [
+            "specs/tech-stack.md",
+            "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+            "plans/autonomous-loop/checkpoint.md"
+          ]
+        },
+        {
+          "condition": "The phase is limited to the existing technical health transaction and needs no V00 evidence",
+          "result": "PASSED",
+          "evidence": [
+            "specs/roadmap.md",
+            "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+            "plans/autonomous-loop/checkpoint.md"
+          ]
+        }
+      ],
+      "implemented_files": [
+        "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+        "apps/api/pyproject.toml",
+        "apps/api/uv.lock",
+        "apps/api/src/ai_learning_platform_api/diagnostics.py",
+        "apps/api/src/ai_learning_platform_api/transport/http/diagnostics.py",
+        "apps/api/src/ai_learning_platform_api/app.py",
+        "apps/api/src/ai_learning_platform_api/main.py",
+        "apps/api/src/ai_learning_platform_api/logging.py",
+        "apps/api/src/ai_learning_platform_api/development/supervisor.py",
+        "apps/api/src/ai_learning_platform_api/development/smoke.py",
+        "apps/api/tests/test_api_diagnostics.py",
+        "apps/api/tests/test_app.py",
+        "apps/api/tests/test_dev_supervisor.py",
+        "apps/api/tests/test_runtime_smoke.py",
+        "apps/web/package.json",
+        "apps/web/package-lock.json",
+        "apps/web/server/diagnostics/health-diagnostics.ts",
+        "apps/web/server/health/health-adapter.ts",
+        "apps/web/scripts/check-browser-confidentiality.mjs",
+        "apps/web/tests/health-diagnostics.test.ts",
+        "apps/web/tests/health-diagnostics-resource.test.ts",
+        "apps/web/tests/health-adapter.test.ts",
+        "apps/web/tests/home-page.test.tsx",
+        "README.md"
+      ],
+      "tests": [
+        "apps/api/tests/test_api_diagnostics.py: 50 focused adversarial tests pass, including hostile and future W3C context, exact event counts, canary suppression, concurrent isolation, cleanup, failures, and real invalid-configuration subprocess startup",
+        "full API suite: 186 passed in 15.32 seconds at 99% total line and branch coverage; the new diagnostic runtime, formatter, and middleware are at 100%",
+        "locked sync and lock check, both health contract checks, Ruff format/lint, native/Linux/Windows strict mypy, and Windows cross-process smoke pass locally",
+        "independent verification found and reproduced W3C flag and raw startup-validation defects; both regressions were repaired, all local gates were reproduced, and final rereview returned ACCEPT with no actionable finding",
+        "exact revision 1cd879ef9a37dc04a28c09e7fed23d40441fdb3c completed GitHub Actions run 29372599433 successfully in 1 minute 28 seconds",
+        "exact API quality job 87219074832: locked sync, both contracts, Ruff, strict mypy, line endings, and all 186 tests in 3.00 seconds passed at 99% coverage",
+        "exact web quality job 87219074897: lint, strict typecheck, all 74 tests in 1.32 seconds, and the production build passed with zero npm vulnerabilities",
+        "exact runtime-smoke job 87219208633: API live in 2,633 ms; 4 owned processes; 716,132,352 aggregate resident bytes; 16,368,938 Next.js build bytes; smoke completed in 6,213 ms; shutdown completed in 251 ms; both ports closed",
+        "F02-02 focused web diagnostics, adapter, runtime, rendered-output, hostile-ambient-configuration, and resource validation: 61 tests pass; the full web suite passes 97 tests in 8 files",
+        "F02-02 clean production build passes in 9,619 ms with 4,335,774 .next bytes; its enforced confidentiality scan finds none of the fixed diagnostic or API-configuration markers in 10 browser assets totaling 629,565 bytes, fails nonzero for a temporary banned marker, and passes again after removal",
+        "F02-02 clean npm ci passes in 66,659 ms and npm audit reports zero vulnerabilities; manifest/lock growth is 240/2,697 bytes and five installed OpenTelemetry directories total 14,822,615 bytes",
+        "F02-02 fixed 500-call observation emits exactly 500 260-byte events; baseline p50/p95/max is 0.049/0.120/2.463 ms and instrumented p50/p95/max is 0.095/0.210/0.709 ms",
+        "F02-02 affected API gate: locked sync/lock, both contracts, Ruff, native/Linux/Windows strict mypy, and all 186 API tests pass at 99% coverage",
+        "F02-02 Windows runtime smoke passes in 4,031 ms with API live in 1,936 ms, shutdown in 155 ms, matching web/API trace IDs observed with distinct spans, and both ports closed",
+        "F02-02 independent final verification accepts dependency ownership, private context, fail-open behavior, confidentiality, unchanged F01 contracts, resource evidence, and scope with no actionable finding",
+        "exact revision b6550c58f4342a82197455f53eb064a32306e8fc completed GitHub Actions run 29400137315 successfully in 1 minute 33 seconds",
+        "exact API quality job 87302552878: locked sync, both contracts, Ruff, strict mypy across 26 files, line endings, and all 186 tests in 2.45 seconds passed at 99% coverage",
+        "exact web quality job 87302552907: locked install with zero vulnerabilities, lint, strict typecheck, all 97 tests in 8 files in 2.13 seconds, production build, and 10-file 629,565-byte browser confidentiality scan passed",
+        "exact runtime-smoke job 87302713249: API live in 1,924 ms; 4 owned processes; 747,077,632 aggregate resident bytes; 17,013,419 Next.js bytes; smoke completed in 4,773 ms; shutdown completed in 252 ms; matching web/API trace IDs with distinct spans were observed; both ports closed",
+        "F02-03 revised automated proof: 108 focused runtime-smoke tests pass, including exact schemas and counts, safe-root replacement, overlapping concurrency, three failure-fixture outcomes, browser/body/header and captured-log canaries, streaming byte caps, retained process ownership, signal forwarding, forced-tree cleanup, and reap behavior",
+        "F02-03 revised full local API gate: 250 tests pass in 11.75 seconds at 97% total line and branch coverage; smoke.py is at 95%; both contracts, Ruff, and native/Linux/Windows strict mypy across 26 files pass",
+        "F02-03 final Windows runtime smoke: 21 correlated requests with 4 overlapping workers; 48 events; 12,638 diagnostic bytes within 14,222 captured stderr bytes; p50/p95/max 126/138/140 ms; API live in 1,511 ms; induced failures in 479 ms; total smoke 4,269 ms; shutdown 51 ms; both ports closed",
+        "F02-03 unchanged web gate: lint, strict typecheck, all 97 tests, production build in 8.4 seconds, and browser confidentiality scan over 10 files totaling 629,565 bytes pass",
+        "F02-03 independent verifier found seven lifecycle, concurrency, schema, and confidentiality defects that were repaired; its final rereview hit quota, so the parent performed the required fallback diff/gate audit and repaired one additional launch-to-capture interrupt race",
+        "exact implementation run 29509035888: API job 87657348971 and web job 87657349046 passed; runtime-smoke job 87657590869 rejected an Ubuntu-only forbidden raw value after the private scenario succeeded, without exposing that value",
+        "F02-03 Revise response: fixed non-secret forbidden-category taxonomy preserves rejection and suppression; 108 focused and 250 full API tests plus the Windows root smoke pass locally",
+        "exact classifier revision 16bf84c9919ccf16d1e06e1542245737bd61cde4 passed Actions run 29510082305: initial API job 87660936291, web job 87660936295, and runtime job 87661156124 all succeeded",
+        "controller repeatability gate: runtime jobs 87661534645 and 87661831197 plus their dependent API/web jobs succeeded; three Ubuntu attempts each kept 48 events, 21 correlations, 4 concurrent workers, 4 processes, bounded output, and closed ports; resident bytes ranged 841670656-844980224",
+        "exact controller revision 8963101805d6f29f4701c91764b5563f07ff07c8 passed Actions run 29511515229: API job 87665879457, web job 87665879508, and runtime-smoke job 87666108627 all succeeded"
+      ],
+      "missing_outputs": [],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "No further F02 implementation; F03 GitHub phase-gate control-plane work is tracked separately",
+      "gate_decision": "Continue",
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "F03",
+      "name": "GitHub Phase-Gate Control Plane",
+      "lane": "foundation",
+      "status": "PASSED",
+      "entry_conditions": [
+        {
+          "condition": "F02 passes on its exact controller revision",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md",
+            "GitHub Actions run 29511515229 at revision 8963101805d6f29f4701c91764b5563f07ff07c8"
+          ]
+        },
+        {
+          "condition": "Pull request #1 durable steering and GitHub issue #2 authorize the control-plane contract",
+          "result": "PASSED",
+          "evidence": [
+            "https://github.com/TheBayoumi/ai-learning-platform/pull/1",
+            "https://github.com/TheBayoumi/ai-learning-platform/issues/2"
+          ]
+        },
+        {
+          "condition": "Architecture and roadmap specialists confirm fail-closed scope and the separate F04 boundary",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F03-github-phase-gate-control-plane.md",
+            "plans/autonomous-loop/checkpoint.md"
+          ]
+        },
+        {
+          "condition": "All local API, web, runtime, phase-gate, and projection checks pass",
+          "result": "PASSED",
+          "evidence": [
+            "97 web tests, lint, strict typecheck, production build, and 629,565-byte browser confidentiality scan passed",
+            "two corrected real cross-process smokes passed in about 7 seconds each with 48 events, 21 correlations, 14,223-14,224 captured bytes, 51-102 ms shutdown, and closed ports",
+            "Ruff plus native, Linux, and Win32 strict mypy passed across 30 files",
+            "dirty-worktree CLI validation fails closed; clean exact-head validation passed implementation attempt 9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21 locally",
+            "Pre-capture runtime-log repair passed 126 runtime-smoke unit tests and two real local cross-process smoke runs",
+            "The unchanged outer validator scans every captured byte; the child-side router forwards structured, proof, and marker candidates unchanged while safely mapping only ordinary framework stderr before capture",
+            "134 adversarial phase-gate tests passed in 9.80 seconds",
+            "402 full API tests passed in 26.69 seconds at 97% branch-aware coverage; smoke.py is at 95%"
+          ]
+        },
+        {
+          "condition": "Independent verification finds no material defect",
+          "result": "PASSED",
+          "evidence": [
+            "Initial implementation and canonical-LF repair were independently accepted",
+            "Corrected pre-capture repair independently accepted: 126 runtime, 47 supervisor, 134 controller, and 402 full API tests; 97% overall coverage with smoke.py at 95%; two real smokes and all static gates passed"
+          ]
+        },
+        {
+          "condition": "The exact implementation revision passes all five required GitHub jobs",
+          "result": "PASSED",
+          "evidence": [
+            "Implementation revision fe49b609767e27d52fae999c229502ed98866dff",
+            "GitHub Actions push run 29528587173: API quality 87723081841, Web quality 87723081644, Runtime smoke 87723264188, Phase gate 87723082122, Gate projection 87723443710 all succeeded",
+            "GitHub Actions pull-request run 29528587169: API quality 87723082409, Web quality 87723082444, Runtime smoke 87723243300, Phase gate 87723082447, Gate projection 87723382365 all succeeded"
+          ]
+        }
+      ],
+      "implemented_files": [
+        "plans/autonomous-loop/controller-policy.json",
+        "apps/api/src/ai_learning_platform_api/automation/__init__.py",
+        "apps/api/src/ai_learning_platform_api/automation/phase_gate.py",
+        "scripts/phase_gate.py",
+        "apps/api/tests/test_phase_gate.py",
+        ".github/workflows/ci.yml",
+        "AGENTS.md",
+        "specs/roadmap.md",
+        "plans/F03-github-phase-gate-control-plane.md",
+        "plans/autonomous-loop/goal.md",
+        "plans/autonomous-loop/state.json",
+        "plans/autonomous-loop/checkpoint.md",
+        "plans/autonomous-loop/run-log.md",
+        "plans/implementation-inventory.json",
+        "plans/implementation-inventory.md",
+        "apps/api/src/ai_learning_platform_api/development/smoke.py",
+        "apps/api/src/ai_learning_platform_api/development/supervisor.py",
+        "apps/api/tests/test_runtime_smoke.py",
+        "apps/api/tests/test_dev_supervisor.py"
+      ],
+      "tests": [
+        "web: 97 tests in 8 files, lint, strict typecheck, production build, zero vulnerabilities, and 10-file/629,565-byte confidentiality scan passed",
+        "root runtime smoke passed twice: 48 events, 21 correlations, 4 concurrent requests, 12,638 diagnostic bytes, 14,223-14,224 captured bytes, 51-102 ms shutdown, and closed ports",
+        "Ruff and native/Linux/Win32 strict mypy passed across 30 files",
+        "GitHub run 29521143904 at 9746ceb16a3bbfc1e95a8bfadae6224fe77dfe21 failed closed: Web quality success; API quality, Phase gate, and Gate projection failure; Runtime smoke skipped; root cause was platform-specific raw hashes for CRLF-converted V00 Markdown",
+        "Runtime repair: 126 runtime-smoke unit tests passed in 0.74 seconds; two real local smokes passed in about 7 seconds each with 48 events, 21 correlations, and 14,223-14,224 captured bytes",
+        "GitHub run 29523254781 at 34d5de2b5af15ec39e09b0f91ed5d358020dcfed failed closed: API job 87705173886, web job 87705173871, and Phase gate job 87705173912 succeeded; Runtime smoke job 87705355479 and Gate projection job 87705481759 failed",
+        "apps/api/tests/test_phase_gate.py: 134 passed in 9.80 seconds; controller module 97% branch-aware coverage in the full suite",
+        "complete API suite: 402 passed in 26.69 seconds; 97% overall branch-aware coverage; smoke.py 95%",
+        "independent final verification: ACCEPT with no material finding after 126 runtime, 47 supervisor, 134 controller, and 402 full API tests plus two real smokes, static gates, 24 hashes, JSON, final newlines, and diff checks",
+        "Exact implementation revision fe49b609767e27d52fae999c229502ed98866dff passed both GitHub Actions runs 29528587173 (push) and 29528587169 (pull_request): all five required jobs (API quality, Web quality, Runtime smoke, Phase gate, Gate projection) succeeded on the exact SHA in both runs"
+      ],
+      "missing_outputs": [],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "No further F03 implementation; F04 Vercel deployment baseline is the next eligible foundation phase and is out of scope for this invocation",
+      "gate_decision": "Continue",
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V00",
+      "name": "Candidate Role Evidence",
+      "lane": "validation",
+      "status": "BLOCKED_EXTERNAL",
+      "entry_conditions": [
+        {
+          "condition": "Adult B2C boundary and validation claim are approved",
+          "result": "PASSED",
+          "evidence": [
+            "specs/mission.md",
+            "specs/roadmap.md",
+            "plans/V00-candidate-role-evidence.md"
+          ]
+        }
+      ],
+      "implemented_files": [
+        "plans/V00-candidate-role-evidence.md",
+        "docs/validation/V00-candidate-role-evidence.md",
+        "docs/validation/V00-demand-sampling-protocol.md",
+        "docs/validation/V00-external-evidence-request-package.md"
+      ],
+      "tests": [],
+      "missing_outputs": [
+        "controller-preregistered symmetric demand-sufficiency rule and qualifying sample",
+        "controller-preregistered practitioner-qualification rule and two confirmations",
+        "real 20-50 adult recruitment-channel proof",
+        "controller-preregistered cost-acceptance boundary and acceptable measured expected-cost evidence",
+        "one candidate passing every conjunctive evidence gate"
+      ],
+      "external_blockers": [
+        "qualifying symmetric demand evidence",
+        "two qualified practitioner confirmations",
+        "real recruitment-channel confirmation",
+        "acceptable measured expected-cost evidence"
+      ],
+      "human_decisions": [],
+      "next_smallest_action": "When real evidence arrives, Codex preregisters and applies the rules, validates the conjunctive gate, and does not wait for separate user approval",
+      "gate_decision": "Revise",
+      "blocker_ids": [
+        "v00.symmetric_demand",
+        "v00.practitioner_confirmations",
+        "v00.recruitment_channel",
+        "v00.measured_cost"
+      ],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V01",
+      "name": "Role Selection and Proof Contract",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V00 identifies a viable candidate",
+          "result": "FAILED",
+          "evidence": [
+            "plans/autonomous-loop/state.json",
+            "docs/validation/V00-candidate-role-evidence.md"
+          ]
+        },
+        {
+          "condition": "At least two qualified practitioners and a real recruitment channel are available",
+          "result": "FAILED",
+          "evidence": [
+            "plans/autonomous-loop/state.json"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "approved RoleProfile, proof-slice contract, practitioner decisions, and recruitment evidence"
+      ],
+      "external_blockers": [
+        "two practitioners",
+        "20-50 adult recruitment channel"
+      ],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start V01 until every V00 gate and V01 entry condition passes",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V02",
+      "name": "Versioned Domain and State Contracts",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V01 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V01 is NOT_STARTED and locked"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "versioned domain schemas, deterministic transition policies, ownership boundaries, and compatibility rules"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V01",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V03",
+      "name": "Evidence Ledger, Outbox, and Replay",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V02 contracts are approved",
+          "result": "FAILED",
+          "evidence": [
+            "V02 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "event ledger, outbox, idempotent consumers, replay command, checkpoints, and audit correlations"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V02",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V04",
+      "name": "Proof Competency Graph",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V01 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V01 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V02 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V02 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "versioned CompetencyGraph, prerequisite queries, repository interface, misconception taxonomy, and practitioner delta report"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V01 and V02",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V05",
+      "name": "Blueprint and Assessment Contracts",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V04 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V04 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "Blueprint and ItemFamily schemas, assistance policies, validators, safety rules, rubrics, and exposure controls"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V04",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V06",
+      "name": "Controlled Evaluator Dataset",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V05 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V05 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "Qualified reviewers are available",
+          "result": "FAILED",
+          "evidence": [
+            "No reviewer availability evidence exists"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "immutable labeled dataset, rationales, balance, held-out cases, and failure taxonomy"
+      ],
+      "external_blockers": [
+        "qualified reviewers"
+      ],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V05 and confirm reviewers",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V07",
+      "name": "Evaluator Gate",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V03 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V03 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V06 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V06 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "versioned evaluator, disagreement report, confidence/dispute rules, and replayable verdict records"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V03 and V06",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V08",
+      "name": "Minimal Tutoring Vertical Slice",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V03 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V03 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V05 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V05 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V07 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V07 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "learner attempt flow, streaming, policy tutor moves, hint records, transcript trace, and latency baseline"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V03, V05, and V07",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V08R",
+      "name": "Verified Coverage Tranche (Repeatable)",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V08 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V08 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "Applicable V05 validators exist",
+          "result": "FAILED",
+          "evidence": [
+            "V05 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "validated item records, validation records, coverage delta, collision results, and failure report"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V08 and establish validators",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V09",
+      "name": "Deterministic Learner State",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V03 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V03 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V07 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V07 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "deterministic mastery/misconception/forgetting services, policies, projections, and high-risk tests"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V03 and V07",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V10",
+      "name": "Baseline Diagnosis and Gap Map",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V05 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V05 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V07 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V07 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V09 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V09 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "diagnostic instances, accepted evidence, gap map, uncertainty, and comparison protocol"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V05, V07, and V09",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V11",
+      "name": "Learner-Specific Curriculum Compilation",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V04 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V04 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V09 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V09 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V10 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V10 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "deterministic planner, learner-bound seed, LearnerPlanVersion, readable delta, and remapping"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V04, V09, and V10",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V12",
+      "name": "Independent Performance Gate",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V05 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V05 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V09 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V09 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V11 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V11 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "no-hint mode, reasoning evidence, assistance policy, protected selection, and independence rules"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V05, V09, and V11",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V13",
+      "name": "Retention and Transfer Infrastructure",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V12 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V12 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "Delivery timing can complete the 30-day window",
+          "result": "FAILED",
+          "evidence": [
+            "No eligible delivery plan or observations exist"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "retention scheduler, re-verification rules, contamination controls, transfer engine, and event contracts"
+      ],
+      "external_blockers": [
+        "elapsed longitudinal observation window"
+      ],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V12 and verify observation timing",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V14",
+      "name": "Unique Work Instantiation",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V05 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V05 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V11 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V11 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V13 infrastructure passes and runner boundary is approved",
+          "result": "FAILED",
+          "evidence": [
+            "V13 is NOT_STARTED; runner boundary is not approved"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "learner-bound parameters, hidden tests, fingerprints, collision index, and validation records"
+      ],
+      "external_blockers": [],
+      "human_decisions": [
+        "approve the runner boundary when the phase becomes eligible"
+      ],
+      "next_smallest_action": "Do not start; pass V05, V11, V13, and approve the runner boundary",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V15",
+      "name": "Artifact Provenance, Modification, and Defense",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V03 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V03 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V14 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V14 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "provenance record, artifact versions, assistance ledger, defense/modification evidence, review, and dispute flow"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V03 and V14",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V16",
+      "name": "Partial Evidence and Validation Protocol",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V09, V12, V13, V14, and V15 pass",
+          "result": "FAILED",
+          "evidence": [
+            "All listed phases are NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "partial_profile_evidence report and preregistered learning/practitioner comparison rules"
+      ],
+      "external_blockers": [],
+      "human_decisions": [
+        "preregister analysis and comparison thresholds before outcomes"
+      ],
+      "next_smallest_action": "Do not start; pass V09 and V12-V15",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V16A",
+      "name": "Identity, Authorization, and Environment Isolation",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V02 passes",
+          "result": "FAILED",
+          "evidence": [
+            "V02 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "Initial deployment shape is stable enough to test",
+          "result": "FAILED",
+          "evidence": [
+            "No deployment shape is selected"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "identity mapping, authorization policy, access audits, environment inventory, and isolation tests"
+      ],
+      "external_blockers": [],
+      "human_decisions": [
+        "approve deployment shape when eligible"
+      ],
+      "next_smallest_action": "Do not start; pass V02/V03 and stabilize deployment shape",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V16B",
+      "name": "Privacy and Data Lifecycle",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V03 and V16A pass",
+          "result": "FAILED",
+          "evidence": [
+            "V03 and V16A are NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "Vendors and data flows are known enough for review",
+          "result": "FAILED",
+          "evidence": [
+            "No vendors or production data flows are selected"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "data-flow inventory, privacy review, retention, export, deletion, redaction, and audit controls"
+      ],
+      "external_blockers": [
+        "legal/privacy review when vendors and flows exist"
+      ],
+      "human_decisions": [
+        "approve retention and lawful handling before beta"
+      ],
+      "next_smallest_action": "Do not start; pass V03/V16A and define reviewable data flows",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V17A",
+      "name": "Operational Measurement and Budgets",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V08, V09, and V11 pass",
+          "result": "FAILED",
+          "evidence": [
+            "V08, V09, and V11 are NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "Representative jobs are operational",
+          "result": "FAILED",
+          "evidence": [
+            "No jobs are implemented"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "latency, cost, provider, failure, retry, projection, replay, and tutor-policy measurements"
+      ],
+      "external_blockers": [],
+      "human_decisions": [
+        "approve measured cost ceilings before beta"
+      ],
+      "next_smallest_action": "Do not start; pass V08/V09/V11 and operate representative jobs",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V17B",
+      "name": "Beta-Entry Gate",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V07 through V17A pass, including V08R, V16A, and V16B",
+          "result": "FAILED",
+          "evidence": [
+            "Required phases are NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "Practitioners and a real 20-50 learner channel remain available",
+          "result": "FAILED",
+          "evidence": [
+            "plans/autonomous-loop/state.json"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "complete beta gate report, reliability evidence, asset inventory, reviewer roster, and channel confirmation"
+      ],
+      "external_blockers": [
+        "practitioners",
+        "20-50 learner channel"
+      ],
+      "human_decisions": [
+        "beta-entry approval"
+      ],
+      "next_smallest_action": "Do not start; pass every prerequisite and reconfirm external access",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V17C",
+      "name": "Assessment Calibration Gate",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V17B passes",
+          "result": "FAILED",
+          "evidence": [
+            "V17B is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "Calibration subgroup, consent, privacy, exposure controls, and preregistered rules exist",
+          "result": "FAILED",
+          "evidence": [
+            "No calibration cohort or controls exist"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "calibration provenance/statistics, contamination records, trust decisions, protected inventory, and gaps"
+      ],
+      "external_blockers": [
+        "calibration-only subgroup"
+      ],
+      "human_decisions": [
+        "preregister promotion and sample-sufficiency rules"
+      ],
+      "next_smallest_action": "Do not start; pass V17B and establish calibration controls",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V18",
+      "name": "Closed Beta Launch",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V17C passes with enough time for 30-day probes",
+          "result": "FAILED",
+          "evidence": [
+            "V17C is NOT_STARTED; no beta schedule exists"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "eligible cohort, baselines/plans, protected assignments, analytics, recovery, and review queue"
+      ],
+      "external_blockers": [
+        "eligible adult cohort and elapsed observation time"
+      ],
+      "human_decisions": [
+        "closed-beta launch approval"
+      ],
+      "next_smallest_action": "Do not start; pass V17C and verify probe timing",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V19",
+      "name": "Longitudinal Learning Evidence",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V16 preregistration, V17C trust, V18 observations, and V13 schedules complete",
+          "result": "FAILED",
+          "evidence": [
+            "All required phases are NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "preregistered learning report, attrition/missingness, uncertainty, failure traces, and drift report"
+      ],
+      "external_blockers": [
+        "eligible longitudinal observations"
+      ],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; complete V13, V16, V17C, and V18 observations",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V20",
+      "name": "Unseen Simulation and Blinded Review",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V14 through V16 pass and eligible beta learners have proof-slice evidence",
+          "result": "FAILED",
+          "evidence": [
+            "V14-V16 and V18 are NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "validated simulations, artifacts/provenance, defense evidence, blinded ratings, and trust decision"
+      ],
+      "external_blockers": [
+        "eligible learners and blinded practitioners"
+      ],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V14-V16 and obtain eligible beta evidence",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V21",
+      "name": "Commercial Boundary Signal",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V18 is instrumented",
+          "result": "FAILED",
+          "evidence": [
+            "V18 is NOT_STARTED"
+          ]
+        },
+        {
+          "condition": "V17A cost baselines exist",
+          "result": "FAILED",
+          "evidence": [
+            "V17A is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "commercial-signal report, acquisition assumptions, willingness-to-pay evidence, caveats, and cost comparison"
+      ],
+      "external_blockers": [
+        "observed adult commercial evidence"
+      ],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; pass V17A and instrument V18",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "V22",
+      "name": "Instrumented Validation Decision",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V19, V20, and V21 complete with no omitted material gate",
+          "result": "FAILED",
+          "evidence": [
+            "V19-V21 are NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "evidence index, decision memo, unresolved risks, explicit decision, and next-horizon conditions"
+      ],
+      "external_blockers": [],
+      "human_decisions": [
+        "instrumented expansion decision"
+      ],
+      "next_smallest_action": "Do not start; complete V19-V21 and all preceding gates",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "Q2",
+      "name": "Complete First Role System",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "V22 returns Continue",
+          "result": "FAILED",
+          "evidence": [
+            "V22 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "conditional paid beta and expansion toward a complete validated common role baseline"
+      ],
+      "external_blockers": [],
+      "human_decisions": [
+        "V22 expansion decision"
+      ],
+      "next_smallest_action": "Do not start; obtain a positive V22 decision",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "Q3",
+      "name": "Calibration and Governance",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "Credible complete-role evidence and repeatable authoring exist",
+          "result": "FAILED",
+          "evidence": [
+            "Q2 is NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "deeper calibration, provenance/defense, market governance, and evidence-backed overlays"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; establish credible complete-role evidence and repeatable authoring",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "Q4",
+      "name": "Repeatability and Partner Test",
+      "lane": "validation",
+      "status": "NOT_STARTED",
+      "entry_conditions": [
+        {
+          "condition": "The first role is proven not to be a bespoke services exercise",
+          "result": "FAILED",
+          "evidence": [
+            "Q2 and Q3 are NOT_STARTED"
+          ]
+        }
+      ],
+      "implemented_files": [],
+      "tests": [],
+      "missing_outputs": [
+        "one evidence-backed adjacent-role or narrowly selected partner repeatability test"
+      ],
+      "external_blockers": [
+        "eligible partner or adjacent-role evidence when the horizon is reached"
+      ],
+      "human_decisions": [],
+      "next_smallest_action": "Do not start; prove first-role repeatability",
+      "gate_decision": null,
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    }
+  ],
+  "claims": []
+}

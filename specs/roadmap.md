@@ -21,6 +21,26 @@ The provisional Target is Junior Python Backend Engineer, entry-level or junior,
 - No readiness report is used externally without human approval.
 - School, minor-facing, employer, organization, marketplace, social, credentialing, native-mobile, and multi-role expansion are outside this sequence.
 
+
+## Parallel Execution Lanes
+
+The roadmap has two independently evidenced lanes:
+
+- **Validation lane:** `V00`, `V01`, and later product, learning-science,
+  production-hardening, and commercial validation gates. These phases decide
+  whether a Target, learning claim, or role-specific system is authorized.
+- **Foundation lane:** `F00`, `F01`, and later reversible technical-foundation
+  phases. These phases establish only role-neutral capabilities that are
+  reusable across plausible `V00` candidates.
+
+A blocked validation phase does not automatically block an eligible foundation
+phase. Foundation work cannot satisfy, infer, weaken, or bypass a validation
+entry condition or evidence gate. Role-specific content, `RoleProfile`s,
+competency graphs, learning logic, assessments, simulations, mastery, evidence
+acceptance, readiness, and associated claims remain locked behind their existing
+validation gates. Each lane records its own status, evidence, and gate decision.
+Any foundation decision that would materially constrain role selection returns to
+validation-lane review.
 ## Evidence Classes
 
 - **Product validation:** proves that the workflow solves a bounded learner problem.
@@ -30,6 +50,190 @@ The provisional Target is Junior Python Backend Engineer, entry-level or junior,
 - **Commercial validation:** tests whether the bounded adult B2C outcome has a plausible market boundary without weakening evidence claims.
 - **Commercial expansion:** occurs only in the evidence-conditional horizons after `V22`.
 
+
+## Foundation Sequence
+
+### F00 - Repository and Quality Foundation
+
+**Class:** Technical foundation. **Effort:** 2-5 engineering days.
+
+- **Objective:** Create a reproducible monorepo baseline for the approved web
+  and API architecture.
+- **Entry conditions:** The mission, technical constitution, and roadmap exist;
+  FastAPI and Next.js are approved foundations; the scope is role-neutral; a
+  clean automation branch is available; and no external `V00` evidence is
+  required.
+- **Outputs:** Backend and frontend application skeletons; deterministic local
+  commands; formatting, linting, strict typing, testing, and coverage
+  configuration; CI quality gates; line-ending policy; configuration-only health
+  checks; and local developer documentation.
+- **Non-goals:** Database schema, ORM, migrations, authentication, tenancy,
+  object storage, background jobs, LLM gateway, role profiles, competency graphs,
+  curriculum, assessment, tutoring, mastery, evidence acceptance, simulations,
+  readiness, deployment vendor selection, or product claims.
+- **Exit gate:** From a clean checkout, every declared local and CI check passes,
+  API coverage is at least 95%, and independent review confirms that no
+  role-specific or learning-state behavior was introduced.
+- **Dependencies:** None. `F00` does not alter `V00`, unlock `V01`, or authorize
+  any later validation or foundation phase.
+- **Decision:** Continue only when the exit gate passes; Revise or Narrow the
+  foundation scope on a failed check; Stop if the required foundation would
+  constrain role selection or bypass a validation gate.
+
+### F01 - Local Runtime Integration and API Contract Baseline
+
+**Class:** Technical foundation. **Effort:** 2-5 engineering days.
+
+- **Objective:** Establish one reproducible local API-and-web runtime with a
+  mechanically checked, role-neutral health contract and an explicit
+  unavailable-service experience.
+- **Smallest scope:** Development process lifecycle plus `/health/live`,
+  `/health/ready`, and `/openapi.json` only. The web availability surface uses
+  `/health/live`; configuration readiness is not product or learner readiness.
+- **Entry conditions:** `F00` passes; architecture and roadmap review confirm
+  that F01 is reusable across every plausible `V00` candidate and does not
+  constrain Target selection; the existing health endpoints and static web shell
+  remain verified; and no external `V00` evidence is required.
+- **Outputs:** One documented cross-platform, development-only root command that
+  starts and cleanly stops the API and web with visible failure propagation and
+  loopback defaults; validated server-only API-base configuration with no
+  browser-exposed or user-controlled destination; a replaceable health adapter
+  and accessible API-available/unavailable/invalid-response states; a canonical
+  generated OpenAPI artifact, deterministic drift check, and health client/runtime
+  validator derived from that contract rather than a handwritten response DTO;
+  one deterministic cross-process smoke command invoked identically locally and
+  by CI; focused unit, contract, lifecycle, and integration tests; and recorded
+  startup, shutdown, smoke-time, dependency, storage, and process-resource deltas.
+- **Non-goals:** Database, schema, ORM, migrations, authentication, identity,
+  tenancy, domain or learner models, role or competency models, tutoring,
+  assessment, mastery, curriculum, simulations, evidence acceptance, LLM calls,
+  readiness, persistence, object storage, jobs, SSE, telemetry backend, general
+  client SDK generation, browser-direct API calls, CORS or production routing,
+  containers, deployment, service discovery, vendor selection, production
+  process management, uptime claims, or product claims.
+- **Exit gate:** From a clean checkout with locked dependencies, the root command
+  starts and terminates both processes on Windows and the supported Linux CI
+  runner without orphaning children; configuration and lifecycle failures are
+  visible; the production web build passes with the API absent; the web reports
+  API availability only after a bounded, non-cached response satisfies the
+  OpenAPI-derived health contract and otherwise renders tested accessible failure
+  states; contract drift fails deterministically; the same cross-process smoke
+  passes locally and in CI without external services; every F00 quality gate
+  still passes; resource deltas are recorded; and independent verification finds
+  no forbidden domain behavior, readiness semantics, deployment choice, or
+  change to `V00` or `V01`.
+- **Dependencies:** `F00` only. F01 neither depends on nor satisfies `V00`, does
+  not unlock `V01`, and does not authorize `V02` or later phases.
+- **Decision:** Continue only when every exit condition passes. Revise failed
+  lifecycle, contract, configuration, failure-state, or CI behavior. Narrow to
+  the health-only boundary if broader client or networking infrastructure would
+  be required. Stop if integration would constrain role selection, introduce
+  domain state, select production topology, or bypass a validation gate.
+
+### F02 - Cross-Process Correlation and Confidential Diagnostics Baseline
+
+**Class:** Technical foundation. **Effort:** 2-5 engineering days.
+
+- **Objective:** Establish vendor-neutral W3C trace correlation and allowlisted
+  structured diagnostics across the existing server-rendered web-to-API health
+  transaction without adding product telemetry, persistent state, or an
+  external telemetry service.
+- **Smallest scope:** The existing Next.js server-to-FastAPI `/health/live`
+  transaction only: safe trace-context creation and propagation, isolated API
+  request context, confidential fixed-vocabulary diagnostic events, and one
+  cross-process verification gate. The browser receives no trace context or
+  diagnostic payload.
+- **Entry conditions:** `F01` passes; OpenTelemetry-compatible instrumentation
+  and structured diagnostics remain approved, role-neutral boundaries; an
+  architecture review confirms that this scope is reusable across every
+  plausible `V00` candidate; any instrumentation dependency preserves W3C
+  interoperability and a replaceable exporter boundary; and no external `V00`
+  evidence is required.
+- **Outputs:** A recorded dependency and ownership decision with requirement
+  fit, operational cost, failure behavior, and replacement path; strict W3C
+  context validation and safe root creation; API middleware with concurrency
+  isolation and cleanup; an allowlisted JSON diagnostic-event contract that
+  rejects free-form sensitive fields; server-only trace propagation and bounded
+  outcome/timing diagnostics around the existing health adapter; adversarial
+  confidentiality, malformed-context, isolation, and duplicate-instrumentation
+  tests; one identical local/CI cross-process diagnostic check; and dependency,
+  startup, shutdown, process, memory, event-volume, byte-volume, and fixed-sample
+  health-latency observations.
+- **Non-goals:** PostgreSQL, ORM, migrations, schemas, persistence, events,
+  outbox, replay, projections, jobs, authentication, authorization, domain or
+  learner identifiers, role or learning state, product analytics, audit
+  history, operational budgets, `V17A` evidence, browser or client telemetry,
+  an exporter, telemetry backend or vendor, network egress, monitoring,
+  alerting, production sampling or retention policy, deployment, LLM access, or
+  privacy/compliance approval.
+- **Exit gate:** One real F01 health transaction produces matching valid trace
+  identifiers and distinct nonzero spans in web and API diagnostics; absent or
+  malformed incoming context creates a safe new root; concurrent and completed
+  requests cannot leak context; test canaries placed in request metadata,
+  configuration, response detail, and failure text never appear in logs or
+  browser output; every emitted field belongs to the fixed allowlist and no raw
+  URL, query, header, body, exception text, or environment value is logged;
+  diagnostic event count and byte volume are bounded; no exporter, persistent
+  diagnostic store, network egress, product metric, audit claim, or domain
+  identifier exists; all F00/F01 contract, timeout, confidentiality, process,
+  cleanup, coverage, Windows, and exact Ubuntu CI gates remain green; resource
+  deltas are recorded without inventing a platform budget; and independent
+  verification finds no `V00`, `V01`, `V17A`, product, learner, evidence, or
+  readiness leakage.
+- **Dependencies:** `F01` only. F02 neither depends on nor satisfies `V00`, does
+  not unlock `V01`, does not authorize `V02` or `V17A`, and makes no privacy or
+  production-operability claim.
+- **Decision:** Continue only when every exit condition passes. Revise context,
+  confidentiality, isolation, duplication, or resource failures. Narrow back to
+  an API-only confidential-diagnostics amendment if cross-process propagation
+  would require browser telemetry, production topology, or a backend choice.
+  Stop if useful diagnostics require raw sensitive content, product/domain
+  identifiers, a vendor commitment, or a validation-gate bypass.
+
+### F03 - GitHub Phase-Gate Control Plane
+
+**Class:** Technical foundation. **Effort:** 1-2 engineering days.
+
+- **Objective:** Create a deterministic, fail-closed GitHub-hosted controller
+  that validates the exact checked-out revision, derives both lane projections
+  from versioned repository evidence, and autonomously accepts internally
+  decidable technical phases without chat approval.
+- **Smallest scope:** A versioned machine-readable policy; a standard-library,
+  non-mutating validator and deterministic Step Summary projection; exact-head
+  checkout for every job; two new jobs named `Phase gate` and `Gate projection`;
+  adversarial fixtures; and the implementation-head then acceptance-state-head
+  evidence loop on pull request #1.
+- **Entry conditions:** `F02` passes; pull request #1 and its durable steering
+  authorize exact-revision autonomous technical acceptance; GitHub issue #2 is
+  the approved controller contract; the existing API, web, and runtime checks
+  remain green; and V00 external evidence is neither required nor inferred.
+- **Outputs:** `plans/autonomous-loop/controller-policy.json`; strict roadmap,
+  state, inventory, workflow, hash, dependency, lane, blocker, claim, and exact-
+  head validation; fixed safe failures; deterministic JSON and GitHub Step
+  Summary projection; all five required jobs on pull request and automation-
+  branch pushes; operating-contract instructions; independent verification;
+  and immutable implementation plus acceptance-state evidence in PR #1.
+- **Non-goals:** Database, persistence, authentication, tenancy, role or learner
+  models, competency graph, curriculum, assessment, mastery, simulation,
+  readiness, LLM calls, product claims, V00 evidence, V01 unlock, containers,
+  deployment, Vercel configuration, provider selection, or F04 work.
+- **Exit gate:** An independently verified implementation revision passes exact
+  API quality, Web quality, Runtime smoke, Phase gate, and Gate projection jobs;
+  a separate acceptance-state revision records that immutable implementation
+  evidence and passes its own exact five jobs; pending, failed, skipped,
+  cancelled, stale, merge-ref-only, previous-head, or chat approval evidence is
+  rejected; state, inventory, plan, checkpoint, run log, and durable PR evidence
+  agree; V00 remains `WAITING_EXTERNAL / Revise`; V01 remains locked; and no F04
+  behavior is added.
+- **Dependencies:** `F02` only. F03 neither depends on nor satisfies `V00`, does
+  not unlock `V01`, does not authorize `V02`, and cannot weaken or claim any
+  validation, product, readiness, beta-entry, or production gate.
+- **Decision:** Continue only after both immutable revisions pass every exact
+  required job. Revise a repairable policy, controller, test, workflow,
+  projection, documentation, or evidence defect. Narrow only if a smaller
+  deterministic control surface preserves every fail-closed invariant. Stop if
+  acceptance requires write authority, secrets, deployment, fabricated
+  evidence, validation weakening, or forbidden human technical approval.
 ## Initial Validation Sequence
 
 ### V00 - Candidate Role Evidence
