@@ -234,6 +234,72 @@ validation-lane review.
   deterministic control surface preserves every fail-closed invariant. Stop if
   acceptance requires write authority, secrets, deployment, fabricated
   evidence, validation weakening, or forbidden human technical approval.
+
+### F04 - Vercel Deployment Baseline
+
+**Class:** Technical foundation. **Effort:** 2-5 engineering days, bounded by
+elapsed time for external Vercel account and project setup.
+
+- **Objective:** Establish the smallest reproducible Vercel deployment
+  baseline for the existing role-neutral Next.js web tier, with GitHub-linked
+  revision evidence, explicit preview/production environment separation, safe
+  server-only configuration, rollback evidence, and bounded resource and cost
+  observations, while the FastAPI backend remains on its already-approved
+  containers-on-managed-PaaS runtime.
+- **Topology decision:** `specs/tech-stack.md` approves "Containers on a
+  managed PaaS" as the backend runtime; only the PaaS vendor is Provisional.
+  Amending that approved decision requires an explicit constitution update,
+  which this bounded phase does not perform. F04 selects Option 2 from GitHub
+  issue #3: Vercel hosts only the Next.js web tier, a first-class, unmodified
+  use of the Vercel platform documented for Next.js. The FastAPI API's
+  deployment remains governed by the existing approved containers-on-managed-
+  PaaS decision, with vendor selection deferred to a later, separately gated
+  phase.
+- **Smallest scope:** Deploy only `apps/web` to Vercel. The FastAPI API is not
+  deployed to Vercel in this phase. The deployed web app's existing F01
+  health-status surface must safely report the accessible API-unavailable
+  state with no API origin configured, proving the already-built
+  unavailable-state behavior in a real deployed environment. No new backend
+  runtime, container image, or PaaS vendor selection is introduced.
+- **Entry conditions:** `F03` passes on both its implementation and
+  acceptance-state revisions with all five required GitHub checks; GitHub
+  issue #3 is the approved control contract; the topology decision above is
+  recorded; no Vercel secret or connected project exists yet in this
+  repository, recorded rather than assumed; and no external V00 evidence is
+  required.
+- **Outputs:** Vercel project configuration scoped to `apps/web`; documented
+  preview and production environment separation; verified absence of
+  server-only secrets or confidential diagnostic values in browser-served
+  assets on the real deployment; deployment status attached to the exact
+  pull-request head SHA that fails closed on a missing, pending, or failed
+  deployment; one demonstrated rollback to a prior accepted deployment with
+  recorded evidence; and recorded build duration, artifact footprint, and
+  cold/warm health-surface latency observations.
+- **Non-goals:** FastAPI or API deployment, PaaS vendor selection, PostgreSQL,
+  ORM, migrations, persistence, queues, object storage, authentication,
+  tenancy, learner or role data, curriculum, assessment, mastery, readiness,
+  simulations, LLM access, production telemetry backend, beta traffic, SLA,
+  compliance certification, commercial launch, V00 evidence, or V01 unlock.
+- **Exit gate:** The topology decision is recorded; preview deployment of the
+  exact web-tier implementation head succeeds; the deployed health-status
+  surface safely and accessibly reports API-unavailable with no API origin
+  configured; no secret, server-only configuration, or confidential
+  diagnostic value appears in any deployed browser asset or public log;
+  rollback to a known accepted deployment is demonstrated with evidence;
+  GitHub records exact deployment and workflow evidence attached to the exact
+  head SHA; all five F03 checks remain green on the exact head; independent
+  verification finds no scope leakage, no FastAPI or PaaS-vendor decision,
+  and no V00/V01 bypass; and a separate acceptance-state revision passes its
+  own required checks and deployment evidence.
+- **Dependencies:** `F03` only. F04 neither depends on nor satisfies `V00`,
+  does not unlock `V01`, does not select a PaaS vendor for the API, and makes
+  no production-readiness, SLA, or commercial-launch claim.
+- **Decision:** Continue only when every exit condition passes with real
+  Vercel-linked evidence. Revise a repairable configuration, secret-exposure,
+  or evidence defect. Narrow further if even the web-only scope requires a
+  capability outside this phase's non-goals. Stop if acceptance would require
+  FastAPI deployment, PaaS vendor selection, committed credentials,
+  fabricated evidence, or a validation-gate bypass.
 ## Initial Validation Sequence
 
 ### V00 - Candidate Role Evidence

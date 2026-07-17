@@ -2,11 +2,11 @@
   "schema_version": 3,
   "status": "READY",
   "active_phase": "F03",
-  "active_slice": "F03-acceptance-state-revision",
+  "active_slice": "F04-topology-decision-and-definition",
   "gate_decision": "Continue",
-  "last_completed_action": "Implementation revision fe49b609767e27d52fae999c229502ed98866dff passed all five required GitHub jobs on both the push run (29528587173) and the pull-request run (29528587169): API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded on the exact SHA in both runs. This acceptance-state revision records that evidence and marks F03 PASSED / Continue.",
-  "next_action": "Require this acceptance-state revision's own exact five GitHub jobs to pass, then record both workflow runs in pull request #1 and stop before F04.",
-  "stop_reason": "F03 is now PASSED / Continue pending confirmation of this exact acceptance-state revision's own five-job GitHub run. V00 remains WAITING_EXTERNAL / Revise; V01 and F04 remain locked and out of scope for this invocation.",
+  "last_completed_action": "Formally defined F04 in specs/roadmap.md and plans/F04-vercel-deployment-baseline.md. Recorded the required topology decision: specs/tech-stack.md approves containers on a managed PaaS as the backend runtime (binding); only the vendor is Provisional. F04 selects Option 2 from GitHub issue #3 (Vercel hosts only the Next.js web tier). Verified directly, not assumed, that no Vercel secret or connected project existed before this phase. A real Vercel account, org, and project now exist locally via the Vercel CLI, confirmed git-ignored. Connecting Vercel's GitHub Git integration failed with 'You need to add a Login Connection to your GitHub account first' -- a browser-based action only the account owner can complete.",
+  "next_action": "User authorizes a GitHub Login Connection on the Vercel account via the Vercel dashboard, then confirms so the Vercel-GitHub Git integration can be connected for apps/web and a real preview deployment with GitHub-linked check evidence can be produced.",
+  "stop_reason": "F04 definition is complete and IN_PROGRESS. Implementation is blocked on a real Vercel-GitHub Login Connection, a browser OAuth action only the user can perform. F03 remains PASSED / Continue. V00 remains WAITING_EXTERNAL / Revise; V01 remains locked.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
@@ -27,7 +27,7 @@
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-17T00:10:00.000Z"
+    "generated_at": "2026-07-17T13:12:18.000Z"
   },
   "external_blockers": [
     "v00.symmetric_demand",
@@ -49,11 +49,11 @@
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
     "specs/mission.md": "955bb67629921c200199ba5e66b009c84504250abf67b47a541a2682ac8df5a6",
     "specs/tech-stack.md": "b15abb17ce919a3e4413091033d410b39fffa9ba0bfcd66c7276075f0f5c275f",
-    "specs/roadmap.md": "2143129b9d5b767dcb17e6bf1ca0187a061bfad0931c80986289d5e0e135c5e5",
+    "specs/roadmap.md": "5a6066727e0cb2c7021b21fdd7620e3309f2172b6ea264d9cb4330856482563e",
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
     "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "b8d743abee02a1ec33fecfcc9304b856a733cca25016076609bd349e1841f5cf",
-    "plans/implementation-inventory.json": "30df1192c46b23c7e92785fd6cb8d481ca9fa16df404e1d71bbf5a162458e156",
+    "plans/implementation-inventory.json": "e02cbb9ff014e2c9fa86e8a2b5e13686e020f9daf183fa260f0cdbea087ad12c",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "597e36eeec0a61abb46607de8bc3405f283a9dea6265e98e516c02c6efe99877",
@@ -68,12 +68,13 @@
     "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "8e48b53c2194af095b2042d5ba3b8b18343664839aaf647597b77e51d8daaa9c",
     "apps/api/tests/test_phase_gate.py": "74d3987081518711cb90564c78837b648e17e4872b0766fb123c6e693239c897",
     "scripts/phase_gate.py": "6f4b92f92ece4a9c1a93df6e8b07212f7387138f419ef494a166e00c6d3fb709",
-    "plans/implementation-inventory.md": "ca90e1e3706463093a05717785788c28e150ed28bf3d751986feefe85b2039a4"
+    "plans/implementation-inventory.md": "fd68d1f626e3b46a2e11fb677e9a6de98d47a16ca078a66e726e3f910728a7f8",
+    "plans/F04-vercel-deployment-baseline.md": "f5146fd3beb36763725914efef09f0691a274696e6aae3e1c0ce5772a29213df"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "run_number": 20,
-  "last_run_started_at": "2026-07-17T00:10:00.000Z",
-  "last_run_completed_at": "2026-07-17T00:40:00.000Z",
+  "run_number": 21,
+  "last_run_started_at": "2026-07-17T13:12:18.000Z",
+  "last_run_completed_at": "2026-07-17T13:13:21.000Z",
   "future_phase_boundary": {
     "phase": "F04",
     "status": "ELIGIBLE_AFTER_F03",

@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-17T00:10:00.000Z",
+  "generated_at": "2026-07-17T13:12:18.000Z",
   "repository": {
     "branch": "automation/v00-phase-loop",
     "head": "fe49b609767e27d52fae999c229502ed98866dff",
@@ -455,6 +455,82 @@
       "human_decisions": [],
       "next_smallest_action": "No further F03 implementation; F04 Vercel deployment baseline is the next eligible foundation phase and is out of scope for this invocation",
       "gate_decision": "Continue",
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "F04",
+      "name": "Vercel Deployment Baseline",
+      "lane": "foundation",
+      "status": "IN_PROGRESS",
+      "entry_conditions": [
+        {
+          "condition": "F03 passes on both its implementation and acceptance-state revisions",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F03-github-phase-gate-control-plane.md",
+            "Implementation SHA fe49b609767e27d52fae999c229502ed98866dff, runs 29528587173/29528587169",
+            "Acceptance SHA c2938f2d0496088ea117acf387424530ad0b4c59, runs 29577006084/29577007722"
+          ]
+        },
+        {
+          "condition": "GitHub issue #3 is the approved control contract",
+          "result": "PASSED",
+          "evidence": [
+            "https://github.com/TheBayoumi/ai-learning-platform/issues/3"
+          ]
+        },
+        {
+          "condition": "The topology decision required by issue #3 is recorded using current Vercel documentation",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F04-vercel-deployment-baseline.md",
+            "specs/tech-stack.md (Runtime: Containers on a managed PaaS, Approved)",
+            "specs/roadmap.md F04 section"
+          ]
+        },
+        {
+          "condition": "No Vercel secret or connected project exists yet, recorded rather than assumed",
+          "result": "PASSED",
+          "evidence": [
+            "gh secret list returned empty",
+            "gh api repos/.../commits/HEAD/check-runs showed only the five existing F03 jobs",
+            "gh api repos/.../commits/HEAD/status showed zero commit statuses"
+          ]
+        },
+        {
+          "condition": "A real Vercel account, project, and GitHub Login Connection exist to enable GitHub-linked preview deployment checks",
+          "result": "PENDING",
+          "evidence": []
+        }
+      ],
+      "implemented_files": [
+        "specs/roadmap.md",
+        "plans/F04-vercel-deployment-baseline.md",
+        "apps/web/.gitignore"
+      ],
+      "tests": [
+        "No application code changed; F00-F03 local and CI evidence remains applicable unchanged"
+      ],
+      "missing_outputs": [
+        "Vercel project Root Directory configuration verified",
+        "GitHub Login Connection authorized on the Vercel account (browser OAuth, user action only)",
+        "Vercel-GitHub Git integration connected for apps/web",
+        "Preview deployment of the exact implementation head with GitHub-linked check evidence",
+        "Deployed health-status surface verified to report API-unavailable safely",
+        "Browser-asset confidentiality scan run against the real deployed build",
+        "Demonstrated rollback to a prior accepted deployment with evidence",
+        "Separate acceptance-state revision passing its own required checks"
+      ],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "User authorizes a GitHub Login Connection on the Vercel account (vercel.com dashboard), then confirms so the GitHub Git integration can be connected for apps/web",
+      "gate_decision": null,
       "blocker_ids": [],
       "claims": [],
       "gate_effects": {

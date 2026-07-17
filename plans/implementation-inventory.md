@@ -112,10 +112,23 @@ prose is a synchronized human-readable projection.
   sets F03 to `PASSED / Continue`, and requires its own exact five-job GitHub
   run before durable confirmation in pull request #1.
 - GitHub remains the source, CI, exact-revision acceptance, and integration
-  control plane. Vercel deployment is outside F03 and remains a separately
-  gated F04 boundary from issue #3. A pre-existing integration may create an
-  unverified provider side effect on push; it is neither F03 evidence nor phase
-  progress.
+  control plane.
+- F04 - Vercel Deployment Baseline is `IN_PROGRESS`. The topology decision
+  required by GitHub issue #3 is recorded: `specs/tech-stack.md` approves
+  "Containers on a managed PaaS" as the backend runtime (binding; only the
+  vendor is Provisional), so F04 selects Option 2 — Vercel hosts only the
+  Next.js web tier; the FastAPI API's deployment remains governed by the
+  existing approved decision, with vendor selection deferred. Direct
+  verification (`gh secret list`, GitHub check-runs, and commit-status
+  queries) confirmed no Vercel secret or connected project existed before
+  this phase began. A real Vercel account, organization, and project
+  (`web`, scoped to `apps/web`) now exist locally via the Vercel CLI, with
+  `.vercel/` and `.env.local` confirmed git-ignored and untracked. Connecting
+  Vercel's GitHub Git integration requires authorizing a GitHub Login
+  Connection on the Vercel account through the Vercel dashboard, a
+  browser-based action only the account owner can complete; this is F04's
+  next blocking dependency. No FastAPI deployment, PaaS vendor selection, or
+  V00/V01 evidence is introduced.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This amendment does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -134,6 +147,7 @@ prose is a synchronized human-readable projection.
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
 | F03 | Foundation | `PASSED` | Implementation revision fe49b60 passed exact runs 29528587173/29528587169; acceptance revision's own five checks pending |
+| F04 | Foundation | `IN_PROGRESS` | Topology decision recorded (Vercel web-tier only); blocked on a GitHub Login Connection browser authorization on the Vercel account |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -192,9 +206,11 @@ provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-This acceptance-state revision records F03 as `PASSED / Continue` from
-implementation revision `fe49b609767e27d52fae999c229502ed98866dff`'s exact
-five-job success. Require this acceptance-state revision's own exact five
-GitHub jobs to pass, record both revisions and both accepted workflow runs in
-pull request #1, and stop before F04. Do not treat F00-F03 as V00 evidence.
-F04 becomes the next eligible foundation phase only in a future invocation.
+F04 - Vercel Deployment Baseline is formally defined and `IN_PROGRESS`. The
+next inventory update records: a GitHub Login Connection authorized on the
+Vercel account (user action), the Vercel-GitHub Git integration connected for
+`apps/web`, a preview deployment of the exact implementation head with
+GitHub-linked check evidence, verified safe API-unavailable health-surface
+behavior on the real deployment, a demonstrated rollback, and a separate
+acceptance-state revision passing its own required checks. Do not treat
+F00-F04 as V00 evidence.
