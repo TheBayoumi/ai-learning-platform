@@ -633,3 +633,19 @@ project (`web`, scoped to apps/web) now exist locally via the Vercel CLI
 Git integration failed with "You need to add a Login Connection to your
 GitHub account first" -- a browser OAuth action only the account owner can
 complete, recorded as F04's next blocking dependency.
+
+### Vercel Git integration connected; first real deployment blocked
+
+The user authorized the GitHub Login Connection and ran `vercel git connect`
+successfully, verified via the Vercel REST API (`link.type=github`,
+`link.repo=ai-learning-platform`). Found and fixed the project's
+`rootDirectory` (was `.`, corrected to `apps/web`) via the Vercel API.
+Pushed revision `b37bfc130ce3f436c32eb8b5481142c378fca68b`, which triggered
+the first real, GitHub-linked deployment (`dpl_7hovy7BzNQBC7vG9MVZBbyAzBdAw`)
+-- but it reported `readyState: BLOCKED` and a `failure` commit status
+("Deployment was blocked"). Diagnosed the likely cause: the commit's author
+email (`mahmoud.bayoumi@valeo.com`, from this machine's global git config,
+never set by the executor) does not match the email verified on the
+`TheBayoumi` GitHub/Vercel account, matching Vercel's documented
+committer-association block. The user reports this is now fixed; this
+revision retriggers a fresh deployment attempt to confirm.
