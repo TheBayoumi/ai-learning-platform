@@ -608,3 +608,28 @@ committed. This acceptance-state revision's own exact five-job GitHub run is
 now required and will be recorded as durable pull request #1 evidence once
 observed. A successful implementation SHA does not automatically accept this
 later state-update SHA.
+
+### F04 defined; definition revision passed exact-head CI
+
+Formally defined F04 in specs/roadmap.md and
+plans/F04-vercel-deployment-baseline.md, recording the topology decision
+required by GitHub issue #3: specs/tech-stack.md approves containers on a
+managed PaaS as the backend runtime (binding; only the vendor is
+Provisional), so F04 selects Option 2 -- Vercel hosts only the Next.js web
+tier. Verified directly (gh secret list, GitHub check-runs, commit-status
+queries) that no Vercel secret or connected project existed before this
+phase. Added a matching IN_PROGRESS F04 inventory entry, positioned
+immediately after F03 to satisfy the phase-gate validator's positional
+roadmap-inventory pairing.
+
+Definition revision `001b0eeb1faa3939057732fd80a0bafa635bddc7` was pushed and
+opened as pull request #5. Its exact five required checks passed via
+pull-request run `29596684247`: API quality `87938687679`, Phase gate
+`87938687704`, Web quality `87938687741`, Runtime smoke `87938871665`, Gate
+projection `87939008145` -- all success. This confirms the definition is
+internally consistent; it is not F04 acceptance. A real Vercel account and
+project (`web`, scoped to apps/web) now exist locally via the Vercel CLI
+(.vercel/ and .env.local confirmed git-ignored). Connecting Vercel's GitHub
+Git integration failed with "You need to add a Login Connection to your
+GitHub account first" -- a browser OAuth action only the account owner can
+complete, recorded as F04's next blocking dependency.
