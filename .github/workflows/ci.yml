@@ -3,7 +3,7 @@ name: Quality Gates
 on:
   pull_request:
   push:
-    branches: [main, automation/v00-phase-loop]
+    branches: [main, "automation/**"]
 
 permissions:
   contents: read

@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-17T21:45:52.000Z",
+  "generated_at": "2026-07-21T11:32:42.000Z",
   "repository": {
-    "branch": "automation/v00-phase-loop",
-    "head": "ea29294fe35687da9264682513fdfa08d520f776",
-    "working_tree": "F04 acceptance-state revision: real preview deployment dpl_7o2AnhP8uMaSqE5wE2L8ggdgo5oN reached READY for exact commit ea29294fe35687da9264682513fdfa08d520f776, GitHub-linked; user confirmed safe API-unavailable rendering; vercel rollback confirmed preview-only scope by design. F04 set to PASSED / Continue; this revision requires its own exact five-job GitHub run before durable confirmation in pull request #5",
+    "branch": "automation/f04-vercel-deployment-baseline",
+    "head": "ca08301b46e49945a805f20a07866a931a8e81e0",
+    "working_tree": "Bounded F04 closure repair: derive the active foundation frontier and successor from roadmap/inventory state, reconcile stale F03/F04 records, and return F04 to FAILED_RETRYABLE / Revise because rollback, protected-page automation, reproducible deployment configuration, measurements, and repository payload hygiene remain unresolved",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -453,7 +453,7 @@
       "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "No further F03 implementation; F04 Vercel deployment baseline is the next eligible foundation phase and is out of scope for this invocation",
+      "next_smallest_action": "F03 is durably accepted; no further F03 implementation is eligible",
       "gate_decision": "Continue",
       "blocker_ids": [],
       "claims": [],
@@ -467,7 +467,7 @@
       "id": "F04",
       "name": "Vercel Deployment Baseline",
       "lane": "foundation",
-      "status": "PASSED",
+      "status": "FAILED_RETRYABLE",
       "entry_conditions": [
         {
           "condition": "F03 passes on both its implementation and acceptance-state revisions",
@@ -515,19 +515,50 @@
       "implemented_files": [
         "specs/roadmap.md",
         "plans/F04-vercel-deployment-baseline.md",
-        "apps/web/.gitignore"
+        "apps/web/.gitignore",
+        "plans/autonomous-loop/controller-policy.json",
+        "apps/api/src/ai_learning_platform_api/automation/phase_gate.py",
+        "apps/api/tests/test_phase_gate.py",
+        ".github/workflows/ci.yml",
+        "plans/autonomous-loop/goal.md",
+        "plans/autonomous-loop/state.json",
+        "plans/autonomous-loop/checkpoint.md",
+        "plans/autonomous-loop/run-log.md",
+        "plans/implementation-inventory.json",
+        "plans/implementation-inventory.md"
       ],
       "tests": [
-        "No application code changed; F00-F03 local and CI evidence remains applicable unchanged",
+        "Starting exact head ca08301b46e49945a805f20a07866a931a8e81e0 passed GitHub Actions run 29616557723: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded; Vercel status was success for deployment dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
         "Real Vercel preview deployment dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5 (target=preview, region=iad1) reached readyState=READY for exact commit 787534a16506c45c9b953e95dd33aa6c1b8aa35a; GitHub commit status success (\"Deployment has completed\"); user visually confirmed the deployed page renders the F01/F02 health-status surface showing API unavailable/offline as expected, since no API origin is configured for this web-tier-only deployment",
-        "Rollback verified for the preview-only scope: vercel rollback correctly refused a non-production target (deployment dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5 has never served production traffic - it is not a valid rollback target, 422), confirming F04 never promotes to production. Both preview deployments (dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5 for 787534a16506c45c9b953e95dd33aa6c1b8aa35a and dpl_7o2AnhP8uMaSqE5wE2L8ggdgo5oN for ea29294fe35687da9264682513fdfa08d520f776) remain independently READY and reachable, proving a prior accepted revision stays available after a newer one deploys."
+        "Audit correction: vercel rollback returned HTTP 422 because the preview had never served production traffic. This is rejected-command evidence, not rollback. Independent preview URLs prove addressability only and do not prove traffic reversion.",
+        "Authenticated vercel curl retrieval of deployment dpl_64G3A2Zim5iWcQ2YzrQnW9runPii returned the rendered HTTP 200 API-unavailable state with role=status semantics; this live diagnostic is not yet a committed exact-SHA deployed-page gate.",
+        "F04 reconciliation controller suite passed 137 tests, including active-frontier, nullable-successor, valid-successor start, failed-entry and empty-entry waits, failed-entry transition rejection, post-F04 boundary, generic blocker, and automation/** branch regressions",
+        "Affected API gates passed: canonical OpenAPI and TypeScript generation current; Ruff format/lint and strict mypy pass; 405 tests pass at 97% total line coverage with phase_gate.py at 96%",
+        "Initial independent post-change verification returned Revise because a valid newly defined NOT_STARTED foundation successor projected as a repair; the defect is fixed with explicit failed-entry tracking and an end-to-end validated synthetic F05 regression",
+        "Focused rereview returned Revise because a failed non-transition entry could still project acceptance and empty entry conditions could start vacuously; transition and start readiness now reject both states under validated regressions",
+        "Final independent focused rereview returned ACCEPT with no material findings after 137 controller tests, Ruff, strict mypy, authoritative hash/state validation with only the intentional dirty-worktree guard bypassed, and git diff --check",
+        "Affected web gates passed on local Node 25.2.1 and npm 11.18.0: clean npm install, lint, strict typecheck, 97 tests, production build, and 629,565-byte browser confidentiality scan",
+        "Final Windows public runtime smoke passed with 48 exact events, 21 correlations, four concurrent requests, 12,639 diagnostic bytes, 14,224 captured bytes, API live in 1,416 ms, smoke in 4,724 ms, and shutdown in 51 ms; one preceding event-volume failure was not reproducible and retained no raw child evidence by design",
+        "Dirty-worktree exact-head validation failed closed with worktree_not_exact_head; clean exact-revision validation remains a publication gate"
       ],
-      "missing_outputs": [],
+      "missing_outputs": [
+        "A supported non-production alias must move from accepted preview A to preview B, move back to A, verify the served exact revision at each step, and restore the intended final target",
+        "A committed deployment-protection-aware exact-SHA page verifier must reject authentication redirects and stale deployments while checking HTTP, API-unavailable semantics, absent API origin, accessibility, and browser confidentiality",
+        "Vercel project configuration and Node/npm installation must be reproducible from version-controlled, non-secret configuration with compatible locked versions",
+        "Build duration, artifact footprint, cache impact, cold/warm page latency, runtime versions, and bounded cost observations remain unrecorded",
+        "The tracked 66,312,302-byte ai-learning-platform.7z must be confirmed unrelated, removed from the current tree without history rewriting, ignored narrowly, and measured as a separate repository-hygiene repair"
+      ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "No further F04 implementation; F05 or the next roadmap phase is out of scope for this invocation",
-      "gate_decision": "Continue",
-      "blocker_ids": [],
+      "next_smallest_action": "Demonstrate a supported non-production Vercel alias reversion between two exact preview revisions, record the served SHA after each switch, and restore the intended final alias target",
+      "gate_decision": "Revise",
+      "blocker_ids": [
+        "f04.rollback_reversion",
+        "f04.deployed_page_verification",
+        "f04.build_reproducibility",
+        "f04.resource_measurements",
+        "f04.repository_payload_hygiene"
+      ],
       "claims": [],
       "gate_effects": {
         "satisfies": [],

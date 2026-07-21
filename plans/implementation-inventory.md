@@ -1,11 +1,11 @@
 # Implementation Inventory
 
-Generated from exact-CI-accepted F03 implementation revision
-`fe49b609767e27d52fae999c229502ed98866dff`, which passed GitHub Actions
-push run `29528587173` and pull-request run `29528587169` (API quality,
-Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded
-in both runs). This acceptance-state revision records F03 as `PASSED`.
-F03 is automation, not product runtime.
+Current bounded repair starts from exact F04 acceptance head
+`ca08301b46e49945a805f20a07866a931a8e81e0`, which passed GitHub Actions run
+`29616557723` and has a GitHub-linked `READY` preview deployment. The live
+audit found incomplete and invalid F04 exit evidence, so this projection
+returns F04 to `FAILED_RETRYABLE / Revise`. F03 remains durably accepted;
+F03/F04 are technical foundation, not product or validation evidence.
 The machine-readable record is `plans/implementation-inventory.json`; this
 prose is a synchronized human-readable projection.
 
@@ -108,12 +108,12 @@ prose is a synchronized human-readable projection.
   `fe49b609767e27d52fae999c229502ed98866dff` then passed exact GitHub Actions
   push run `29528587173` and pull-request run `29528587169`: API quality, Web
   quality, Runtime smoke, Phase gate, and Gate projection all succeeded on the
-  exact SHA in both runs. This acceptance-state revision records that evidence,
-  sets F03 to `PASSED / Continue`, and requires its own exact five-job GitHub
-  run before durable confirmation in pull request #1.
+  exact SHA in both runs. Acceptance revision
+  `c2938f2d0496088ea117acf387424530ad0b4c59` subsequently passed exact runs
+  `29577006084` and `29577007722`, making F03 durably `PASSED / Continue`.
 - GitHub remains the source, CI, exact-revision acceptance, and integration
   control plane.
-- F04 - Vercel Deployment Baseline is `PASSED`. The topology decision
+- F04 - Vercel Deployment Baseline is `FAILED_RETRYABLE / Revise`. The topology decision
   required by GitHub issue #3 is recorded: `specs/tech-stack.md` approves
   "Containers on a managed PaaS" as the backend runtime (binding; only the
   vendor is Provisional), so F04 selects Option 2 — Vercel hosts only the
@@ -131,16 +131,17 @@ prose is a synchronized human-readable projection.
   which fails Next.js detection); corrected to `apps/web` via
   `PATCH /v9/projects/{id}`, confirmed via a follow-up `GET`. No GitHub
   Actions secret was created; Vercel's native GitHub App integration needs
-  none. A real preview deployment reached `READY` (deployment
-  `dpl_7o2AnhP8uMaSqE5wE2L8ggdgo5oN` for exact commit
-  `ea29294fe35687da9264682513fdfa08d520f776`), with GitHub commit status
-  `success`. The user visually confirmed the deployed page safely renders
-  the F01/F02 API-unavailable state. `vercel rollback` was tested directly
-  and correctly refused a non-production target, confirming F04's preview-
-  only scope by design; two independently accepted preview deployments
-  remain independently reachable, demonstrating a prior accepted revision
-  stays available. No FastAPI deployment, PaaS vendor selection, or
-  V00/V01 evidence is introduced.
+  none. The current exact head has `READY` preview deployment
+  `dpl_64G3A2Zim5iWcQ2YzrQnW9runPii` and all five GitHub jobs green, but these
+  facts do not close the phase. `vercel rollback` returned HTTP 422 for the
+  preview target; this is rejected-command evidence, not traffic reversion.
+  User visual confirmation is not a committed protected-page gate, remote
+  project and Node/npm behavior are not yet reproducible from versioned
+  configuration, and build/artifact/cache/latency/runtime/cost measurements
+  remain absent. The controller/state self-loop and stale F03/branch records
+  are repaired in this revision; the remaining deployment repairs stay
+  explicit. No FastAPI deployment, PaaS vendor selection, or V00/V01 evidence
+  is introduced.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This amendment does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -158,8 +159,8 @@ prose is a synchronized human-readable projection.
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
-| F03 | Foundation | `PASSED` | Implementation revision fe49b60 passed exact runs 29528587173/29528587169; acceptance revision's own five checks pending |
-| F04 | Foundation | `PASSED` | Real preview deployment READY and GitHub-linked; API-unavailable behavior and preview-only rollback scope verified |
+| F03 | Foundation | `PASSED` | Implementation and acceptance revisions passed their own exact required runs |
+| F04 | Foundation | `FAILED_RETRYABLE` | Revise rollback, deployed-page proof, reproducibility, measurements, and payload hygiene |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -209,17 +210,27 @@ Accepted F02-03 adds the automated real-process correlation, safe-root,
 concurrency, failure, confidentiality, event-volume, resource, and lifecycle
 assertion.
 F03 adds repository automation only: a standard-library policy validator,
-deterministic projection, and exact-head CI jobs. The repository still has no
-OCI artifact, container harness, deployment manifest, local Vercel link, or
-verified remote deployment. It also has no persistent telemetry, authentication,
+deterministic projection, and exact-head CI jobs. F04 has a verified remote
+Vercel preview for the existing Next.js web tier, but no accepted reproducible
+deployment baseline, no deployed FastAPI API, and no production deployment.
+The F04 reconciliation passes 137 controller tests, all 405 API tests at 97%
+coverage, all 97 web tests plus lint/typecheck/build/confidentiality gates, and a
+final 48-event cross-process smoke. The controller now starts a validated,
+entry-ready `NOT_STARTED` successor and waits fail-closed on a failed successor
+or empty entry set; implementation-to-acceptance transition also rejects any
+failed entry. These are repair evidence only; they do not close any of F04's
+five remaining blockers.
+The repository still has no OCI artifact or container harness. It also has no persistent telemetry, authentication,
 learner or role state, events/outbox/replay, competency graph, curriculum,
 assessment, tutoring, LLM access, mastery, readiness, unique work, simulation,
 provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-This acceptance-state revision records F04 as `PASSED / Continue`. Require
-this acceptance-state revision's own exact five GitHub jobs to pass, record
-both revisions and durable evidence in pull request #5, and stop before the
-next roadmap phase. Do not treat F00-F04 as V00 evidence. The next roadmap
-phase becomes eligible only in a future invocation.
+This bounded repair records F04 as `FAILED_RETRYABLE / Revise` and fixes only
+controller/frontier derivation plus authoritative state reconciliation. Require
+its exact implementation revision checks and Vercel status to pass, record the
+correction durably in pull request #5 and issue #3, and stop. Do not treat
+F00-F04 as V00 evidence. The only next eligible action is a supported
+non-production verification-alias reversion with exact served-SHA proof and
+restoration of the intended final target.

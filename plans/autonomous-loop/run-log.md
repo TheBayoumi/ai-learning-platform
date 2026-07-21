@@ -667,3 +667,96 @@ Vercel's Deployment Protection SSO wall, which blocked the executor's own
 fetch attempts) that the deployed page renders the F01/F02 health-status
 surface showing API unavailable/offline, the correct and expected behavior
 since this web-tier-only deployment has no API origin configured.
+
+## Run 25 - 2026-07-21 (F04 closure repair: state and controller reconciliation)
+
+Reverified the clean live starting state before writing. Branch
+`automation/f04-vercel-deployment-baseline` was synchronized at exact SHA
+`ca08301b46e49945a805f20a07866a931a8e81e0`; pull request #5 was open,
+mergeable, and ahead of `main`. GitHub Actions run `29616557723` passed API
+quality, Web quality, Runtime smoke, Phase gate, and Gate projection on that
+exact SHA. GitHub deployment `5496257300` and Vercel deployment
+`dpl_64G3A2Zim5iWcQ2YzrQnW9runPii` reported successful/`READY` preview state
+for the same revision. The Vercel project remained `web`, project ID
+`prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN`, Root Directory `apps/web`, Node.js `24.x`,
+with no production deployment observed.
+
+The live audit rejected the earlier `PASSED` conclusion. The controller
+projected passed F04 as `DEFINE_F04 / F04`; `future_phase_boundary` called F04
+eligible after F03; goal, checkpoint, and inventory Markdown still described
+F03 acceptance as pending; repository metadata named the obsolete
+`automation/v00-phase-loop` branch and predecessor SHA; and the workflow push
+filter also named that obsolete branch. All 134 existing phase-gate tests passed
+while preserving that self-loop, proving a regression-suite blind spot.
+
+The deployment evidence also failed F04's own exit contract. `vercel rollback`
+returned HTTP 422 because a preview had never served production traffic. A
+rejected production rollback command and continued reachability of two preview
+URLs do not move traffic. Unauthenticated requests followed Vercel Deployment
+Protection redirects to a login page that returned HTTP 200. An authenticated
+`vercel curl` diagnostic reached the exact deployment and rendered the expected
+API-unavailable state with accessible `role=status` semantics, but no committed
+exact-SHA verifier exists. Version-controlled Vercel configuration, compatible
+Vercel npm installation, deployed confidentiality proof, required resource/cost
+measurements, and the tracked 66,312,302-byte archive also remain unresolved.
+
+Read-only mission, roadmap, architecture, and controller reviewers independently
+returned `Revise` and confirmed the same evidence defects. They also confirmed
+that the repair remains role-neutral, V00 remains `WAITING_EXTERNAL / Revise`,
+V01 remains locked, and no readiness or validation claim is introduced.
+
+This bounded repair returns F04 to `FAILED_RETRYABLE / Revise`, derives the
+active lane frontier and foundation successor from roadmap/inventory state,
+represents no defined successor explicitly, generalizes controller transition
+blockers and automation-branch matching, clarifies the traffic-reversion gate,
+and synchronizes authoritative records. It does not change an alias, deploy an
+API, promote production, remove the archive, define F05, merge the PR, or close
+issue #3.
+
+Local affected validation passed before publication. The controller suite passed
+137 tests, including active-frontier, nullable-successor, valid-successor start,
+failed-entry and empty-entry waits, failed-entry transition rejection,
+branch-pattern, and
+post-F04 boundary regressions. API canonical generation, Ruff format/lint, strict
+mypy, and the full suite passed: 405 tests, 97% total line coverage, and 96%
+coverage for `phase_gate.py`. Web `npm ci`, lint, strict typecheck, 97 tests, the
+Next.js production build, and the 629,565-byte browser confidentiality scan
+passed. The local machine used Node 25.2.1 and npm 11.18.0; Node remains inside
+the manifest's supported range but differs from `.nvmrc` 24.18.0 and the Vercel
+project setting 24.x, so this is an observation rather than reproducibility
+evidence.
+
+The first runtime-smoke attempt after the production build failed closed on an
+unexpected diagnostic-event count. Its public wrapper intentionally suppressed
+the raw child evidence, so no exact cause can be claimed. A bounded direct-child
+rerun then produced exactly 24 API and 24 web events with the required
+classifications, and the public runtime smoke passed with 48 events, 21
+correlations, four concurrent requests, 12,639 diagnostic bytes, 14,224 captured
+bytes, API live in 1,416 ms, total smoke in 4,724 ms, and 51 ms shutdown. No smoke
+code was changed for the non-reproduced observation. Dirty-worktree phase-gate
+validation failed closed as designed with `worktree_not_exact_head`; clean-head
+proof is deferred to the published exact revision.
+
+Independent post-change verification, publication of the implementation
+revision, and its exact GitHub/Vercel results are recorded in the durable pull
+request evidence after they complete. F04 remains `Revise`; the only next
+eligible action is a supported non-production verification-alias reversion with
+exact served-SHA proof and restoration of the intended final target.
+
+The first independent post-change review returned `Revise` because a newly
+defined, entry-ready `F05 / NOT_STARTED` frontier fell through to a repair action;
+the earlier successor unit test had bypassed repository validation. The repair
+now records failed entry conditions explicitly, projects an entry-ready frontier
+as `START_FOUNDATION_PHASE`, projects a failed entry as a non-eligible wait, and
+uses an end-to-end synthetic-roadmap/inventory/state regression. The same review
+also tightened the formal F04 exit gate to repeat build reproducibility,
+measurement/cost, and archive-hygiene requirements. Focused independent rereview
+then found that a failed non-transition entry could coexist with the exact
+implementation-transition tuple and still project acceptance, while an empty
+entry list could start vacuously. Transition readiness now rejects any failed
+entry, start readiness requires declared entry conditions, and validated
+regressions prove both paths fail closed. Final focused rereview returned
+`ACCEPT` with no material findings after independently passing all 137 controller
+tests, Ruff, strict mypy, authoritative hash/state validation (bypassing only the
+intentional dirty-worktree guard), and `git diff --check`. Publication evidence
+remains pending; the review accepts this bounded repair, not F04 itself.

@@ -272,9 +272,11 @@ elapsed time for external Vercel account and project setup.
   server-only secrets or confidential diagnostic values in browser-served
   assets on the real deployment; deployment status attached to the exact
   pull-request head SHA that fails closed on a missing, pending, or failed
-  deployment; one demonstrated rollback to a prior accepted deployment with
-  recorded evidence; and recorded build duration, artifact footprint, and
-  cold/warm health-surface latency observations.
+  deployment; one demonstrated traffic-moving reversion to a prior accepted
+  deployment with recorded evidence; and recorded build duration, artifact
+  footprint, and cold/warm health-surface latency observations. A rejected
+  command or continued reachability of immutable deployment URLs is not a
+  traffic reversion.
 - **Non-goals:** FastAPI or API deployment, PaaS vendor selection, PostgreSQL,
   ORM, migrations, persistence, queues, object storage, authentication,
   tenancy, learner or role data, curriculum, assessment, mastery, readiness,
@@ -285,7 +287,8 @@ elapsed time for external Vercel account and project setup.
   surface safely and accessibly reports API-unavailable with no API origin
   configured; no secret, server-only configuration, or confidential
   diagnostic value appears in any deployed browser asset or public log;
-  rollback to a known accepted deployment is demonstrated with evidence;
+  traffic is demonstrably reverted to a known accepted deployment and the
+  intended final target is restored with evidence;
   GitHub records exact deployment and workflow evidence attached to the exact
   head SHA; all five F03 checks remain green on the exact head; independent
   verification finds no scope leakage, no FastAPI or PaaS-vendor decision,

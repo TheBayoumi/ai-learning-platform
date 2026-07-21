@@ -111,6 +111,11 @@ def _assert_violation(root: Path, code: str) -> None:
         _validate(root)
 
 
+def _retarget_active_foundation(value: dict[str, Any], identifier: str) -> None:
+    value["active_phase"] = identifier
+    cast(dict[str, Any], value["foundation_track"])["active_phase"] = identifier
+
+
 def _projection_model(
     model: phase_gate.RepositoryModel,
     *,
@@ -120,10 +125,12 @@ def _projection_model(
     missing_outputs: tuple[str, ...],
 ) -> phase_gate.RepositoryModel:
     state = cast(dict[str, Any], json.loads(json.dumps(model.state)))
-    cast(dict[str, Any], state["foundation_track"])["status"] = status
+    foundation = cast(dict[str, Any], state["foundation_track"])
+    foundation["status"] = status
+    active_phase = cast(str, foundation["active_phase"])
     phases = dict(model.phases)
-    phases["F04"] = replace(
-        phases["F04"],
+    phases[active_phase] = replace(
+        phases[active_phase],
         status="PASSED" if status == "PHASE_PASSED" else "IMPLEMENTED_UNVERIFIED",
         pending_entries=pending_entries,
         blocker_ids=blocker_ids,
@@ -507,6 +514,10 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
         (lambda value: value.update(status="RUNNING"), "state_controller_status_disagreement"),
         (lambda value: value.update(active_phase="F02"), "state_active_phase_disagreement"),
         (
+            lambda value: _retarget_active_foundation(value, "F03"),
+            "state_active_phase_disagreement",
+        ),
+        (
             lambda value: cast(dict[str, Any], value["foundation_track"]).update(
                 status="IN_PROGRESS"
             ),
@@ -514,7 +525,7 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
         ),
         (
             lambda value: cast(dict[str, Any], value["foundation_track"]).update(
-                gate_decision="Revise"
+                gate_decision="Continue"
             ),
             "state_inventory_gate_disagreement",
         ),
@@ -525,7 +536,7 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
             "state_inventory_timestamp_disagreement",
         ),
         (
-            lambda value: value.update(external_blockers=["f03.implementation_checks"]),
+            lambda value: value.update(external_blockers=["controller.implementation_checks"]),
             "state_external_blockers_invalid",
         ),
         (
@@ -533,7 +544,7 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
             "state_human_blockers_invalid",
         ),
         (
-            lambda value: cast(dict[str, Any], value["future_phase_boundary"]).update(phase="F03"),
+            lambda value: cast(dict[str, Any], value["future_phase_boundary"]).update(phase="F04"),
             "state_future_boundary_invalid",
         ),
         (
@@ -852,7 +863,9 @@ def test_additional_policy_guards(
         ),
         (lambda value: value.update(claims=["target_selected"]), "repository_claim_invalid"),
         (
-            lambda value: _phase(value, "V00").update(blocker_ids=["f03.implementation_checks"]),
+            lambda value: _phase(value, "V00").update(
+                blocker_ids=["controller.implementation_checks"]
+            ),
             "external_blocker_class_invalid",
         ),
         (
@@ -864,7 +877,9 @@ def test_additional_policy_guards(
             "foundation_blocker_class_invalid",
         ),
         (
-            lambda value: _phase(value, "F00").update(blocker_ids=["f03.implementation_checks"]),
+            lambda value: _phase(value, "F00").update(
+                blocker_ids=["controller.implementation_checks"]
+            ),
             "passed_blockers_present",
         ),
         (
@@ -941,7 +956,7 @@ def test_claim_prerequisites_are_enforced(controller_root: Path) -> None:
             "state_track_status_invalid",
         ),
         (
-            lambda value: value.update(gate_decision="Revise"),
+            lambda value: value.update(gate_decision="Continue"),
             "state_controller_gate_disagreement",
         ),
         (
@@ -1000,7 +1015,7 @@ def test_additional_state_guards(
     [
         ("permissions:\n  contents: read", "permissions:", "workflow_permissions_invalid"),
         (
-            "branches: [main, automation/v00-phase-loop]",
+            'branches: [main, "automation/**"]',
             "branches: [main]",
             "workflow_trigger_invalid",
         ),
@@ -1062,8 +1077,8 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
     )
     passed = phase_gate.build_projection(passed_model, SUCCESS_RESULTS, require_check_results=True)
     assert passed.payload["next_action"] == {
-        "code": "DEFINE_F04",
-        "kind": "phase",
+        "code": "STOP_AT_FOUNDATION_BOUNDARY",
+        "kind": "stop",
         "phase": "F04",
     }
 
@@ -1071,7 +1086,7 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
         model,
         status="IMPLEMENTED_UNVERIFIED",
         pending_entries=("Independent verification remains pending",),
-        blocker_ids=("f03.independent_verification",),
+        blocker_ids=("controller.independent_verification",),
         missing_outputs=("Independent verification remains pending",),
     )
     repair = phase_gate.build_projection(repair_model, SUCCESS_RESULTS, require_check_results=True)
@@ -1110,7 +1125,7 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
         pending_entries=(model.policy.implementation_pending_condition,),
         blocker_ids=(
             *model.policy.implementation_transition_blockers,
-            "f03.independent_verification",
+            "controller.independent_verification",
         ),
         missing_outputs=model.policy.implementation_transition_missing_outputs,
     )
@@ -1148,6 +1163,203 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
     assert cast(dict[str, Any], validation_wait.payload["blockers"])["human_decision"] == [
         "validation.irreversible_decision"
     ]
+
+
+def test_valid_new_foundation_successor_projects_start_action(controller_root: Path) -> None:
+    synthetic_roadmap = """### F05 - Synthetic Successor
+
+- **Dependencies:** `F04` only.
+
+"""
+    _mutate_text(
+        controller_root,
+        "specs/roadmap.md",
+        lambda value: value.replace(
+            "## Initial Validation Sequence", synthetic_roadmap + "## Initial Validation Sequence"
+        ),
+    )
+
+    def add_successor(value: dict[str, Any]) -> None:
+        f04 = _phase(value, "F04")
+        f04["status"] = "PASSED"
+        f04["gate_decision"] = "Continue"
+        f04["missing_outputs"] = []
+        f04["blocker_ids"] = []
+        phases = cast(list[dict[str, Any]], value["phases"])
+        validation_start = next(index for index, item in enumerate(phases) if item["id"] == "V00")
+        phases.insert(
+            validation_start,
+            {
+                "id": "F05",
+                "name": "Synthetic Successor",
+                "lane": "foundation",
+                "status": "NOT_STARTED",
+                "entry_conditions": [
+                    {
+                        "condition": "F04 passed",
+                        "result": "PASSED",
+                        "evidence": ["synthetic exact F04 evidence"],
+                    }
+                ],
+                "implemented_files": [],
+                "tests": [],
+                "missing_outputs": ["Synthetic implementation remains pending"],
+                "external_blockers": [],
+                "human_decisions": [],
+                "next_smallest_action": "Start the synthetic successor",
+                "gate_decision": None,
+                "blocker_ids": [],
+                "claims": [],
+                "gate_effects": {"satisfies": [], "unlocks": [], "weakens": []},
+            },
+        )
+
+    _mutate_json(controller_root, "plans/implementation-inventory.json", add_successor)
+
+    def retarget_state(value: dict[str, Any]) -> None:
+        value["status"] = "READY"
+        value["active_phase"] = "F05"
+        value["active_slice"] = "F05-not-started"
+        value["gate_decision"] = None
+        foundation = cast(dict[str, Any], value["foundation_track"])
+        foundation.update(
+            active_phase="F05",
+            status="NOT_STARTED",
+            gate_decision=None,
+            next_action="Start the synthetic successor",
+        )
+
+    _mutate_json(controller_root, "plans/autonomous-loop/state.json", retarget_state)
+    model = _validate(controller_root)
+    projection = phase_gate.build_projection(
+        model,
+        SUCCESS_RESULTS,
+        require_check_results=True,
+    )
+
+    assert projection.payload["foundation_lane"] == {
+        "gate": None,
+        "phase": "F05",
+        "status": "NOT_STARTED",
+    }
+    assert projection.payload["next_action"] == {
+        "code": "START_FOUNDATION_PHASE",
+        "kind": "phase",
+        "phase": "F05",
+    }
+    assert projection.payload["autonomous_acceptance"] == {
+        "eligible": True,
+        "reason_codes": [],
+    }
+
+    def fail_successor_entry(value: dict[str, Any]) -> None:
+        entries = cast(list[dict[str, Any]], _phase(value, "F05")["entry_conditions"])
+        entries[0]["result"] = "FAILED"
+
+    _mutate_json(
+        controller_root,
+        "plans/implementation-inventory.json",
+        fail_successor_entry,
+    )
+    blocked = phase_gate.build_projection(
+        _validate(controller_root),
+        SUCCESS_RESULTS,
+        require_check_results=True,
+    )
+    assert blocked.payload["next_action"] == {
+        "code": "AWAIT_FOUNDATION_ENTRY_CONDITIONS",
+        "kind": "wait",
+        "phase": "F05",
+    }
+    assert blocked.payload["autonomous_acceptance"] == {
+        "eligible": False,
+        "reason_codes": ["FOUNDATION_ENTRY_CONDITIONS_INCOMPLETE"],
+    }
+
+    _mutate_json(
+        controller_root,
+        "plans/implementation-inventory.json",
+        lambda value: _phase(value, "F05").update(entry_conditions=[]),
+    )
+    empty_entries = phase_gate.build_projection(
+        _validate(controller_root),
+        SUCCESS_RESULTS,
+        require_check_results=True,
+    )
+    assert empty_entries.payload["next_action"] == {
+        "code": "AWAIT_FOUNDATION_ENTRY_CONDITIONS",
+        "kind": "wait",
+        "phase": "F05",
+    }
+    assert empty_entries.payload["autonomous_acceptance"] == {
+        "eligible": False,
+        "reason_codes": ["FOUNDATION_ENTRY_CONDITIONS_INCOMPLETE"],
+    }
+
+
+def test_failed_entry_cannot_advance_implementation_to_acceptance(
+    controller_root: Path,
+) -> None:
+    policy = _read_json(controller_root / phase_gate.POLICY_PATH)
+    github = cast(dict[str, Any], policy["github"])
+    pending_condition = cast(str, github["implementation_pending_condition"])
+    transition_blockers = cast(list[str], github["implementation_transition_blockers"])
+    transition_outputs = cast(list[str], github["implementation_transition_missing_outputs"])
+
+    def prepare_failed_transition(value: dict[str, Any]) -> None:
+        phase = _phase(value, "F04")
+        phase["status"] = "IMPLEMENTED_UNVERIFIED"
+        phase["gate_decision"] = None
+        phase["blocker_ids"] = transition_blockers
+        phase["missing_outputs"] = transition_outputs
+        entries = cast(list[dict[str, Any]], phase["entry_conditions"])
+        assert len(entries) >= 2
+        entries[0]["result"] = "FAILED"
+        entries[1].update(
+            condition=pending_condition,
+            result="PENDING",
+            evidence=[],
+        )
+
+    _mutate_json(
+        controller_root,
+        "plans/implementation-inventory.json",
+        prepare_failed_transition,
+    )
+
+    def prepare_transition_state(value: dict[str, Any]) -> None:
+        value["status"] = "IMPLEMENTED_UNVERIFIED"
+        value["gate_decision"] = None
+        value["next_action"] = "Repair the failed entry before acceptance"
+        foundation = cast(dict[str, Any], value["foundation_track"])
+        foundation.update(
+            status="IMPLEMENTED_UNVERIFIED",
+            gate_decision=None,
+            next_action="Repair the failed entry before acceptance",
+        )
+
+    _mutate_json(
+        controller_root,
+        "plans/autonomous-loop/state.json",
+        prepare_transition_state,
+    )
+    model = _validate(controller_root)
+    projection = phase_gate.build_projection(
+        model,
+        SUCCESS_RESULTS,
+        require_check_results=True,
+    )
+
+    assert model.phases["F04"].failed_entries
+    assert projection.payload["next_action"] == {
+        "code": "REPAIR_FOUNDATION_STATE",
+        "kind": "repair",
+        "phase": "F04",
+    }
+    assert projection.payload["autonomous_acceptance"] == {
+        "eligible": False,
+        "reason_codes": ["IMPLEMENTATION_EVIDENCE_INCOMPLETE"],
+    }
 
 
 def test_real_git_helpers_read_exact_local_history() -> None:

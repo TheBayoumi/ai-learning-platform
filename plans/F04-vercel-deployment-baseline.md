@@ -2,14 +2,15 @@
 
 **Phase:** `F04 - Vercel Deployment Baseline`
 **Class:** Technical foundation
-**Status:** `PASSED / Continue`. A real preview deployment
-(`dpl_7o2AnhP8uMaSqE5wE2L8ggdgo5oN`) reached `READY` for exact commit
-`ea29294fe35687da9264682513fdfa08d520f776`, GitHub-linked (commit status
-`success`). The user visually confirmed the deployed page safely renders
-the API-unavailable state. `vercel rollback` was tested and correctly
-refused a non-production target, confirming F04's preview-only scope. This
-acceptance-state revision records that evidence; its own exact five-job
-GitHub run is the final confirmation step.
+**Status:** `FAILED_RETRYABLE / Revise`. Starting acceptance head
+`ca08301b46e49945a805f20a07866a931a8e81e0` passed all five exact GitHub jobs
+and has a GitHub-linked `READY` preview deployment
+(`dpl_64G3A2Zim5iWcQ2YzrQnW9runPii`), but the evidence gate was applied
+incorrectly. A rejected `vercel rollback` command is not rollback, user visual
+confirmation is not durable deployed-page proof, version-controlled deployment
+reproducibility and required measurements are incomplete, and the controller
+projected F04 as its own successor. The bounded state/controller repair records
+these defects without weakening the exit gate.
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** A pull request on `automation/f04-vercel-deployment-baseline`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -88,8 +89,10 @@ runtime, container image, or PaaS vendor selection is introduced.
 4. Deployment status attached to the exact pull-request head SHA, failing
    closed on a missing, pending, or failed deployment; no previous-head
    deployment is accepted as evidence for a newer head.
-5. One demonstrated rollback to a prior accepted deployment with recorded
-   evidence (deployment IDs, timestamps, and the exact SHA each targets).
+5. One demonstrated traffic-moving reversion to a prior accepted deployment
+   with recorded evidence (deployment IDs, aliases, timestamps, commands,
+   HTTP results, exact SHAs, and the restored final target). A rejected command
+   or continued reachability of immutable preview URLs does not qualify.
 6. Recorded build duration, artifact footprint, and cold/warm health-surface
    latency observations from the real deployment.
 
@@ -109,14 +112,22 @@ runtime, container image, or PaaS vendor selection is introduced.
 F04 passes only when:
 
 - the topology decision is recorded (done, above);
+- version-controlled, non-secret configuration reproduces the `apps/web`
+  project boundary and a compatible pinned Node/npm installation;
 - preview deployment of the exact web-tier implementation head succeeds;
 - the deployed health-status surface safely and accessibly reports
   API-unavailable with no API origin configured;
 - no secret, server-only configuration, or confidential diagnostic value
   appears in any deployed browser asset or public log;
-- rollback to a known accepted deployment is demonstrated with evidence;
+- traffic is demonstrably reverted to a known accepted deployment, exact served
+  revisions are verified, and the intended final target is restored with evidence;
 - GitHub records exact deployment and workflow evidence attached to the
   exact head SHA;
+- build duration, artifact footprint, cache impact, cold/warm page latency,
+  runtime versions, and bounded cost observations are recorded;
+- the tracked oversized archive is removed from the current tree after its
+  references and impact are verified, without history rewriting, and a narrow
+  ignore rule prevents recurrence;
 - all five F03 checks (API quality, Web quality, Runtime smoke, Phase gate,
   Gate projection) remain green on the exact head;
 - independent verification finds no scope leakage, no FastAPI or
@@ -159,9 +170,24 @@ are produced automatically by Vercel on push, tied to the exact commit SHA.
 
 ## Performance and Resources
 
-No local runtime, dependency, or code path changes are introduced by this
-phase's definition. Real deployment resource observations (build duration,
-artifact footprint, latency) will be recorded once a live deployment exists.
+The live preview exists, but the required build duration, artifact footprint,
+cache impact, cold/warm page latency, runtime-version, and bounded cost
+observations have not yet been recorded. These remain exit-gate outputs; the
+earlier acceptance did not make the missing measurements optional.
+
+The bounded controller/state repair passed its affected local gates: 137
+controller tests; canonical generation, Ruff, strict mypy, and 405 API tests at
+97% total line coverage; clean web install, lint, strict typecheck, 97 tests,
+production build, and browser confidentiality scan; and a final 48-event
+cross-process runtime smoke. Local Node 25.2.1 differs from `.nvmrc` 24.18.0 and
+the Vercel project's 24.x setting, so these results do not satisfy the deployment
+reproducibility or real-deployment measurement outputs above.
+
+Independent post-change verification initially found and reproduced three
+fail-open successor/entry-transition cases. All were repaired with validated
+repository regressions; final focused rereview returned `ACCEPT` with no material
+findings. This accepts only the controller/state repair. F04 remains `Revise`
+until every exit requirement is satisfied.
 
 ## Data, Privacy, Security, and Compatibility
 
@@ -172,20 +198,20 @@ deployment rather than only local/CI environments.
 
 ## Rollback
 
-F04 is scoped to preview deployments only; it does not promote to
-production. Vercel's `vercel rollback` command is a production-alias
-mechanism and explicitly refuses non-production targets (tested directly:
-`Error: ... has never served production traffic - it is not a valid
-rollback target. (422)`). This is consistent with F04's bounded scope, not
-a gap: for preview-only deployments, "rollback to a known accepted
-revision" is demonstrated by each deployment's permanent,
-independently-addressable URL, which Vercel never garbage-collects. Two
-independently accepted preview deployments (`dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5`
-for `787534a16506c45c9b953e95dd33aa6c1b8aa35a` and a second for
-`ea29294fe35687da9264682513fdfa08d520f776`) both remain independently
-`READY` and reachable, proving a prior accepted revision stays available
-after a newer one deploys. Production promotion and rollback are deferred
-to the phase that first promotes to production, outside F04's scope.
+F04 is scoped to preview deployments only; it does not promote to production.
+The attempted `vercel rollback` call returned HTTP 422 because the preview had
+never served production traffic. That failure correctly proves the command is
+inapplicable to this target; it does not prove rollback. Likewise, two
+independently addressable `READY` preview URLs demonstrate historical revision
+access, not movement of served traffic from a newer revision back to an older
+one.
+
+F04 therefore remains `Revise`. The next bounded repair will use a temporary
+non-production verification alias: point it to accepted preview A, move it to
+preview B, move it back to A, verify the exact served revision after every
+switch, and restore the intended final target. If current official Vercel
+behavior makes that unsafe or impossible, the gate must be explicitly narrowed
+before reacceptance; the rejected command must never be relabeled as success.
 
 Separately: to remove F04 entirely, remove the Vercel project connection
 and revert the bounded F04 web deployment configuration. F00-F03 remain
@@ -207,6 +233,8 @@ state.
 
 ## Next Boundary
 
-After F04 passes, stop. The next eligible action is determined by
-recomputing both lanes from repository state in a future invocation; this
-invocation does not begin it.
+F04 has not passed. Stop after the bounded state/controller reconciliation.
+The only next eligible action is the non-production verification-alias
+reversion described above. Do not implement deployed-page automation, build
+reproducibility, archive hygiene, F05, merge, or issue closure in the same
+invocation.
