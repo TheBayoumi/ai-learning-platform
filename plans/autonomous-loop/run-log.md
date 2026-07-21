@@ -849,3 +849,84 @@ remains locked. This run stops after independent review, exact-head publication,
 remote check verification, durable PR/issue evidence, and a final proof-alias
 stability read. It does not implement another F04 blocker or create an
 acceptance-state revision.
+
+## Run 27 - 2026-07-21 (F04 exact-SHA deployed-page verification)
+
+Reverified the authoritative clean starting state before mutation. Repository
+`TheBayoumi/ai-learning-platform` was on branch
+`automation/f04-vercel-deployment-baseline` at exact SHA
+`4b4d1944ee34ded8921c88222902f0de0be1fb53`; pull request #5 was open and
+mergeable, F04 was `FAILED_RETRYABLE / Revise`, V00 was
+`WAITING_EXTERNAL / Revise`, V01 was locked, and exactly four F04 blockers
+remained. This run addressed only `f04.deployed_page_verification`.
+
+Added a dedicated push-only GitHub workflow and a bounded Node verifier. The
+verifier joins an exact GitHub Vercel commit status and unique GitHub Preview
+deployment to Vercel's canonical deployment ID, exact repository/branch/SHA,
+project, `READY` state, and immutable hostname before it accepts protected HTTP.
+It rejects redirects, authentication pages, stale or ambiguous deployment
+identity, non-HTML or oversized responses, unexpected assets, missing accessible
+API-unavailable semantics, confidential browser markers, and incomplete or
+secret-bearing evidence. The local build scan and deployed verifier now share
+one canonical confidentiality implementation. The artifact schema retains only
+bounded metadata, hashes, counts, and assertions.
+
+Several fail-closed setup defects were reproduced and corrected before evidence
+was accepted. Vercel's inspector target uses the raw deployment UID suffix while
+the API returns the canonical `dpl_` identifier. The existing Vercel CLI OAuth
+token had expired and its application cannot create child tokens. A
+personal-project access-token scope returned HTTP 403 and was revoked; the
+dedicated one-day token uses the narrowest available UI scope covering the
+owning team and expires 2026-07-22. `gh secret set --body -` stores a literal
+hyphen instead of reading standard input, so both required GitHub secrets were
+reinstalled through standard input without `--body`. Direct automation-bypass
+headers are used without the optional cookie-setting header because the latter
+caused an authentication redirect.
+
+Two superseded automation-bypass values were exposed only in ephemeral local
+inspection output. Both were treated as compromised and revoked immediately.
+The final bypass is unexposed, and no bypass value, token, cookie, raw
+authorization header, full HTML, temporary share URL, or CLI authentication
+state entered Git, workflow logs, evidence, pull requests, or issues. These
+security and correctness repairs required exceeding the invocation's soft tool
+and token ceilings; stopping earlier would have left a known invalid credential
+or false verification path.
+
+Independent review then reproduced a PowerShell portability defect: `npm.ps1`
+with pinned npm 11.18.0 stripped the named arguments after `--`. The committed
+operations guide now requires the verified `npm.cmd` shim on PowerShell while
+retaining the ordinary `npm run` form for Bash/CI. The PowerShell evidence
+validation passed, all 40 focused tests passed, and focused read-only rereview
+returned `PASS / Continue` with no material finding.
+
+Final implementation revision
+`4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c` passed Vercel deployment status and
+dedicated Actions run `29865352967`, job `88752059522`. Sanitized artifact
+`8508962218` has SHA-256
+`53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b`.
+The verifier joined GitHub deployment `5545146544` to exact Vercel deployment
+`dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA`, which was `READY` for the exact branch,
+project, and SHA. Bounded discovery completed in three attempts and 14,001 ms.
+The immutable host returned HTTP 200 with no redirect or authentication
+response, the accessible API-unavailable state, and no loopback origin, health
+path, trace context, or shared confidential marker across 8,402 HTML bytes and
+seven browser assets totaling 629,464 bytes.
+
+Exact push run `29865352971` passed API quality, Web quality, Runtime smoke,
+Phase gate, and Gate projection. Local gates also passed: 40 focused verifier
+tests; 137 total web tests plus lint, strict typecheck, production build, and
+confidentiality scan; 426 API tests at 97% total coverage plus canonical
+generation, Ruff, and strict mypy; the 48-event root runtime smoke; controller
+tests; phase validation; gate projection; diff checks; and repository secret
+checks. No data migration, public schema change, production traffic mutation,
+or persistent runtime cost was introduced.
+
+The committed machine-readable record is
+`plans/F04-vercel-deployed-page-verification-evidence.json`. This record removes
+only `f04.deployed_page_verification`. F04 remains
+`FAILED_RETRYABLE / Revise` with `f04.build_reproducibility`,
+`f04.resource_measurements`, and `f04.repository_payload_hygiene`; V00 remains
+`WAITING_EXTERNAL / Revise`, and V01 remains locked. The evidence/state revision
+must pass its own exact Vercel and GitHub checks before publication is complete.
+No F04 acceptance-state revision is created. The only next eligible blocker is
+`f04.build_reproducibility`.

@@ -1,6 +1,60 @@
 # Autonomous Loop Checkpoint
 
-## Run 26 current phase and gate
+## Run 27 current phase and gate
+
+F04 remains active and `FAILED_RETRYABLE / Revise`. This bounded repair started
+from clean branch `automation/f04-vercel-deployment-baseline` at exact SHA
+`4b4d1944ee34ded8921c88222902f0de0be1fb53`, with pull request #5 open and
+mergeable. Only `f04.deployed_page_verification` was in scope.
+
+The implementation chain culminated in exact revision
+`4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c`. Its dedicated, push-only workflow
+joined the exact GitHub Vercel status and deployment records to canonical Vercel
+deployment `dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA`, exact branch/project metadata,
+and `READY` preview state before accepting the protected page. The immutable
+hostname returned HTTP 200 with no redirect or authentication response, one
+accessible `role=status` API-unavailable state, and no loopback origin, health
+path, trace context, or shared confidential marker across 8,402 HTML bytes and
+seven browser assets totaling 629,464 bytes.
+
+GitHub Actions run `29865352967`, job `88752059522`, passed on that exact SHA and
+published sanitized artifact `8508962218`. The artifact's SHA-256 is
+`53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b`; its
+committed projection is
+`plans/F04-vercel-deployed-page-verification-evidence.json`. Bounded discovery
+completed in three attempts and 14,001 ms. Exact push run `29865352971` also
+passed API quality, Web quality, Runtime smoke, Phase gate, and Gate projection.
+
+Local validation passed the 40-test focused verifier suite, all 137 web tests,
+web lint, strict typecheck, production build, confidentiality scan, all 426 API
+tests at 97% coverage, Ruff, strict mypy, canonical generation checks, the
+48-event root runtime smoke, controller tests, phase validation, gate projection,
+and repository secret checks. Independent read-only review found one repeatable
+PowerShell package-script invocation defect. The runbook now requires the
+verified `npm.cmd` shim on PowerShell and keeps the ordinary `npm run` form for
+Bash/CI; the focused rereview returned `PASS / Continue` with no material
+finding.
+
+During credential setup, two superseded Vercel automation-bypass values were
+exposed only in ephemeral local tool output, treated as compromised, and revoked
+immediately. Neither value entered Git, GitHub Actions logs, artifacts, pull
+requests, or issues. A rejected personal-scope Vercel token was also revoked.
+The final bypass is unexposed, and the dedicated verifier token is short-lived
+through 2026-07-22. No credential, cookie, raw authorization header, full HTML,
+or temporary share URL is committed.
+
+Only `f04.deployed_page_verification` is resolved in this record. The three
+remaining F04 blockers are:
+
+- `f04.build_reproducibility`;
+- `f04.resource_measurements`; and
+- `f04.repository_payload_hygiene`.
+
+V00 remains `WAITING_EXTERNAL / Revise` with its four external inputs; V01
+remains locked. No F04 acceptance-state revision is created. The only next
+eligible blocker is `f04.build_reproducibility`.
+
+## Prior Run 26 checkpoint
 
 F04 remains active and `FAILED_RETRYABLE / Revise`. Run 26 started from clean
 branch `automation/f04-vercel-deployment-baseline` at exact SHA

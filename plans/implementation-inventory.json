@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-21T12:59:23.784Z",
+  "generated_at": "2026-07-21T20:25:23.371Z",
   "repository": {
     "branch": "automation/f04-vercel-deployment-baseline",
-    "head": "ceaf60d2ce5adf826b8268c32e513569a35eeb0c",
-    "working_tree": "Bounded F04 alias-reversion repair: prove one dedicated non-production alias moved from current preview B to prior preview A and back to intended final B with exact deployment, Git SHA, alias ownership, and protected application HTTP evidence; retain the other four F04 blockers and FAILED_RETRYABLE / Revise",
+    "head": "4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c",
+    "working_tree": "Bounded F04 deployed-page verification record: commit the sanitized exact-SHA protected-preview evidence, resolve only f04.deployed_page_verification, and retain build reproducibility, resource measurements, repository payload hygiene, and FAILED_RETRYABLE / Revise",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -24,7 +24,14 @@
       ".github/workflows/ci.yml",
       "apps/api/src/ai_learning_platform_api/automation/phase_gate.py",
       "apps/api/tests/test_phase_gate.py",
-      "plans/F04-vercel-alias-reversion-evidence.json"
+      "plans/F04-vercel-alias-reversion-evidence.json",
+      ".github/workflows/vercel-preview-verification.yml",
+      "apps/web/scripts/lib/browser-confidentiality.mjs",
+      "apps/web/scripts/lib/vercel-preview-verifier.mjs",
+      "apps/web/scripts/verify-vercel-preview.mjs",
+      "apps/web/tests/vercel-preview-verifier.test.ts",
+      "plans/F04-vercel-deployed-page-verifier-operations.md",
+      "plans/F04-vercel-deployed-page-verification-evidence.json"
     ]
   },
   "runtime_capabilities": {
@@ -48,14 +55,15 @@
       "static Next.js App Router technical shell",
       "locked API and web dependency workflows",
       "format, lint, strict type, test, coverage, build, and CI quality gates",
-      "versioned fail-closed GitHub phase policy, exact-head validator, deterministic lane projection, and five-job acceptance workflow"
+      "versioned fail-closed GitHub phase policy, exact-head validator, deterministic lane projection, and five-job acceptance workflow",
+      "exact-SHA deployment-protection-aware Vercel preview verification with canonical GitHub/Vercel identity, bounded protected HTTP, accessible API-unavailable semantics, and shared browser confidentiality rules"
     ],
     "not_implemented": [
       "database schema, ORM, migrations, or persistence",
       "domain event ledger, outbox, replay, projections, or jobs",
       "authentication, authorization, tenancy, privacy lifecycle, or deletion",
       "telemetry backend or exporter",
-      "object storage, LLM gateway, OCI artifacts, container runtime, or deployment",
+      "object storage, LLM gateway, OCI artifacts, container runtime, or API/backend deployment",
       "Target or RoleProfile runtime model",
       "competency graph or Blueprint and ItemFamily runtime contracts",
       "learner model, diagnosis, curriculum, tutoring, or assessment",
@@ -527,7 +535,17 @@
         "plans/autonomous-loop/run-log.md",
         "plans/implementation-inventory.json",
         "plans/implementation-inventory.md",
-        "plans/F04-vercel-alias-reversion-evidence.json"
+        "plans/F04-vercel-alias-reversion-evidence.json",
+        ".github/workflows/vercel-preview-verification.yml",
+        "apps/web/package.json",
+        "apps/web/scripts/check-browser-confidentiality.mjs",
+        "apps/web/scripts/lib/browser-confidentiality.mjs",
+        "apps/web/scripts/lib/vercel-preview-verifier.mjs",
+        "apps/web/scripts/lib/vercel-preview-verifier.d.mts",
+        "apps/web/scripts/verify-vercel-preview.mjs",
+        "apps/web/tests/vercel-preview-verifier.test.ts",
+        "plans/F04-vercel-deployed-page-verifier-operations.md",
+        "plans/F04-vercel-deployed-page-verification-evidence.json"
       ],
       "tests": [
         "Starting exact head ca08301b46e49945a805f20a07866a931a8e81e0 passed GitHub Actions run 29616557723: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded; Vercel status was success for deployment dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
@@ -544,20 +562,22 @@
         "Dirty-worktree exact-head validation failed closed with worktree_not_exact_head; clean exact-revision validation remains a publication gate",
         "Supported Vercel REST alias assignments moved f04-reversion-proof-web.vercel.app from B (dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z / ceaf60d2ce5adf826b8268c32e513569a35eeb0c) to A (dpl_64G3A2Zim5iWcQ2YzrQnW9runPii / ca08301b46e49945a805f20a07866a931a8e81e0) and restored it to B; both moves returned the exact prior deployment ID",
         "Every B-A-B transition passed bounded exclusive alias metadata, READY preview project/SHA metadata, and authenticated HTTP 200 application assertions with no redirect, loopback origin, health path, trace identifier, or confidential diagnostic marker",
-        "The focused alias-reversion contract suite passed 21 tests covering the valid proof, authoritative hash binding, missing deployments, identical or stationary transitions, readiness/project/SHA mismatch, stale alias ownership, authentication redirects, missing alias verification, incorrect restoration, empty evidence, unbounded polling, credential/share-URL leakage, missing required HTTP assertions, raw responses, and creator metadata"
+        "The focused alias-reversion contract suite passed 21 tests covering the valid proof, authoritative hash binding, missing deployments, identical or stationary transitions, readiness/project/SHA mismatch, stale alias ownership, authentication redirects, missing alias verification, incorrect restoration, empty evidence, unbounded polling, credential/share-URL leakage, missing required HTTP assertions, raw responses, and creator metadata",
+        "Focused deployed-page verifier suite passed 40 tests covering exact GitHub/Vercel identity, stale or ambiguous deployment rejection, redirects and authentication content, bounded polling and bytes, API-unavailable accessibility semantics, shared confidentiality rules, and secret-free evidence",
+        "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed Vercel status plus deployed-page workflow run 29865352967/job 88752059522; artifact 8508962218 validated exact READY deployment dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA, protected HTTP 200 with no redirect, API-unavailable semantics, and seven confidential-marker-free assets",
+        "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed push Quality Gates run 29865352971: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded",
+        "Independent read-only review found one PowerShell npm.ps1 argument-forwarding defect; the runbook now requires the verified npm.cmd entrypoint on PowerShell, 40 focused tests pass, and focused rereview returned PASS / Continue"
       ],
       "missing_outputs": [
-        "A committed deployment-protection-aware exact-SHA page verifier must reject authentication redirects and stale deployments while checking HTTP, API-unavailable semantics, absent API origin, accessibility, and browser confidentiality",
         "Vercel project configuration and Node/npm installation must be reproducible from version-controlled, non-secret configuration with compatible locked versions",
         "Build duration, artifact footprint, cache impact, cold/warm page latency, runtime versions, and bounded cost observations remain unrecorded",
         "The tracked 66,312,302-byte ai-learning-platform.7z must be confirmed unrelated, removed from the current tree without history rewriting, ignored narrowly, and measured as a separate repository-hygiene repair"
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Implement the committed deployment-protection-aware exact-SHA page verifier for f04.deployed_page_verification without starting any other F04 repair",
+      "next_smallest_action": "Repair only f04.build_reproducibility without starting resource measurements, repository payload hygiene, F04 acceptance, or F05",
       "gate_decision": "Revise",
       "blocker_ids": [
-        "f04.deployed_page_verification",
         "f04.build_reproducibility",
         "f04.resource_measurements",
         "f04.repository_payload_hygiene"

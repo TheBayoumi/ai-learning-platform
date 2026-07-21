@@ -1,12 +1,13 @@
 # Implementation Inventory
 
-Current bounded repair starts from exact F04 head
-`ceaf60d2ce5adf826b8268c32e513569a35eeb0c`, which passed both exact GitHub
-workflow runs and has GitHub-linked `READY` preview deployment
-`dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z`. The dedicated non-production alias proof
-resolves only `f04.rollback_reversion`; F04 remains
-`FAILED_RETRYABLE / Revise` with four other blockers. F03 remains durably
-accepted; F03/F04 are technical foundation, not product or validation evidence.
+Current bounded repair records exact implementation head
+`4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c`, which passed Vercel deployment
+status, the dedicated protected-page workflow, and all five exact GitHub quality
+jobs. The dedicated non-production alias proof resolves
+`f04.rollback_reversion`; the committed exact-SHA protected-page proof now also
+resolves only `f04.deployed_page_verification`. F04 remains
+`FAILED_RETRYABLE / Revise` with three blockers. F03 remains durably accepted;
+F03/F04 are technical foundation, not product or validation evidence.
 The machine-readable record is `plans/implementation-inventory.json`; this
 prose is a synchronized human-readable projection.
 
@@ -130,11 +131,11 @@ prose is a synchronized human-readable projection.
   that `link.type=github`, `link.repo=ai-learning-platform`. A real defect
   was found and fixed: the project's Root Directory was `.` (repo root,
   which fails Next.js detection); corrected to `apps/web` via
-  `PATCH /v9/projects/{id}`, confirmed via a follow-up `GET`. No GitHub
-  Actions secret was created; Vercel's native GitHub App integration needs
-  none. Exact repair-start head
-  `ceaf60d2ce5adf826b8268c32e513569a35eeb0c` has `READY` preview deployment
-  `dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` and both exact GitHub workflow runs green.
+  `PATCH /v9/projects/{id}`, confirmed via a follow-up `GET`. Vercel's native
+  GitHub App integration needs no repository secret for deployment. The later
+  protected-page verifier uses short-lived `VERCEL_API_TOKEN` and
+  `VERCEL_AUTOMATION_BYPASS_SECRET` Actions secrets under the documented
+  trusted-push boundary; no value is committed or logged.
   `vercel rollback` returned HTTP 422 for the preview target; this remains
   rejected-command evidence, not traffic reversion.
   `f04-reversion-proof-web.vercel.app` subsequently moved B to prior preview A
@@ -144,13 +145,18 @@ prose is a synchronized human-readable projection.
   confidential browser content. The Git-managed branch alias and production
   aliases were unchanged. Sanitized evidence is committed at
   `plans/F04-vercel-alias-reversion-evidence.json`.
-  User visual confirmation is not a committed protected-page gate, remote
-  project and Node/npm behavior are not yet reproducible from versioned
-  configuration, and build/artifact/cache/latency/runtime/cost measurements
-  remain absent. The controller/state self-loop and stale F03/branch records
-  are repaired in this revision; the remaining deployment repairs stay
-  explicit. No FastAPI deployment, PaaS vendor selection, or V00/V01 evidence
-  is introduced.
+  Exact deployed-page implementation revision
+  `4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c` passed dedicated workflow run
+  `29865352967` and exact push Quality Gates run `29865352971`. Sanitized
+  artifact `8508962218` binds GitHub deployment `5545146544` to `READY` preview
+  `dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA`, the exact SHA/project/branch, protected
+  HTTP 200 with no redirect, accessible API-unavailable semantics, and seven
+  shared-rule-confidential browser assets. The focused suite passed 40 tests;
+  independent rereview returned `PASS / Continue` after the PowerShell runbook
+  was corrected to use the verified `npm.cmd` entrypoint. Remote project and
+  Node/npm behavior are not yet reproducible from versioned configuration, and
+  build/artifact/cache/latency/runtime/cost measurements remain absent. No
+  FastAPI deployment, PaaS vendor selection, or V00/V01 evidence is introduced.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This amendment does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -169,7 +175,7 @@ prose is a synchronized human-readable projection.
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
 | F03 | Foundation | `PASSED` | Implementation and acceptance revisions passed their own exact required runs |
-| F04 | Foundation | `FAILED_RETRYABLE` | Revise deployed-page proof, reproducibility, measurements, and payload hygiene |
+| F04 | Foundation | `FAILED_RETRYABLE` | Revise reproducibility, measurements, and payload hygiene |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -219,16 +225,16 @@ Accepted F02-03 adds the automated real-process correlation, safe-root,
 concurrency, failure, confidentiality, event-volume, resource, and lifecycle
 assertion.
 F03 adds repository automation only: a standard-library policy validator,
-deterministic projection, and exact-head CI jobs. F04 has a verified remote
-Vercel preview for the existing Next.js web tier, but no accepted reproducible
-deployment baseline, no deployed FastAPI API, and no production traffic alias.
-The F04 reconciliation passes 137 controller tests, all 405 API tests at 97%
-coverage, all 97 web tests plus lint/typecheck/build/confidentiality gates, and a
-final 48-event cross-process smoke. The controller now starts a validated,
-entry-ready `NOT_STARTED` successor and waits fail-closed on a failed successor
-or empty entry set; implementation-to-acceptance transition also rejects any
-failed entry. The supported B-to-A-to-B alias proof removes only
-`f04.rollback_reversion`; four F04 blockers remain.
+  deterministic projection, and exact-head CI jobs. F04 has a verified remote
+  Vercel preview for the existing Next.js web tier plus a committed exact-SHA,
+  deployment-protection-aware page verifier, but no accepted reproducible
+  deployment baseline, no deployed FastAPI API, and no production traffic alias.
+  The current gates pass all 426 API tests at 97% coverage, all 137 web tests
+  plus lint/typecheck/build/confidentiality, the 40-test focused verifier suite,
+  and the final 48-event cross-process smoke. The supported B-to-A-to-B alias
+  proof removes `f04.rollback_reversion`; the exact GitHub/Vercel deployment,
+  protected HTTP, accessibility, and shared confidentiality chain removes
+  `f04.deployed_page_verification`. Three F04 blockers remain.
 The repository still has no OCI artifact or container harness. It also has no persistent telemetry, authentication,
 learner or role state, events/outbox/replay, competency graph, curriculum,
 assessment, tutoring, LLM access, mastery, readiness, unique work, simulation,
@@ -236,9 +242,8 @@ provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-This bounded repair records the supported non-production B-to-A-to-B alias
-reversion while keeping F04 `FAILED_RETRYABLE / Revise`. Require the bounded
-implementation revision's exact GitHub and Vercel checks to pass, record the
-immutable proof durably in pull request #5 and issue #3, and stop. Do not treat
-F00-F04 as V00 evidence. The only next eligible action is
-`f04.deployed_page_verification`.
+This bounded repair records the committed exact-SHA deployed-page proof while
+keeping F04 `FAILED_RETRYABLE / Revise`. Require this evidence/state revision's
+own exact GitHub and Vercel checks to pass, record the immutable proof durably in
+pull request #5 and issue #3, and stop. Do not treat F00-F04 as V00 evidence. The
+only next eligible action is `f04.build_reproducibility`.

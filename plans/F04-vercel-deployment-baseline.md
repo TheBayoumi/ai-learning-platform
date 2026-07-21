@@ -2,17 +2,17 @@
 
 **Phase:** `F04 - Vercel Deployment Baseline`
 **Class:** Technical foundation
-**Status:** `FAILED_RETRYABLE / Revise`. Starting repair head
-`ceaf60d2ce5adf826b8268c32e513569a35eeb0c` passed both exact GitHub workflow
-runs and has a GitHub-linked `READY` preview deployment
-(`dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z`). The dedicated non-production alias proof
-in `plans/F04-vercel-alias-reversion-evidence.json` now resolves only
-`f04.rollback_reversion`: the same hostname moved B to prior preview A and back
-to intended final preview B, with alias ownership, exact deployment ID, exact
-Git SHA, and protected application HTTP evidence after every transition. F04
-remains `FAILED_RETRYABLE / Revise` because deployed-page automation,
-version-controlled deployment reproducibility, required measurements, and
-repository payload hygiene remain incomplete.
+**Status:** `FAILED_RETRYABLE / Revise`. The supported non-production alias proof
+in `plans/F04-vercel-alias-reversion-evidence.json` resolves
+`f04.rollback_reversion`. Exact implementation revision
+`4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c` and its committed sanitized evidence
+in `plans/F04-vercel-deployed-page-verification-evidence.json` now also resolve
+only `f04.deployed_page_verification`: GitHub and Vercel identity were joined to
+one exact `READY` preview deployment before protected HTTP, accessible
+API-unavailable semantics, and shared browser-confidentiality rules were
+accepted. F04 remains `FAILED_RETRYABLE / Revise` because version-controlled
+deployment reproducibility, required measurements, and repository payload
+hygiene remain incomplete.
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** A pull request on `automation/f04-vercel-deployment-baseline`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -165,10 +165,14 @@ integration. This was resolved externally, not fabricated:
   `rootDirectory=apps/web`; confirmed via a follow-up `GET` showing
   `rootDirectory=apps/web`, `framework=nextjs`.
 
-No GitHub Actions secret (`VERCEL_TOKEN`, `VERCEL_ORG_ID`,
-`VERCEL_PROJECT_ID`) was created; Vercel's native GitHub App integration
-requires none. Preview deployments and their GitHub check/deployment status
-are produced automatically by Vercel on push, tied to the exact commit SHA.
+Vercel's native GitHub App integration still requires no repository secret to
+create preview deployments or attach their GitHub check/deployment status to an
+exact commit SHA. The later protected-page verifier does require two GitHub
+Actions secrets: a dedicated short-lived `VERCEL_API_TOKEN` for canonical
+deployment metadata and `VERCEL_AUTOMATION_BYPASS_SECRET` for direct protected
+preview access. Their values are absent from Git, logs, evidence, pull requests,
+and issues; installation, rotation, and revocation are documented in
+`plans/F04-vercel-deployed-page-verifier-operations.md`.
 
 ## Performance and Resources
 
@@ -204,12 +208,43 @@ the live final alias, deployment/SHA chain, HTTP behavior, isolation, evidence
 schemas, authoritative hashes, controller suite, and complete API gate. This
 accepts only `f04.rollback_reversion`; it does not accept F04.
 
+The exact deployed-page implementation revision
+`4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c` passed Vercel deployment status and
+GitHub Actions run `29865352967` (`Vercel deployed-page verification`, job
+`88752059522`). The verifier polled for 14,001 ms over three attempts and then
+bound GitHub deployment `5545146544` and Vercel deployment
+`dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA` to that exact SHA, branch, project, and
+`READY` preview state. Protected immutable-host traffic returned HTTP 200 with
+no redirect or authentication response, the accessible API-unavailable state,
+and no loopback origin, health path, trace context, or canonical confidential
+marker across 8,402 HTML bytes and seven browser assets totaling 629,464 bytes.
+Artifact `8508962218` has SHA-256
+`53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b`.
+
+Exact push run `29865352971` passed API quality, Web quality, Runtime smoke,
+Phase gate, and Gate projection. Focused local verification passed 40 tests;
+the full API gate passed 426 tests at 97% coverage; all 137 web tests, lint,
+strict typecheck, production build, confidentiality scan, and root runtime smoke
+passed. Independent review found one PowerShell invocation defect, which was
+repaired by documenting the verified `npm.cmd` entrypoint; focused rereview then
+returned `PASS / Continue` with no material finding. These observations validate
+only the deployed-page proof and are not the missing F04 resource-measurement
+output.
+
 ## Data, Privacy, Security, and Compatibility
 
 F04 adds no database, learner data, role data, or persistent backend state.
 The web tier's existing server-only configuration and confidentiality
 boundaries (F01, F02) are unchanged; this phase verifies them against a real
 deployment rather than only local/CI environments.
+
+Two superseded automation-bypass values were exposed only in ephemeral local
+inspection output during setup. Both were treated as compromised and revoked
+immediately; neither entered Git, GitHub Actions logs, artifacts, pull requests,
+or issues. The final bypass remains unexposed. A rejected personal-scope Vercel
+token was also revoked; the dedicated verifier token is short-lived and expires
+2026-07-22. The evidence schema stores hashes and bounded metadata only, never
+credentials, cookies, authorization headers, raw HTML, or temporary share URLs.
 
 ## Rollback
 
@@ -269,7 +304,6 @@ state.
 ## Next Boundary
 
 F04 has not passed. Stop after publishing and verifying this bounded
-verification-alias repair. The only next eligible action is
-`f04.deployed_page_verification`. Do not implement that verifier, build
-reproducibility, measurements, archive hygiene, F05, merge, or issue closure in
-this invocation.
+deployed-page verification repair. The only next eligible action is
+`f04.build_reproducibility`. Do not begin that repair, measurements, archive
+hygiene, F04 acceptance, F05, merge, or issue closure in this invocation.
