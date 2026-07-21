@@ -194,10 +194,10 @@ function parseInspectorDeploymentId(targetUrl) {
     fail("discovery", "Vercel status target URL is not a canonical inspector URL.");
   }
   const segments = parsed.pathname.split("/").filter(Boolean);
-  if (segments.length !== 3 || !/^dpl_[A-Za-z0-9]+$/.test(segments[2])) {
+  if (segments.length !== 3 || !/^(?:dpl_)?[A-Za-z0-9]+$/.test(segments[2])) {
     fail("discovery", "Vercel status target URL does not contain a canonical deployment ID.");
   }
-  return segments[2];
+  return segments[2].startsWith("dpl_") ? segments[2] : `dpl_${segments[2]}`;
 }
 
 function normalizeHostname(value, label) {

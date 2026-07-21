@@ -49,7 +49,7 @@ function createScenario() {
       {
         context: "Vercel",
         state: "success",
-        target_url: `https://vercel.com/team/web/${DEPLOYMENT_ID}`,
+        target_url: `https://vercel.com/team/web/${DEPLOYMENT_ID.slice(4)}`,
         created_at: "2026-07-21T10:00:00.000Z",
         updated_at: "2026-07-21T10:00:01.000Z"
       }
