@@ -29,6 +29,28 @@ The dedicated workflow reads both secrets only in the trusted same-repository
 push job for `automation/f04-vercel-deployment-baseline`. It does not run on pull
 requests or forks.
 
+## Supported local invocation
+
+Run the verifier from `apps/web`. On PowerShell, invoke the Windows command
+shim explicitly so npm preserves every named argument after `--`:
+
+```powershell
+npm.cmd run verify:vercel-preview -- --expected-sha <exact-sha> --repository TheBayoumi/ai-learning-platform --branch automation/f04-vercel-deployment-baseline --project-id prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN --evidence-output <new-json-path>
+```
+
+Do not substitute `npm run` at a PowerShell prompt: when `npm` resolves to
+`npm.ps1`, npm 11.18.0 strips the named option tokens in this invocation and the
+verifier correctly rejects the remaining values as positional arguments. Bash,
+including the dedicated Ubuntu workflow, uses the ordinary package-script form:
+
+```bash
+npm run verify:vercel-preview -- --expected-sha "$GITHUB_SHA" --repository TheBayoumi/ai-learning-platform --branch automation/f04-vercel-deployment-baseline --project-id prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN --evidence-output "$RUNNER_TEMP/f04-vercel-deployed-page-verification.json"
+```
+
+Evidence-only validation requires no credential. Use the same platform-specific
+npm entrypoint and replace `--evidence-output` with `--validate-evidence
+<json-path>`; all exact identity arguments remain required.
+
 ## Rotation and revocation
 
 1. Generate a cryptographically random value matching Vercel's required
