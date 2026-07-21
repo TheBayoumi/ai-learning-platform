@@ -121,6 +121,7 @@ function createScenario() {
     status,
     deployments,
     deploymentStatuses,
+    deploymentStatusResponses: null as null | unknown[],
     vercel,
     pages,
     protectedRequests: [] as RequestInit[]
@@ -152,7 +153,8 @@ function dependencies(scenario: Scenario) {
       return jsonResponse(scenario.deployments);
     }
     if (url.includes("/deployments/1001/statuses")) {
-      return jsonResponse(scenario.deploymentStatuses);
+      const response = scenario.deploymentStatusResponses?.shift();
+      return jsonResponse(response ?? scenario.deploymentStatuses);
     }
     if (url.includes("api.vercel.com/v13/deployments/")) {
       return jsonResponse(scenario.vercel);
@@ -253,6 +255,16 @@ describe("exact-SHA Vercel preview verifier", () => {
         backoff_multiplier: 1
       }
     });
+  });
+
+  it("polls until a delayed GitHub deployment status exists", async () => {
+    const scenario = createScenario();
+    scenario.deploymentStatusResponses = [[], scenario.deploymentStatuses];
+
+    const evidence = await verifyVercelPreview(input(), dependencies(scenario));
+
+    expect(evidence.discovery.attempts).toBe(2);
+    expect(evidence.discovery.github_deployment_status_id).toBe(2001);
   });
 
   it("rejects a failed Vercel status", async () => {

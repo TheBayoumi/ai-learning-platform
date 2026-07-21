@@ -4,7 +4,7 @@
   "active_phase": "F04",
   "active_slice": "F04-exact-sha-deployed-page-verification",
   "gate_decision": "Revise",
-  "last_completed_action": "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed Vercel deployment status, dedicated deployed-page workflow run 29865352967/job 88752059522, and all five jobs in push Quality Gates run 29865352971. Sanitized artifact 8508962218 binds exact GitHub and Vercel deployment identity to protected HTTP 200, accessible API-unavailable semantics, and shared confidentiality assertions. Only f04.deployed_page_verification is resolved by this record.",
+  "last_completed_action": "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed Vercel status, dedicated workflow run 29865352967/job 88752059522, and push Quality Gates run 29865352971; sanitized artifact 8508962218 resolves only f04.deployed_page_verification. Failed record revision cde7940a308ba81324713d1763a56908922b8886 then exposed an empty GitHub deployment-status propagation race in run 29866121231. Bounded retry handling passes 41 focused tests and independent rereview; its exact remote checks remain the publication gate.",
   "next_action": "Repair only f04.build_reproducibility without starting resource measurements, repository payload hygiene, F04 acceptance, or F05.",
   "stop_reason": "The bounded deployed-page verification repair stops after its evidence/state revision passes exact-head publication checks and immutable evidence is recorded in pull request #5 and issue #3. Build reproducibility, resource measurements, repository payload hygiene, F04 acceptance, F05, merge, and issue closure remain outside this invocation. V00 remains WAITING_EXTERNAL / Revise; V01 remains locked.",
   "validation_track": {
@@ -27,7 +27,7 @@
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
-    "generated_at": "2026-07-21T20:25:23.371Z"
+    "generated_at": "2026-07-21T20:35:23.085Z"
   },
   "external_blockers": [
     "v00.symmetric_demand",
@@ -43,7 +43,7 @@
     "Stage, commit, and push one bounded verified slice without waiting for a user commit or review"
   ],
   "human_decisions_required": [],
-  "last_verified_commit": "4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c",
+  "last_verified_commit": "cde7940a308ba81324713d1763a56908922b8886",
   "authoritative_file_hashes": {
     "AGENTS.md": "71e31a7955de50367f5bd48408b422aae89b64312c238ee6bfb5bcc1254857a8",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
@@ -53,7 +53,7 @@
     "plans/F00-repository-quality-foundation.md": "7b1e155a7ddc4253aab749567acdb9dfe18d1c7e06312587beec82d4fe315c8c",
     "plans/F01-local-runtime-integration-and-api-contract-baseline.md": "2ea859720ceaa626d70faf8d076674e8ad733b28b922dc0d3d4d7c8c9445c4c7",
     "plans/F02-cross-process-correlation-and-confidential-diagnostics-baseline.md": "b8d743abee02a1ec33fecfcc9304b856a733cca25016076609bd349e1841f5cf",
-    "plans/implementation-inventory.json": "87d745ad8741d1152dcee8105cd8d07f4d0371cfbfda840e0d919435639aedeb",
+    "plans/implementation-inventory.json": "c353e1cdb908cbccf9624928c423583b70a2ce009d742b77b7b4e412d04f2798",
     "apps/api/openapi/health.openapi.json": "6c5e206e423f260adc85994c74c02b6576a840ea09948bb41ae52f5409650dfe",
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "597e36eeec0a61abb46607de8bc3405f283a9dea6265e98e516c02c6efe99877",
@@ -62,23 +62,30 @@
     "plans/F03-github-phase-gate-control-plane.md": "e7cad7c2f1925b3c383d25f40790d1fe1cdf2c2d30549ee3027dce8ee31415c8",
     "plans/autonomous-loop/controller-policy.json": "9d62dfb3d746222a475691bfe1e1397c9d88a12e370a791fa22cbbfc4895176b",
     "plans/autonomous-loop/goal.md": "11059b66c586af8fb911841c882363ff81fbe0d8fa0865faa235c6e4ee9f30ca",
-    "plans/autonomous-loop/checkpoint.md": "585df1065cd52027deaf0e1391a95ea4a570bf5c707718e6bb31b2e2dd3585a2",
-    "plans/autonomous-loop/run-log.md": "388bdfdcadaf834a9a95478cef2d4b80b4805e45084ea9ae229ab49afacae763",
+    "plans/autonomous-loop/checkpoint.md": "ff7abd5d33c9aa645ce94bdfaa352d126b3689a382683f20614f6631e5fc24f8",
+    "plans/autonomous-loop/run-log.md": "ecc2bbc1c33449587f2bf671f8d73098da3a24db4251724013b9ddbdc8a47902",
     "apps/api/src/ai_learning_platform_api/automation/__init__.py": "83192a0bb62273eecdbd9ad33ac8bbe2c13641c38cc68740e6e927d4cbe3025f",
     "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "e3231936d9409b69cca3ff8e52342281ec4ec8da8187ea3ce02fbdcc5fafa35d",
     "apps/api/tests/test_phase_gate.py": "f23782c0822e6f685600a8c9144fdaf3f212e3f4626797ed374a1d7a6eb2c3ef",
     "scripts/phase_gate.py": "6f4b92f92ece4a9c1a93df6e8b07212f7387138f419ef494a166e00c6d3fb709",
-    "plans/implementation-inventory.md": "f611d8c2d704e1346922c3da55b53c7fa84524bc81ffccd4ea126f841b25a30f",
-    "plans/F04-vercel-deployment-baseline.md": "f75cdfdad1ee880c475df8534f6ea1089e0c08061285d66e5ccbb83149bde77b",
+    "plans/implementation-inventory.md": "b5b16516c6ebcc658d99a101fd98b3cf3d8e0fa3efccada3c872d9556efc8ac0",
+    "plans/F04-vercel-deployment-baseline.md": "db1a4b5e03cfd9d9c6d5cf23d3b06ba06957b99482d8f9e30233788f9b8bfcbb",
     "plans/F04-vercel-alias-reversion-evidence.json": "03a0d9f16bb012f97c04656546c01a875a583e5b608ea7b389b091f10269a67d",
     ".github/workflows/vercel-preview-verification.yml": "49ff1b24b9971f7c7fd15d8eb4b161b2d801cade8d3ba8394c9f66a48929ecd2",
     "plans/F04-vercel-deployed-page-verifier-operations.md": "d5698a545b3b9eb14a2d23b4f417749e351babc931934df42e9d081b15ac3c45",
-    "plans/F04-vercel-deployed-page-verification-evidence.json": "53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b"
+    "plans/F04-vercel-deployed-page-verification-evidence.json": "53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b",
+    "apps/web/package.json": "1357e44f5b4ada7bbabcf7795e50ae6dfd766d6bc6444075edf6736b62b9f542",
+    "apps/web/scripts/check-browser-confidentiality.mjs": "c4753f35e8e2ad97167df63bd3fd0179b4ecccb0d86a1ac057c92e97fe523b25",
+    "apps/web/scripts/lib/browser-confidentiality.mjs": "49bd8db64cb21d2c937e158d43119b7d8d051ca726de48e17fa6cc2089d4d343",
+    "apps/web/scripts/lib/vercel-preview-verifier.mjs": "74657fa15b0828f52603b069edb0dc5123bd70da1396f857b73aad82437bd348",
+    "apps/web/scripts/lib/vercel-preview-verifier.d.mts": "c32d225679e88d051ae941e5cfbc0840ef86c2fd644df9255ccf85b44c075a3d",
+    "apps/web/scripts/verify-vercel-preview.mjs": "59806a73eb03a59e7359eac978c55f0ba97be9b660586457e52bee149a0a36f6",
+    "apps/web/tests/vercel-preview-verifier.test.ts": "50fbb5c9b2d246cc0895220772adf5b850a0ccf0f0bda9e28566d9bdfa14ca08"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "run_number": 27,
-  "last_run_started_at": "2026-07-21T20:25:23.371Z",
-  "last_run_completed_at": "2026-07-21T20:25:23.371Z",
+  "last_run_started_at": "2026-07-21T20:35:23.085Z",
+  "last_run_completed_at": "2026-07-21T20:35:23.085Z",
   "future_phase_boundary": {
     "phase": null,
     "status": "LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",

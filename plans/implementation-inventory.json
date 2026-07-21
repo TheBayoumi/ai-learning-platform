@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-21T20:25:23.371Z",
+  "generated_at": "2026-07-21T20:35:23.085Z",
   "repository": {
     "branch": "automation/f04-vercel-deployment-baseline",
-    "head": "4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c",
-    "working_tree": "Bounded F04 deployed-page verification record: commit the sanitized exact-SHA protected-preview evidence, resolve only f04.deployed_page_verification, and retain build reproducibility, resource measurements, repository payload hygiene, and FAILED_RETRYABLE / Revise",
+    "head": "cde7940a308ba81324713d1763a56908922b8886",
+    "working_tree": "Bounded F04 deployed-page verifier propagation-race repair: poll an empty exact GitHub deployment-status list within the existing bound while retaining fail-closed malformed, ambiguous, and terminal status handling; keep only the three unrelated F04 blockers",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -566,7 +566,8 @@
         "Focused deployed-page verifier suite passed 40 tests covering exact GitHub/Vercel identity, stale or ambiguous deployment rejection, redirects and authentication content, bounded polling and bytes, API-unavailable accessibility semantics, shared confidentiality rules, and secret-free evidence",
         "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed Vercel status plus deployed-page workflow run 29865352967/job 88752059522; artifact 8508962218 validated exact READY deployment dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA, protected HTTP 200 with no redirect, API-unavailable semantics, and seven confidential-marker-free assets",
         "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed push Quality Gates run 29865352971: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded",
-        "Independent read-only review found one PowerShell npm.ps1 argument-forwarding defect; the runbook now requires the verified npm.cmd entrypoint on PowerShell, 40 focused tests pass, and focused rereview returned PASS / Continue"
+        "Independent read-only review found one PowerShell npm.ps1 argument-forwarding defect; the runbook now requires the verified npm.cmd entrypoint on PowerShell, 40 focused tests pass, and focused rereview returned PASS / Continue",
+        "First evidence/state revision cde7940a308ba81324713d1763a56908922b8886 deployed successfully but verifier run 29866121231/job 88754662946 exposed an empty GitHub deployment-status propagation race; the bounded-poll repair passes 41 focused tests, all 138 web tests, lint, strict typecheck, production build, confidentiality scan, and focused independent rereview"
       ],
       "missing_outputs": [
         "Vercel project configuration and Node/npm installation must be reproducible from version-controlled, non-secret configuration with compatible locked versions",

@@ -153,10 +153,17 @@ prose is a synchronized human-readable projection.
   HTTP 200 with no redirect, accessible API-unavailable semantics, and seven
   shared-rule-confidential browser assets. The focused suite passed 40 tests;
   independent rereview returned `PASS / Continue` after the PowerShell runbook
-  was corrected to use the verified `npm.cmd` entrypoint. Remote project and
-  Node/npm behavior are not yet reproducible from versioned configuration, and
-  build/artifact/cache/latency/runtime/cost measurements remain absent. No
-  FastAPI deployment, PaaS vendor selection, or V00/V01 evidence is introduced.
+  was corrected to use the verified `npm.cmd` entrypoint. First record revision
+  `cde7940a308ba81324713d1763a56908922b8886` then exposed a GitHub
+  deployment-status propagation race in failed run `29866121231`: the exact
+  deployment was visible before its status list. Empty lists now poll under the
+  existing bound while malformed, ambiguous, and terminal statuses fail closed;
+  all 41 focused tests, all 138 web tests, lint, strict typecheck, production
+  build, confidentiality scan, and focused rereview pass. Remote project and
+  Node/npm behavior are not yet reproducible from versioned
+  configuration, and build/artifact/cache/latency/runtime/cost measurements
+  remain absent. No FastAPI deployment, PaaS vendor selection, or V00/V01
+  evidence is introduced.
 - The externally created commit also tracks the unrelated 66,312,302-byte
   `ai-learning-platform.7z`. This amendment does not modify it; its repository and
   CI-checkout cost remains an explicit scope risk.
@@ -229,8 +236,8 @@ F03 adds repository automation only: a standard-library policy validator,
   Vercel preview for the existing Next.js web tier plus a committed exact-SHA,
   deployment-protection-aware page verifier, but no accepted reproducible
   deployment baseline, no deployed FastAPI API, and no production traffic alias.
-  The current gates pass all 426 API tests at 97% coverage, all 137 web tests
-  plus lint/typecheck/build/confidentiality, the 40-test focused verifier suite,
+  The current gates pass all 426 API tests at 97% coverage, all 138 web tests
+  plus lint/typecheck/build/confidentiality, the 41-test focused verifier suite,
   and the final 48-event cross-process smoke. The supported B-to-A-to-B alias
   proof removes `f04.rollback_reversion`; the exact GitHub/Vercel deployment,
   protected HTTP, accessibility, and shared confidentiality chain removes
@@ -243,7 +250,8 @@ provenance, privacy lifecycle, jobs, or telemetry backend.
 ## Next Inventory Update
 
 This bounded repair records the committed exact-SHA deployed-page proof while
-keeping F04 `FAILED_RETRYABLE / Revise`. Require this evidence/state revision's
-own exact GitHub and Vercel checks to pass, record the immutable proof durably in
-pull request #5 and issue #3, and stop. Do not treat F00-F04 as V00 evidence. The
-only next eligible action is `f04.build_reproducibility`.
+keeping F04 `FAILED_RETRYABLE / Revise`. Require the bounded propagation-race
+repair revision's own exact GitHub and Vercel checks to pass, record the
+immutable proof durably in pull request #5 and issue #3, and stop. Do not treat
+F00-F04 as V00 evidence. The only next eligible action is
+`f04.build_reproducibility`.

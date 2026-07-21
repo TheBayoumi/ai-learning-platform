@@ -447,17 +447,26 @@ async function discoverExactDeployment(input, dependencies, polling) {
         githubHeaders,
         "GitHub deployment status"
       );
-      const latestDeploymentStatus = selectUniqueLatest(
-        statuses,
-        ["updated_at", "created_at"],
-        "GitHub deployment status"
-      );
-      if (["failure", "error", "inactive"].includes(latestDeploymentStatus.state)) {
+      if (!Array.isArray(statuses)) {
+        fail("discovery", "GitHub deployment status response is invalid.");
+      }
+      const latestDeploymentStatus =
+        statuses.length === 0
+          ? null
+          : selectUniqueLatest(
+              statuses,
+              ["updated_at", "created_at"],
+              "GitHub deployment status"
+            );
+      if (
+        latestDeploymentStatus &&
+        ["failure", "error", "inactive"].includes(latestDeploymentStatus.state)
+      ) {
         fail("discovery", "GitHub deployment status is terminally unsuccessful.", {
           state: latestDeploymentStatus.state
         });
       }
-      if (latestDeploymentStatus.state === "success") {
+      if (latestDeploymentStatus?.state === "success") {
         const hostname = normalizeHostname(
           latestDeploymentStatus.environment_url,
           "GitHub immutable deployment URL"

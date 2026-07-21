@@ -930,3 +930,19 @@ only `f04.deployed_page_verification`. F04 remains
 must pass its own exact Vercel and GitHub checks before publication is complete.
 No F04 acceptance-state revision is created. The only next eligible blocker is
 `f04.build_reproducibility`.
+
+The first evidence/state revision
+`cde7940a308ba81324713d1763a56908922b8886` then received a successful Vercel
+deployment, but dedicated verifier run `29866121231`, job `88754662946`, failed
+after 14 seconds with a sanitized `GitHub deployment status is missing` error.
+Live evidence showed a provider race: the exact GitHub deployment was already
+discoverable while its deployment-status list had not propagated. The verifier
+now treats only an empty list as retryable under the existing five-minute bound;
+non-array responses, invalid timestamps, ambiguous latest statuses, and
+terminal failure/error/inactive states remain immediate failures. A regression
+serves an empty list then success and requires two attempts plus the final exact
+status ID. All 41 focused tests and all 138 web tests, lint, strict typecheck,
+production build, and confidentiality scan pass; focused independent rereview
+returned `PASS / Continue`. A new bounded repair revision must pass the exact
+Vercel deployment, dedicated verifier, and five quality jobs; the failed
+revision is not accepted.

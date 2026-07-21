@@ -35,6 +35,17 @@ verified `npm.cmd` shim on PowerShell and keeps the ordinary `npm run` form for
 Bash/CI; the focused rereview returned `PASS / Continue` with no material
 finding.
 
+The first evidence/state revision
+`cde7940a308ba81324713d1763a56908922b8886` deployed successfully, but exact
+workflow run `29866121231` failed after 14 seconds because the exact GitHub
+deployment was visible before its deployment-status list propagated. The
+verifier now treats an empty status list as retryable within its unchanged
+five-minute bounded poll while continuing to reject malformed, ambiguous, or
+terminally unsuccessful status responses. The focused suite passes 41 tests;
+all 138 web tests, lint, strict typecheck, production build, and confidentiality
+scan pass; and independent focused rereview returned `PASS / Continue`. The
+repair revision's exact remote checks remain the publication gate.
+
 During credential setup, two superseded Vercel automation-bypass values were
 exposed only in ephemeral local tool output, treated as compromised, and revoked
 immediately. Neither value entered Git, GitHub Actions logs, artifacts, pull

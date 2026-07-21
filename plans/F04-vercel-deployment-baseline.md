@@ -231,6 +231,19 @@ returned `PASS / Continue` with no material finding. These observations validate
 only the deployed-page proof and are not the missing F04 resource-measurement
 output.
 
+The first evidence/state revision, exact SHA
+`cde7940a308ba81324713d1763a56908922b8886`, received a successful Vercel
+deployment but dedicated verifier run `29866121231` failed because GitHub's
+exact deployment existed while its status list was still empty during the first
+three observations. This was a real provider-propagation race, not evidence
+failure. Empty deployment-status lists now remain retryable inside the existing
+five-minute bounded poll; malformed responses, ambiguous latest statuses, and
+terminal failure/error/inactive states still fail immediately. The focused
+suite passes 41 tests; all 138 web tests, lint, strict typecheck, production
+build, and confidentiality scan pass; and independent focused rereview returned
+`PASS / Continue`. The repair revision must pass its own exact Vercel and GitHub
+checks before publication is complete.
+
 ## Data, Privacy, Security, and Compatibility
 
 F04 adds no database, learner data, role data, or persistent backend state.
