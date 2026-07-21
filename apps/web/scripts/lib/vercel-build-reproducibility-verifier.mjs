@@ -7,6 +7,7 @@ const MAX_EVENTS = 2_000;
 const MAX_LOG_BYTES = 1024 * 1024;
 const SOURCE_KEYS = Object.freeze([
   ".nvmrc",
+  "package.json",
   "apps/web/.npmrc",
   "apps/web/package.json",
   "apps/web/package-lock.json",
@@ -43,6 +44,7 @@ const ASSERTION_KEYS = Object.freeze([
 const REPOSITORY_CONTRACT_KEYS = Object.freeze([
   "nvmrc",
   "node_engine",
+  "package_manager_source",
   "package_manager",
   "npm_engine",
   "lockfile_version",
@@ -350,6 +352,7 @@ export function validateBuildReproducibilityEvidence(evidence, expected = {}) {
     evidence.vercel_project?.configuration_matches_manifest !== true ||
     evidence.repository_contract?.nvmrc !== "24.18.0" ||
     evidence.repository_contract?.node_engine !== "24.x" ||
+    evidence.repository_contract?.package_manager_source !== "package.json" ||
     evidence.repository_contract?.package_manager !== "npm@11.18.0" ||
     evidence.repository_contract?.npm_engine !== "11.18.0" ||
     evidence.repository_contract?.lockfile_version !== 3 ||
@@ -406,6 +409,7 @@ export async function verifyVercelBuildReproducibility(input, dependencies = {})
     repository_contract: {
       nvmrc: "24.18.0",
       node_engine: "24.x",
+      package_manager_source: "package.json",
       package_manager: "npm@11.18.0",
       npm_engine: "11.18.0",
       lockfile_version: 3,

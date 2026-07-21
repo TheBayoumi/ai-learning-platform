@@ -14,6 +14,11 @@ project root, Next.js, Vercel Node `24.x`, `npm ci`, `npm run build`, and
 `ENABLE_EXPERIMENTAL_COREPACK=1` only for Preview deployments from
 `automation/f04-vercel-deployment-baseline`.
 
+Vercel resolves the Corepack package manager from the repository-root
+`package.json`, including for a project whose Root Directory is `apps/web`.
+That minimal root manifest and the application manifest both pin
+`npm@11.18.0`; both are included in the exact-SHA evidence hashes.
+
 ## Local contract
 
 Use Node `24.18.0` from `.nvmrc` and npm `11.18.0`. The npm version must be

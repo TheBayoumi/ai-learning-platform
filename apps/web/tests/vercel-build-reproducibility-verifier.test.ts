@@ -18,6 +18,7 @@ const DEPLOYMENT_ID = "dpl_TestBuildReproducibility123";
 const HOSTNAME = "web-build-repro-mahmoudbayoumimb-7868s-projects.vercel.app";
 const SOURCE_PATHS = [
   ".nvmrc",
+  "package.json",
   "apps/web/.npmrc",
   "apps/web/package.json",
   "apps/web/package-lock.json",
@@ -261,6 +262,22 @@ describe("exact-SHA Vercel build reproducibility", () => {
       build_assertions: { locked_install: true, lockfile_unchanged: true }
     });
     expect(JSON.stringify(evidence)).not.toContain("test-token");
+  });
+
+  it("binds the repository-root Corepack manifest into durable evidence", async () => {
+    const evidence = await verifyVercelBuildReproducibility(
+      input(),
+      dependencies(createScenario())
+    );
+    expect(evidence).toMatchObject({
+      repository_contract: {
+        package_manager_source: "package.json",
+        package_manager: "npm@11.18.0"
+      }
+    });
+    expect((evidence.source_hashes as Record<string, string>)["package.json"]).toMatch(
+      /^[0-9a-f]{64}$/
+    );
   });
 
   it.each([

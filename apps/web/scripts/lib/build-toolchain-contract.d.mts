@@ -1,6 +1,7 @@
 export interface RepositoryContractSource {
   nvmrc: string;
   npmrc: string;
+  repositoryPackageJson: string;
   packageJson: string;
   packageLock: string;
 }
@@ -9,6 +10,7 @@ export interface RepositoryContract {
   nvmrc: string;
   nodeEngine: string;
   npmEngine: string;
+  repositoryPackageManager: string;
   packageManager: string;
   lockfileVersion: number;
   nextVersion: string;

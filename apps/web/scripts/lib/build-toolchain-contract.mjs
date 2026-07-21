@@ -102,7 +102,7 @@ export function validateRepositoryContract(source) {
   if (!source || typeof source !== "object") {
     fail("missing_file", "Build-toolchain source files are required.");
   }
-  for (const field of ["nvmrc", "npmrc", "packageJson", "packageLock"]) {
+  for (const field of ["nvmrc", "npmrc", "repositoryPackageJson", "packageJson", "packageLock"]) {
     if (typeof source[field] !== "string") {
       fail("missing_file", `Required build-toolchain source ${field} is missing.`);
     }
@@ -123,8 +123,20 @@ export function validateRepositoryContract(source) {
     fail("npmrc", ".npmrc must contain only strict engine enforcement.");
   }
 
-  const packageJson = parseJson(source.packageJson, "package.json");
+  const repositoryPackageJson = parseJson(source.repositoryPackageJson, "repository package.json");
+  const packageJson = parseJson(source.packageJson, "apps/web/package.json");
   const lockfile = parseJson(source.packageLock, "package-lock.json");
+  if (
+    repositoryPackageJson.private !== true ||
+    repositoryPackageJson.packageManager !== BUILD_TOOLCHAIN.packageManager ||
+    JSON.stringify(Object.keys(repositoryPackageJson).sort()) !==
+      JSON.stringify(["packageManager", "private"])
+  ) {
+    fail(
+      "repository_package_manager",
+      `The repository package.json must contain only private=true and packageManager=${BUILD_TOOLCHAIN.packageManager}.`
+    );
+  }
   if (packageJson.packageManager !== BUILD_TOOLCHAIN.packageManager) {
     fail("package_manager", `packageManager must be ${BUILD_TOOLCHAIN.packageManager}.`);
   }
@@ -150,6 +162,7 @@ export function validateRepositoryContract(source) {
     nvmrc,
     nodeEngine: packageJson.engines.node,
     npmEngine: packageJson.engines.npm,
+    repositoryPackageManager: repositoryPackageJson.packageManager,
     packageManager: packageJson.packageManager,
     lockfileVersion: lockfile.lockfileVersion,
     nextVersion: packageJson.dependencies.next,
@@ -204,13 +217,20 @@ export function validateRuntimeContract(repository, runtime) {
 
 export async function readRepositoryContract(projectRoot) {
   const root = resolve(projectRoot);
-  const [nvmrc, npmrc, packageJson, packageLock] = await Promise.all([
+  const [nvmrc, npmrc, repositoryPackageJson, packageJson, packageLock] = await Promise.all([
     readFile(resolve(root, "..", "..", ".nvmrc"), "utf8"),
     readFile(resolve(root, ".npmrc"), "utf8"),
+    readFile(resolve(root, "..", "..", "package.json"), "utf8"),
     readFile(resolve(root, "package.json"), "utf8"),
     readFile(resolve(root, "package-lock.json"), "utf8")
   ]).catch(() => fail("missing_file", "A required build-toolchain file is missing."));
-  return validateRepositoryContract({ nvmrc, npmrc, packageJson, packageLock });
+  return validateRepositoryContract({
+    nvmrc,
+    npmrc,
+    repositoryPackageJson,
+    packageJson,
+    packageLock
+  });
 }
 
 export async function verifyBuildToolchain(options = {}) {

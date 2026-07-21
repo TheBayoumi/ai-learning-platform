@@ -17,6 +17,7 @@ import {
 const REPOSITORY_ROOT = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const SOURCE_PATHS = [
   ".nvmrc",
+  "package.json",
   "apps/web/.npmrc",
   "apps/web/package.json",
   "apps/web/package-lock.json",

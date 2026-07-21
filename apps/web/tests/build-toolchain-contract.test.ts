@@ -13,6 +13,7 @@ import {
 type Source = {
   nvmrc: string;
   npmrc: string;
+  repositoryPackageJson: string;
   packageJson: string;
   packageLock: string;
 };
@@ -20,6 +21,11 @@ type Source = {
 type PackageFixture = {
   packageManager?: string;
   engines: { node: string; npm: string };
+};
+
+type RepositoryPackageFixture = {
+  private?: boolean;
+  packageManager?: string;
 };
 
 type LockFixture = {
@@ -37,6 +43,7 @@ beforeAll(async () => {
   validSource = {
     nvmrc: await readFile(new URL("../../../.nvmrc", import.meta.url), "utf8"),
     npmrc: await readFile(new URL("../.npmrc", import.meta.url), "utf8"),
+    repositoryPackageJson: await readFile(new URL("../../../package.json", import.meta.url), "utf8"),
     packageJson: await readFile(new URL("../package.json", import.meta.url), "utf8"),
     packageLock: await readFile(new URL("../package-lock.json", import.meta.url), "utf8")
   };
@@ -47,6 +54,12 @@ function mutatePackage(mutator: (value: PackageFixture) => void): Source {
   const value = JSON.parse(validSource.packageJson) as PackageFixture;
   mutator(value);
   return { ...validSource, packageJson: JSON.stringify(value) };
+}
+
+function mutateRepositoryPackage(mutator: (value: RepositoryPackageFixture) => void): Source {
+  const value = JSON.parse(validSource.repositoryPackageJson) as RepositoryPackageFixture;
+  mutator(value);
+  return { ...validSource, repositoryPackageJson: JSON.stringify(value) };
 }
 
 function mutateLock(mutator: (value: LockFixture) => void): Source {
@@ -62,6 +75,7 @@ describe("build toolchain repository contract", () => {
       nvmrc: "24.18.0",
       nodeEngine: "24.x",
       npmEngine: "11.18.0",
+      repositoryPackageManager: "npm@11.18.0",
       packageManager: "npm@11.18.0",
       lockfileVersion: 3,
       nextVersion: "16.2.10"
@@ -79,11 +93,29 @@ describe("build toolchain repository contract", () => {
   });
 
   it.each([
+    [
+      "missing repository packageManager",
+      () => mutateRepositoryPackage((value) => delete value.packageManager)
+    ],
+    [
+      "repository packageManager mismatch",
+      () => mutateRepositoryPackage((value) => (value.packageManager = "npm@11.12.1"))
+    ],
+    [
+      "non-private repository manifest",
+      () => mutateRepositoryPackage((value) => (value.private = false))
+    ]
+  ])("rejects %s", (_label, source) => {
+    expect(() => validateRepositoryContract(source())).toThrow(/repository package.json/);
+  });
+
+  it.each([
     ["missing .nvmrc", { nvmrc: undefined as never }],
     ["malformed .nvmrc", { nvmrc: "24.x\n" }],
     ["padded .nvmrc", { nvmrc: " 24.18.0 \n" }],
     ["wrong Node patch", { nvmrc: "24.17.0\n" }],
     ["missing .npmrc", { npmrc: undefined as never }],
+    ["missing repository package.json", { repositoryPackageJson: undefined as never }],
     ["engine strict disabled", { npmrc: "engine-strict=false\n" }],
     ["unsafe extra npm config", { npmrc: "engine-strict=true\nregistry=https://example.invalid\n" }],
     ["missing lockfile", { packageLock: undefined as never }]
