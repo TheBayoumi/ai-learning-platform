@@ -2,15 +2,17 @@
 
 **Phase:** `F04 - Vercel Deployment Baseline`
 **Class:** Technical foundation
-**Status:** `FAILED_RETRYABLE / Revise`. Starting acceptance head
-`ca08301b46e49945a805f20a07866a931a8e81e0` passed all five exact GitHub jobs
-and has a GitHub-linked `READY` preview deployment
-(`dpl_64G3A2Zim5iWcQ2YzrQnW9runPii`), but the evidence gate was applied
-incorrectly. A rejected `vercel rollback` command is not rollback, user visual
-confirmation is not durable deployed-page proof, version-controlled deployment
-reproducibility and required measurements are incomplete, and the controller
-projected F04 as its own successor. The bounded state/controller repair records
-these defects without weakening the exit gate.
+**Status:** `FAILED_RETRYABLE / Revise`. Starting repair head
+`ceaf60d2ce5adf826b8268c32e513569a35eeb0c` passed both exact GitHub workflow
+runs and has a GitHub-linked `READY` preview deployment
+(`dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z`). The dedicated non-production alias proof
+in `plans/F04-vercel-alias-reversion-evidence.json` now resolves only
+`f04.rollback_reversion`: the same hostname moved B to prior preview A and back
+to intended final preview B, with alias ownership, exact deployment ID, exact
+Git SHA, and protected application HTTP evidence after every transition. F04
+remains `FAILED_RETRYABLE / Revise` because deployed-page automation,
+version-controlled deployment reproducibility, required measurements, and
+repository payload hygiene remain incomplete.
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** A pull request on `automation/f04-vercel-deployment-baseline`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -175,19 +177,32 @@ cache impact, cold/warm page latency, runtime-version, and bounded cost
 observations have not yet been recorded. These remain exit-gate outputs; the
 earlier acceptance did not make the missing measurements optional.
 
-The bounded controller/state repair passed its affected local gates: 137
-controller tests; canonical generation, Ruff, strict mypy, and 405 API tests at
-97% total line coverage; clean web install, lint, strict typecheck, 97 tests,
-production build, and browser confidentiality scan; and a final 48-event
-cross-process runtime smoke. Local Node 25.2.1 differs from `.nvmrc` 24.18.0 and
-the Vercel project's 24.x setting, so these results do not satisfy the deployment
-reproducibility or real-deployment measurement outputs above.
+The alias proof used three supported REST assignments and bounded control/data
+plane verification. Assignment calls completed in 1,945-2,209 ms, bounded alias
+and deployment verification completed in 7,683-24,480 ms with one observed
+attempt per transition, and protected page requests completed in 3,638-5,872
+ms. The proof added no learner data, model call, persistent runtime, or ongoing
+compute cost; the dedicated alias remains on B for auditability.
+
+The alias-reversion repair passed 21 focused evidence tests and all 158
+controller tests. Canonical generation, Ruff, strict mypy, and all 426 API tests
+passed at 97% total line coverage; clean web install, lint, strict typecheck, 97
+tests, production build, browser confidentiality scan, and the 48-event
+cross-process runtime smoke also passed. Local Node 25.2.1 differs from `.nvmrc`
+24.18.0 and the Vercel project's 24.x setting, so these results do not satisfy
+the deployment reproducibility or real-deployment measurement outputs above.
 
 Independent post-change verification initially found and reproduced three
 fail-open successor/entry-transition cases. All were repaired with validated
 repository regressions; final focused rereview returned `ACCEPT` with no material
 findings. This accepts only the controller/state repair. F04 remains `Revise`
 until every exit requirement is satisfied.
+
+Run 26 independent read-only verification returned `ACCEPT` for the bounded
+alias-reversion repair with no material findings after independently checking
+the live final alias, deployment/SHA chain, HTTP behavior, isolation, evidence
+schemas, authoritative hashes, controller suite, and complete API gate. This
+accepts only `f04.rollback_reversion`; it does not accept F04.
 
 ## Data, Privacy, Security, and Compatibility
 
@@ -206,12 +221,32 @@ independently addressable `READY` preview URLs demonstrate historical revision
 access, not movement of served traffic from a newer revision back to an older
 one.
 
-F04 therefore remains `Revise`. The next bounded repair will use a temporary
-non-production verification alias: point it to accepted preview A, move it to
-preview B, move it back to A, verify the exact served revision after every
-switch, and restore the intended final target. If current official Vercel
-behavior makes that unsafe or impossible, the gate must be explicitly narrowed
-before reacceptance; the rejected command must never be relabeled as success.
+F04 therefore remains `Revise`. The bounded traffic-reversion repair is now
+complete using the dedicated non-production verification alias
+`f04-reversion-proof-web.vercel.app` and Vercel's supported
+`POST /v2/deployments/{deployment-id}/aliases` endpoint:
+
+1. Initial assignment placed the alias on B
+   (`dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z`,
+   `ceaf60d2ce5adf826b8268c32e513569a35eeb0c`).
+2. Backward reversion moved the same alias to A
+   (`dpl_64G3A2Zim5iWcQ2YzrQnW9runPii`,
+   `ca08301b46e49945a805f20a07866a931a8e81e0`); the response identified B as
+   `oldDeploymentId`.
+3. Final restoration moved the same alias from A back to B; the response
+   identified A as `oldDeploymentId`.
+
+After every assignment, bounded polling proved exclusive alias ownership, the
+target deployment's expected project, `READY` preview state, and exact Git SHA.
+Authenticated `vercel curl` requests returned HTTP 200 application HTML with no
+redirect and the accessible API-unavailable state, while loopback origins,
+health paths, trace identifiers, and confidential diagnostic markers were
+absent. The Git-managed branch alias and production aliases were unchanged, and
+the proof alias is intentionally left on B. The sanitized machine-readable
+evidence contains no credentials, bypass material, cookies, temporary share
+URLs, raw authorization headers, or full HTML. The earlier rejected
+`vercel rollback` command remains recorded as rejected-command evidence and is
+not relabeled as success.
 
 Separately: to remove F04 entirely, remove the Vercel project connection
 and revert the bounded F04 web deployment configuration. F00-F03 remain
@@ -233,8 +268,8 @@ state.
 
 ## Next Boundary
 
-F04 has not passed. Stop after the bounded state/controller reconciliation.
-The only next eligible action is the non-production verification-alias
-reversion described above. Do not implement deployed-page automation, build
-reproducibility, archive hygiene, F05, merge, or issue closure in the same
-invocation.
+F04 has not passed. Stop after publishing and verifying this bounded
+verification-alias repair. The only next eligible action is
+`f04.deployed_page_verification`. Do not implement that verifier, build
+reproducibility, measurements, archive hygiene, F05, merge, or issue closure in
+this invocation.

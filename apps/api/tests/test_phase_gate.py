@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 from collections.abc import Callable
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -22,6 +24,7 @@ SUCCESS_RESULTS = (
     "Runtime smoke=success",
     "Phase gate=success",
 )
+F04_ALIAS_EVIDENCE_PATH = Path("plans/F04-vercel-alias-reversion-evidence.json")
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -1366,3 +1369,533 @@ def test_real_git_helpers_read_exact_local_history() -> None:
     head = phase_gate._git_head(REPOSITORY_ROOT)
     assert phase_gate.SHA_PATTERN.fullmatch(head)
     assert phase_gate._git_is_ancestor(REPOSITORY_ROOT, head, head) is True
+
+
+class _F04EvidenceViolation(AssertionError):
+    pass
+
+
+def _evidence_require(condition: bool) -> None:
+    if not condition:
+        raise _F04EvidenceViolation
+
+
+def _evidence_exact_keys(value: dict[str, Any], expected: set[str]) -> None:
+    _evidence_require(set(value) == expected)
+
+
+def _evidence_object(value: object) -> dict[str, Any]:
+    _evidence_require(isinstance(value, dict))
+    return cast(dict[str, Any], value)
+
+
+def _evidence_list(value: object) -> list[Any]:
+    _evidence_require(isinstance(value, list))
+    return cast(list[Any], value)
+
+
+def _evidence_text(value: object) -> str:
+    _evidence_require(isinstance(value, str) and bool(value))
+    return cast(str, value)
+
+
+def _evidence_utc(value: object) -> datetime:
+    text = _evidence_text(value)
+    _evidence_require(text.endswith("Z"))
+    parsed = datetime.fromisoformat(text[:-1] + "+00:00")
+    _evidence_require(parsed.tzinfo == UTC)
+    return parsed
+
+
+def _validate_f04_alias_reversion_evidence(value: dict[str, Any]) -> None:
+    _evidence_exact_keys(
+        value,
+        {
+            "schema_version",
+            "phase",
+            "blocker_id",
+            "result",
+            "recorded_at_utc",
+            "alias",
+            "project_id",
+            "team_id",
+            "control_mechanism",
+            "polling_policy",
+            "deployments",
+            "isolation",
+            "transitions",
+            "final_target",
+        },
+    )
+    _evidence_require(value.get("schema_version") == 1)
+    _evidence_require(value.get("phase") == "F04")
+    _evidence_require(value.get("blocker_id") == "f04.rollback_reversion")
+    _evidence_require(value.get("result") == "PASSED")
+    recorded_at = _evidence_utc(value.get("recorded_at_utc"))
+    alias = _evidence_text(value.get("alias"))
+    project_id = _evidence_text(value.get("project_id"))
+    _evidence_text(value.get("team_id"))
+    _evidence_require(alias.endswith(".vercel.app"))
+
+    control = _evidence_object(value.get("control_mechanism"))
+    _evidence_exact_keys(control, {"kind", "method", "endpoint_template", "cli", "cli_version"})
+    _evidence_require(control.get("kind") == "vercel_rest_api")
+    _evidence_require(control.get("method") == "POST")
+    _evidence_require(control.get("endpoint_template") == "/v2/deployments/{deployment-id}/aliases")
+
+    policy = _evidence_object(value.get("polling_policy"))
+    _evidence_exact_keys(policy, {"bounded", "max_duration_ms", "backoff_ms"})
+    _evidence_require(policy.get("bounded") is True)
+    maximum = policy.get("max_duration_ms")
+    backoff = policy.get("backoff_ms")
+    _evidence_require(isinstance(maximum, int))
+    _evidence_require(isinstance(backoff, int))
+    maximum_ms = cast(int, maximum)
+    backoff_ms = cast(int, backoff)
+    _evidence_require(0 < maximum_ms <= 60000)
+    _evidence_require(0 < backoff_ms <= maximum_ms)
+
+    deployments = _evidence_object(value.get("deployments"))
+    _evidence_require(set(deployments) == {"A", "B"})
+    parsed_deployments: dict[str, dict[str, Any]] = {}
+    created: dict[str, datetime] = {}
+    for label in ("A", "B"):
+        deployment = _evidence_object(deployments.get(label))
+        _evidence_exact_keys(
+            deployment,
+            {
+                "deployment_id",
+                "immutable_url",
+                "git_sha",
+                "git_branch",
+                "git_org",
+                "git_repo",
+                "created_at_utc",
+                "ready_at_utc",
+                "region",
+                "state",
+                "target",
+                "project_id",
+            },
+        )
+        parsed_deployments[label] = deployment
+        deployment_id = _evidence_text(deployment.get("deployment_id"))
+        sha = _evidence_text(deployment.get("git_sha"))
+        _evidence_require(deployment_id.startswith("dpl_"))
+        _evidence_require(phase_gate.SHA_PATTERN.fullmatch(sha) is not None)
+        _evidence_require(deployment.get("project_id") == project_id)
+        _evidence_require(deployment.get("state") == "READY")
+        _evidence_require(deployment.get("target") is None)
+        _evidence_require(
+            deployment.get("git_branch") == "automation/f04-vercel-deployment-baseline"
+        )
+        _evidence_require(deployment.get("git_org") == "TheBayoumi")
+        _evidence_require(deployment.get("git_repo") == "ai-learning-platform")
+        _evidence_require(_evidence_text(deployment.get("immutable_url")).endswith(".vercel.app"))
+        _evidence_require(_evidence_text(deployment.get("region")) == "iad1")
+        created[label] = _evidence_utc(deployment.get("created_at_utc"))
+        ready_at = _evidence_utc(deployment.get("ready_at_utc"))
+        _evidence_require(created[label] < ready_at)
+    _evidence_require(created["A"] < created["B"])
+    _evidence_require(
+        parsed_deployments["A"]["deployment_id"] != parsed_deployments["B"]["deployment_id"]
+    )
+    _evidence_require(parsed_deployments["A"]["git_sha"] != parsed_deployments["B"]["git_sha"])
+
+    transitions = _evidence_list(value.get("transitions"))
+    _evidence_require(len(transitions) == 3)
+    expected_sequence: tuple[tuple[str | None, str], ...] = (
+        (None, "B"),
+        ("B", "A"),
+        ("A", "B"),
+    )
+    previous_http_at: datetime | None = None
+    for raw_transition, (expected_from, expected_to) in zip(
+        transitions, expected_sequence, strict=True
+    ):
+        transition = _evidence_object(raw_transition)
+        _evidence_exact_keys(
+            transition,
+            {
+                "from",
+                "to",
+                "expected_deployment_id",
+                "observed_deployment_id",
+                "observed_git_sha",
+                "elapsed_ms",
+                "assignment",
+                "polling",
+                "alias_observation",
+                "deployment_observation",
+                "http",
+            },
+        )
+        _evidence_require(transition.get("from") == expected_from)
+        _evidence_require(transition.get("to") == expected_to)
+        if expected_from is not None:
+            _evidence_require(expected_from != expected_to)
+        expected_deployment = parsed_deployments[expected_to]
+        expected_id = expected_deployment["deployment_id"]
+        expected_sha = expected_deployment["git_sha"]
+        _evidence_require(transition.get("expected_deployment_id") == expected_id)
+        _evidence_require(transition.get("observed_deployment_id") == expected_id)
+        _evidence_require(transition.get("observed_git_sha") == expected_sha)
+
+        assignment = _evidence_object(transition.get("assignment"))
+        _evidence_exact_keys(
+            assignment,
+            {"requested_at_utc", "elapsed_ms", "response_alias", "old_deployment_id"},
+        )
+        assignment_at = _evidence_utc(assignment.get("requested_at_utc"))
+        _evidence_require(assignment.get("response_alias") == alias)
+        expected_old_id = (
+            None if expected_from is None else parsed_deployments[expected_from]["deployment_id"]
+        )
+        _evidence_require(assignment.get("old_deployment_id") == expected_old_id)
+        _evidence_require(
+            isinstance(assignment.get("elapsed_ms"), int) and assignment["elapsed_ms"] >= 0
+        )
+        if previous_http_at is not None:
+            _evidence_require(previous_http_at < assignment_at)
+
+        polling = _evidence_object(transition.get("polling"))
+        _evidence_exact_keys(
+            polling,
+            {
+                "bounded",
+                "started_at_utc",
+                "max_duration_ms",
+                "backoff_ms",
+                "attempts",
+                "elapsed_ms",
+            },
+        )
+        _evidence_require(polling.get("bounded") is True)
+        polling_started_at = _evidence_utc(polling.get("started_at_utc"))
+        _evidence_require(polling.get("max_duration_ms") == maximum_ms)
+        _evidence_require(polling.get("backoff_ms") == backoff_ms)
+        _evidence_require(isinstance(polling.get("attempts"), int) and polling["attempts"] > 0)
+        _evidence_require(
+            isinstance(polling.get("elapsed_ms"), int) and 0 <= polling["elapsed_ms"] <= maximum_ms
+        )
+
+        alias_observation = _evidence_object(transition.get("alias_observation"))
+        _evidence_exact_keys(
+            alias_observation,
+            {
+                "observed_at_utc",
+                "project_id",
+                "observed_deployment_id",
+                "target_deployment_has_alias",
+                "previous_deployment_has_alias",
+                "metadata_verified",
+            },
+        )
+        alias_at = _evidence_utc(alias_observation.get("observed_at_utc"))
+        _evidence_require(assignment_at <= polling_started_at < alias_at)
+        polling_elapsed = round((alias_at - polling_started_at).total_seconds() * 1000)
+        transition_elapsed = round((alias_at - assignment_at).total_seconds() * 1000)
+        _evidence_require(abs(polling_elapsed - polling["elapsed_ms"]) <= 1)
+        _evidence_require(transition.get("elapsed_ms") == transition_elapsed)
+        _evidence_require(alias_observation.get("project_id") == project_id)
+        _evidence_require(alias_observation.get("observed_deployment_id") == expected_id)
+        _evidence_require(alias_observation.get("target_deployment_has_alias") is True)
+        _evidence_require(alias_observation.get("previous_deployment_has_alias") is False)
+        _evidence_require(alias_observation.get("metadata_verified") is True)
+
+        deployment_observation = _evidence_object(transition.get("deployment_observation"))
+        _evidence_exact_keys(
+            deployment_observation,
+            {"project_id", "deployment_id", "git_sha", "state", "target"},
+        )
+        _evidence_require(deployment_observation.get("project_id") == project_id)
+        _evidence_require(deployment_observation.get("deployment_id") == expected_id)
+        _evidence_require(deployment_observation.get("git_sha") == expected_sha)
+        _evidence_require(deployment_observation.get("state") == "READY")
+        _evidence_require(deployment_observation.get("target") is None)
+
+        http = _evidence_object(transition.get("http"))
+        _evidence_exact_keys(
+            http,
+            {
+                "requested_at_utc",
+                "observed_at_utc",
+                "elapsed_ms",
+                "status",
+                "redirect_chain",
+                "authentication_redirect",
+                "application_response",
+                "effective_host",
+                "selected_headers",
+                "body_bytes",
+                "body_sha256",
+                "assertions",
+            },
+        )
+        http_requested_at = _evidence_utc(http.get("requested_at_utc"))
+        http_observed_at = _evidence_utc(http.get("observed_at_utc"))
+        _evidence_require(alias_at < http_requested_at <= http_observed_at)
+        previous_http_at = http_observed_at
+        _evidence_require(http.get("status") == 200)
+        _evidence_require(http.get("redirect_chain") == [200])
+        _evidence_require(http.get("authentication_redirect") is False)
+        _evidence_require(http.get("application_response") is True)
+        _evidence_require(http.get("effective_host") == alias)
+        _evidence_require(isinstance(http.get("elapsed_ms"), int) and http["elapsed_ms"] >= 0)
+        _evidence_require(
+            isinstance(http.get("body_bytes"), int) and 0 < http["body_bytes"] <= 65536
+        )
+        _evidence_require(
+            re.fullmatch(r"[0-9a-f]{64}", _evidence_text(http.get("body_sha256"))) is not None
+        )
+        headers = _evidence_object(http.get("selected_headers"))
+        _evidence_exact_keys(headers, {"content-type", "cache-control"})
+        _evidence_require(_evidence_text(headers.get("content-type")).startswith("text/html"))
+        assertions = _evidence_object(http.get("assertions"))
+        _evidence_exact_keys(
+            assertions,
+            {
+                "application_title",
+                "accessible_status_role",
+                "api_unavailable_state",
+                "api_unavailable_label",
+                "loopback_origin_absent",
+                "trace_identifier_absent",
+                "health_path_absent",
+                "confidential_diagnostic_absent",
+            },
+        )
+        _evidence_require(all(item is True for item in assertions.values()))
+
+    if previous_http_at is None:
+        raise _F04EvidenceViolation
+    final = _evidence_object(value.get("final_target"))
+    _evidence_exact_keys(
+        final,
+        {
+            "deployment_id",
+            "git_sha",
+            "alias_metadata_verified",
+            "deployment_metadata_verified",
+            "application_http_verified",
+            "alias_left_in_place",
+            "observed_at_utc",
+        },
+    )
+    deployment_b = parsed_deployments["B"]
+    _evidence_require(final.get("deployment_id") == deployment_b["deployment_id"])
+    _evidence_require(final.get("git_sha") == deployment_b["git_sha"])
+    for field in (
+        "alias_metadata_verified",
+        "deployment_metadata_verified",
+        "application_http_verified",
+        "alias_left_in_place",
+    ):
+        _evidence_require(final.get(field) is True)
+    final_at = _evidence_utc(final.get("observed_at_utc"))
+    _evidence_require(previous_http_at <= final_at <= recorded_at)
+
+    isolation = _evidence_object(value.get("isolation"))
+    _evidence_exact_keys(
+        isolation,
+        {
+            "ordinary_aliases_before",
+            "ordinary_aliases_after",
+            "ordinary_aliases_unchanged",
+            "production_aliases_before",
+            "production_aliases_after",
+            "production_aliases_unchanged",
+            "project_root_directory_before",
+            "project_root_directory_after",
+            "production_branch_before",
+            "production_branch_after",
+            "project_configuration_unchanged",
+            "project_team_id",
+            "post_sequence_observed_at_utc",
+            "production_target_observation_after",
+        },
+    )
+    ordinary_before = _evidence_list(isolation.get("ordinary_aliases_before"))
+    ordinary_after = _evidence_list(isolation.get("ordinary_aliases_after"))
+    _evidence_require(ordinary_before == ordinary_after and bool(ordinary_before))
+    _evidence_require(isolation.get("ordinary_aliases_unchanged") is True)
+    _evidence_require(isolation.get("production_aliases_before") == [])
+    _evidence_require(isolation.get("production_aliases_after") == [])
+    _evidence_require(isolation.get("production_aliases_unchanged") is True)
+    _evidence_require(isolation.get("project_root_directory_before") == "apps/web")
+    _evidence_require(isolation.get("project_root_directory_after") == "apps/web")
+    _evidence_require(isolation.get("production_branch_before") == "main")
+    _evidence_require(isolation.get("production_branch_after") == "main")
+    _evidence_require(isolation.get("project_configuration_unchanged") is True)
+    _evidence_require(isolation.get("project_team_id") == value.get("team_id"))
+    for item in ordinary_before + ordinary_after:
+        ordinary_alias = _evidence_object(item)
+        _evidence_exact_keys(ordinary_alias, {"alias", "deployment_id", "project_id"})
+        _evidence_require(ordinary_alias.get("alias") != alias)
+    production_observation = _evidence_object(isolation.get("production_target_observation_after"))
+    _evidence_exact_keys(
+        production_observation, {"deployment_id", "git_sha", "state", "target", "aliases"}
+    )
+    _evidence_utc(isolation.get("post_sequence_observed_at_utc"))
+
+    serialized = json.dumps(value, sort_keys=True).lower()
+    for forbidden in (
+        "access_token",
+        "authorization",
+        "bearer ",
+        "bypass_secret",
+        "cookie",
+        "protection-bypass",
+        "protection_bypass",
+        "set-cookie",
+        "share_url",
+        "vercel.live",
+        "vercelprotectionbypass",
+    ):
+        _evidence_require(forbidden not in serialized)
+
+
+def _f04_deployments(value: dict[str, Any]) -> dict[str, Any]:
+    return cast(dict[str, Any], value["deployments"])
+
+
+def _f04_transitions(value: dict[str, Any]) -> list[dict[str, Any]]:
+    return cast(list[dict[str, Any]], value["transitions"])
+
+
+def _remove_f04_deployment(value: dict[str, Any], label: str) -> None:
+    _f04_deployments(value).pop(label)
+
+
+def _make_f04_deployment_ids_identical(value: dict[str, Any]) -> None:
+    deployments = _f04_deployments(value)
+    cast(dict[str, Any], deployments["B"])["deployment_id"] = cast(
+        dict[str, Any], deployments["A"]
+    )["deployment_id"]
+
+
+def _make_f04_transition_stationary(value: dict[str, Any]) -> None:
+    _f04_transitions(value)[1]["from"] = "A"
+
+
+def _set_f04_deployment(value: dict[str, Any], label: str, field: str, item: Any) -> None:
+    cast(dict[str, Any], _f04_deployments(value)[label])[field] = item
+
+
+def _set_f04_transition_nested(
+    value: dict[str, Any], index: int, section: str, field: str, item: Any
+) -> None:
+    cast(dict[str, Any], _f04_transitions(value)[index][section])[field] = item
+
+
+def _set_f04_final(value: dict[str, Any], field: str, item: Any) -> None:
+    cast(dict[str, Any], value["final_target"])[field] = item
+
+
+def _clear_f04_transitions(value: dict[str, Any]) -> None:
+    value["transitions"] = []
+
+
+def _add_f04_credential(value: dict[str, Any]) -> None:
+    value["token"] = "redacted-test-value"
+
+
+def _add_f04_temporary_share_url(value: dict[str, Any]) -> None:
+    value["share_url"] = "https://temporary-share.invalid/protected-preview"
+
+
+def _remove_f04_required_http_assertion(value: dict[str, Any]) -> None:
+    assertions = cast(dict[str, Any], _f04_transitions(value)[0]["http"]["assertions"])
+    assertions.pop("api_unavailable_state")
+
+
+def _add_f04_raw_response(value: dict[str, Any]) -> None:
+    cast(dict[str, Any], _f04_transitions(value)[0]["http"])["raw_response"] = "omitted"
+
+
+def _add_f04_creator(value: dict[str, Any]) -> None:
+    cast(dict[str, Any], _f04_transitions(value)[0]["assignment"])["creator"] = {
+        "email": "example@example.invalid"
+    }
+
+
+def test_f04_alias_reversion_evidence_contract_is_complete() -> None:
+    evidence = _read_json(REPOSITORY_ROOT / F04_ALIAS_EVIDENCE_PATH)
+    _validate_f04_alias_reversion_evidence(evidence)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda value: _remove_f04_deployment(value, "A"),
+        lambda value: _remove_f04_deployment(value, "B"),
+        _make_f04_deployment_ids_identical,
+        _make_f04_transition_stationary,
+        lambda value: _set_f04_deployment(value, "A", "state", "ERROR"),
+        lambda value: _set_f04_deployment(value, "A", "project_id", "prj_other"),
+        lambda value: _set_f04_deployment(value, "A", "git_sha", ""),
+        lambda value: _set_f04_transition_nested(
+            value, 0, "deployment_observation", "git_sha", "b" * 40
+        ),
+        lambda value: _set_f04_transition_nested(
+            value, 1, "alias_observation", "previous_deployment_has_alias", True
+        ),
+        lambda value: _set_f04_transition_nested(value, 1, "http", "authentication_redirect", True),
+        lambda value: _set_f04_transition_nested(
+            value, 2, "alias_observation", "metadata_verified", False
+        ),
+        lambda value: _set_f04_final(
+            value,
+            "deployment_id",
+            cast(dict[str, Any], _f04_deployments(value)["A"])["deployment_id"],
+        ),
+        _clear_f04_transitions,
+        lambda value: cast(dict[str, Any], value["polling_policy"]).update(bounded=False),
+        _add_f04_credential,
+        _add_f04_temporary_share_url,
+        _remove_f04_required_http_assertion,
+        _add_f04_raw_response,
+        _add_f04_creator,
+    ],
+    ids=[
+        "missing-A",
+        "missing-B",
+        "identical-deployments",
+        "stationary-transition",
+        "deployment-not-ready",
+        "wrong-project",
+        "missing-git-sha",
+        "observed-sha-mismatch",
+        "previous-deployment-still-aliased",
+        "authentication-redirect-as-success",
+        "http-without-alias-verification",
+        "restored-to-A",
+        "empty-transitions",
+        "unbounded-polling",
+        "committed-credential",
+        "committed-temporary-share-url",
+        "missing-required-http-assertion",
+        "committed-raw-response",
+        "committed-creator-metadata",
+    ],
+)
+def test_f04_alias_reversion_evidence_rejects_invalid_proof(
+    mutation: Callable[[dict[str, Any]], object],
+) -> None:
+    evidence = _read_json(REPOSITORY_ROOT / F04_ALIAS_EVIDENCE_PATH)
+    mutation(evidence)
+    with pytest.raises(_F04EvidenceViolation):
+        _validate_f04_alias_reversion_evidence(evidence)
+
+
+def test_f04_alias_reversion_evidence_is_hash_bound(controller_root: Path) -> None:
+    evidence_path = controller_root / F04_ALIAS_EVIDENCE_PATH
+    assert evidence_path.is_file()
+    evidence = _read_json(evidence_path)
+    evidence["recorded_at_utc"] = "2026-07-21T13:08:49.547Z"
+    _write_json(evidence_path, evidence)
+    _assert_violation(controller_root, "state_hash_mismatch")
+
+    controller_root = _copy_controller_fixture(controller_root.parent / "missing-evidence")
+    (controller_root / F04_ALIAS_EVIDENCE_PATH).unlink()
+    _assert_violation(controller_root, "state_hash_path_invalid")

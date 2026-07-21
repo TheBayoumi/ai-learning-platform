@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-21T11:32:42.000Z",
+  "generated_at": "2026-07-21T12:59:23.784Z",
   "repository": {
     "branch": "automation/f04-vercel-deployment-baseline",
-    "head": "ca08301b46e49945a805f20a07866a931a8e81e0",
-    "working_tree": "Bounded F04 closure repair: derive the active foundation frontier and successor from roadmap/inventory state, reconcile stale F03/F04 records, and return F04 to FAILED_RETRYABLE / Revise because rollback, protected-page automation, reproducible deployment configuration, measurements, and repository payload hygiene remain unresolved",
+    "head": "ceaf60d2ce5adf826b8268c32e513569a35eeb0c",
+    "working_tree": "Bounded F04 alias-reversion repair: prove one dedicated non-production alias moved from current preview B to prior preview A and back to intended final B with exact deployment, Git SHA, alias ownership, and protected application HTTP evidence; retain the other four F04 blockers and FAILED_RETRYABLE / Revise",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -23,7 +23,8 @@
       "plans/autonomous-loop/controller-policy.json",
       ".github/workflows/ci.yml",
       "apps/api/src/ai_learning_platform_api/automation/phase_gate.py",
-      "apps/api/tests/test_phase_gate.py"
+      "apps/api/tests/test_phase_gate.py",
+      "plans/F04-vercel-alias-reversion-evidence.json"
     ]
   },
   "runtime_capabilities": {
@@ -525,7 +526,8 @@
         "plans/autonomous-loop/checkpoint.md",
         "plans/autonomous-loop/run-log.md",
         "plans/implementation-inventory.json",
-        "plans/implementation-inventory.md"
+        "plans/implementation-inventory.md",
+        "plans/F04-vercel-alias-reversion-evidence.json"
       ],
       "tests": [
         "Starting exact head ca08301b46e49945a805f20a07866a931a8e81e0 passed GitHub Actions run 29616557723: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded; Vercel status was success for deployment dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
@@ -539,10 +541,12 @@
         "Final independent focused rereview returned ACCEPT with no material findings after 137 controller tests, Ruff, strict mypy, authoritative hash/state validation with only the intentional dirty-worktree guard bypassed, and git diff --check",
         "Affected web gates passed on local Node 25.2.1 and npm 11.18.0: clean npm install, lint, strict typecheck, 97 tests, production build, and 629,565-byte browser confidentiality scan",
         "Final Windows public runtime smoke passed with 48 exact events, 21 correlations, four concurrent requests, 12,639 diagnostic bytes, 14,224 captured bytes, API live in 1,416 ms, smoke in 4,724 ms, and shutdown in 51 ms; one preceding event-volume failure was not reproducible and retained no raw child evidence by design",
-        "Dirty-worktree exact-head validation failed closed with worktree_not_exact_head; clean exact-revision validation remains a publication gate"
+        "Dirty-worktree exact-head validation failed closed with worktree_not_exact_head; clean exact-revision validation remains a publication gate",
+        "Supported Vercel REST alias assignments moved f04-reversion-proof-web.vercel.app from B (dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z / ceaf60d2ce5adf826b8268c32e513569a35eeb0c) to A (dpl_64G3A2Zim5iWcQ2YzrQnW9runPii / ca08301b46e49945a805f20a07866a931a8e81e0) and restored it to B; both moves returned the exact prior deployment ID",
+        "Every B-A-B transition passed bounded exclusive alias metadata, READY preview project/SHA metadata, and authenticated HTTP 200 application assertions with no redirect, loopback origin, health path, trace identifier, or confidential diagnostic marker",
+        "The focused alias-reversion contract suite passed 21 tests covering the valid proof, authoritative hash binding, missing deployments, identical or stationary transitions, readiness/project/SHA mismatch, stale alias ownership, authentication redirects, missing alias verification, incorrect restoration, empty evidence, unbounded polling, credential/share-URL leakage, missing required HTTP assertions, raw responses, and creator metadata"
       ],
       "missing_outputs": [
-        "A supported non-production alias must move from accepted preview A to preview B, move back to A, verify the served exact revision at each step, and restore the intended final target",
         "A committed deployment-protection-aware exact-SHA page verifier must reject authentication redirects and stale deployments while checking HTTP, API-unavailable semantics, absent API origin, accessibility, and browser confidentiality",
         "Vercel project configuration and Node/npm installation must be reproducible from version-controlled, non-secret configuration with compatible locked versions",
         "Build duration, artifact footprint, cache impact, cold/warm page latency, runtime versions, and bounded cost observations remain unrecorded",
@@ -550,10 +554,9 @@
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Demonstrate a supported non-production Vercel alias reversion between two exact preview revisions, record the served SHA after each switch, and restore the intended final alias target",
+      "next_smallest_action": "Implement the committed deployment-protection-aware exact-SHA page verifier for f04.deployed_page_verification without starting any other F04 repair",
       "gate_decision": "Revise",
       "blocker_ids": [
-        "f04.rollback_reversion",
         "f04.deployed_page_verification",
         "f04.build_reproducibility",
         "f04.resource_measurements",

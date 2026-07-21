@@ -1,6 +1,60 @@
 # Autonomous Loop Checkpoint
 
-## Current phase and gate
+## Run 26 current phase and gate
+
+F04 remains active and `FAILED_RETRYABLE / Revise`. Run 26 started from clean
+branch `automation/f04-vercel-deployment-baseline` at exact SHA
+`ceaf60d2ce5adf826b8268c32e513569a35eeb0c`; pull request #5 was open and
+mergeable, both exact GitHub workflow runs passed all five required jobs, and
+Vercel preview `dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` was `READY` for that SHA.
+
+The bounded repair resolved only `f04.rollback_reversion`. Dedicated alias
+`f04-reversion-proof-web.vercel.app` followed the required B-to-A-to-B sequence:
+
+- B: `dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` at
+  `ceaf60d2ce5adf826b8268c32e513569a35eeb0c`;
+- A: `dpl_64G3A2Zim5iWcQ2YzrQnW9runPii` at
+  `ca08301b46e49945a805f20a07866a931a8e81e0`; and
+- restored B: `dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` at
+  `ceaf60d2ce5adf826b8268c32e513569a35eeb0c`.
+
+Vercel's supported alias REST response identified the exact prior deployment on
+both moves. After every assignment, bounded polling verified exclusive alias
+ownership, expected project, `READY` preview target, and exact Git SHA before an
+authenticated `vercel curl` request was accepted. All three requests returned
+HTTP 200 application HTML with no redirect and the accessible API-unavailable
+state. Loopback origins, the health path, trace identifiers, and confidential
+diagnostic markers were absent. The Git-managed branch alias and production
+aliases were unchanged. The alias remains on B, and sanitized evidence is at
+`plans/F04-vercel-alias-reversion-evidence.json`.
+
+The evidence contract passed all 21 focused tests, including the required
+fail-closed mutations, and all 158 controller tests passed. The complete API
+quality gate passed 426 tests at 97% coverage with canonical generation, Ruff,
+and strict mypy; web lint, strict typecheck, all 97 tests, production build, and
+browser confidentiality scan passed; and the root runtime smoke passed with 48
+events, 21 correlations, four concurrent requests, bounded diagnostics, and
+clean shutdown. Exact clean-revision phase-gate and projection evidence remains
+the publication gate for this bounded revision.
+
+Independent final read-only review returned `ACCEPT` with no material findings
+after rechecking the live final alias and isolation state, exact deployment/SHA
+chain, HTTP response, evidence schemas, all authoritative hashes, 158 controller
+tests, and the 426-test API gate. This disposition applies only to the bounded
+rollback-reversion repair; F04 remains `Revise`.
+
+The four remaining F04 blockers are:
+
+- `f04.deployed_page_verification`;
+- `f04.build_reproducibility`;
+- `f04.resource_measurements`; and
+- `f04.repository_payload_hygiene`.
+
+V00 remains `WAITING_EXTERNAL / Revise` with its four external inputs; V01
+remains locked. No F04 acceptance-state revision is created. The only next
+eligible blocker is `f04.deployed_page_verification`.
+
+## Prior Run 25 checkpoint
 
 Foundation phases F00-F03 are durably `PASSED / Continue`. F03 implementation
 revision `fe49b609767e27d52fae999c229502ed98866dff` passed exact push/PR runs
@@ -87,10 +141,7 @@ before this repair is considered published. The final focused rereview returned
 Ruff, strict mypy, hash/state, and diff checks. F04 remains `Revise` after
 publication because other bounded defects remain.
 
-## Exact next action
+## Prior Run 25 handoff (superseded by Run 26)
 
-After this reconciliation revision passes its exact checks, demonstrate a
-supported non-production Vercel alias reversion between two exact preview
-revisions, verify the served SHA after each switch, and restore the intended
-final alias target. Stop before deployed-page automation, build reproducibility,
-archive hygiene, F05, merge, or issue closure.
+Run 26 completed this prior alias-reversion handoff. The current next action is
+`f04.deployed_page_verification`; do not begin it in this invocation.

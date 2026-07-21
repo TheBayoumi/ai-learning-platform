@@ -760,3 +760,92 @@ regressions prove both paths fail closed. Final focused rereview returned
 tests, Ruff, strict mypy, authoritative hash/state validation (bypassing only the
 intentional dirty-worktree guard), and `git diff --check`. Publication evidence
 remains pending; the review accepts this bounded repair, not F04 itself.
+
+## Run 26 - 2026-07-21 (F04 non-production alias traffic reversion)
+
+Reverified the authoritative clean starting state before mutation. Repository
+`TheBayoumi/ai-learning-platform` was on branch
+`automation/f04-vercel-deployment-baseline` at exact SHA
+`ceaf60d2ce5adf826b8268c32e513569a35eeb0c`; pull request #5 was open and
+mergeable. Exact push run `29829521304` and pull-request run `29829523486` each
+passed API quality, Web quality, Runtime smoke, Phase gate, and Gate projection.
+GitHub's Vercel status was successful for `READY` preview
+`dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` at the same SHA. The Vercel project still
+used project ID `prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN`, team ID
+`team_bZWPrEPMa4sBoWU7syo3ZIRZ`, Root Directory `apps/web`, GitHub repository
+`TheBayoumi/ai-learning-platform`, and production branch `main`.
+
+Selected two distinct immutable `READY` previews from the same project and F04
+branch. Prior A was `dpl_64G3A2Zim5iWcQ2YzrQnW9runPii` at exact SHA
+`ca08301b46e49945a805f20a07866a931a8e81e0`, created
+`2026-07-17T22:00:51.867Z` and ready `2026-07-17T22:01:11.519Z`. Intended final
+B was `dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` at exact SHA
+`ceaf60d2ce5adf826b8268c32e513569a35eeb0c`, created
+`2026-07-21T12:17:58.572Z` and ready `2026-07-21T12:18:18.445Z`. Both were
+preview targets in `iad1`; GitHub confirmed both commits belong to the
+repository and A is an ancestor of B.
+
+Created only the new dedicated hostname
+`f04-reversion-proof-web.vercel.app`. Using Vercel CLI 56.3.1's authenticated
+`vercel api` wrapper over the supported
+`POST /v2/deployments/{deployment-id}/aliases` endpoint, the same alias followed
+the exact sequence B to A to B. Initial B assignment returned no prior target.
+The backward move returned B as `oldDeploymentId`; final restoration returned A
+as `oldDeploymentId`. Each bounded metadata observation converged in one
+attempt within a declared 60,000 ms limit and 2,000 ms backoff, proved the alias
+was present only on the target deployment, and mapped the target to its exact
+expected SHA, project, `READY` state, and preview target.
+
+After every control-plane verification, authenticated `vercel curl` requested
+the proof hostname. Each request returned HTTP 200 application HTML with no
+redirect, `role=status`, and the expected API-unavailable state. Bounded
+assertions found no loopback API origin, `/health/live`, trace identifier, or
+confidential diagnostic marker. Only content type, cache control, bounded body
+size, and a response digest were retained; no full HTML, token, cookie, bypass
+value, temporary share URL, raw authorization header, or CLI authentication
+state entered the repository.
+
+Before the proof, the only ordinary project alias was the Git-managed branch
+alias on B. After final restoration, that exact mapping remained unchanged and
+the dedicated proof alias pointed to B. No production alias existed before or
+after, Root Directory and production branch remained unchanged, and the existing
+errored production-target deployment still had no aliases. No production,
+custom-domain, environment, Git-integration, protection, or project-setting
+mutation was performed.
+
+The machine-readable proof is
+`plans/F04-vercel-alias-reversion-evidence.json`. The focused evidence contract
+suite passed 21 tests: the valid proof, authoritative hash binding, and required
+fail-closed cases for missing deployments, identical or stationary transitions,
+non-READY or wrong-project deployments, missing or mismatched SHAs, stale
+previous alias ownership, authentication redirects, HTTP without alias
+verification, restoration to A, empty transitions, unbounded polling, and
+committed credential/share material. Exact assertion and object-key allowlists
+also reject incomplete response semantics, raw responses, and creator metadata.
+
+Local validation passed before publication: all 21 focused evidence tests and
+all 158 controller tests; canonical OpenAPI and TypeScript generation checks;
+Ruff format and lint; strict mypy; and all 426 API tests at 97% total coverage.
+Web clean install, lint, strict typecheck, all 97 tests, production build, and
+the 629,565-byte browser confidentiality scan passed. The root runtime smoke
+passed with 48 exact events, 21 correlations, four concurrent requests, bounded
+diagnostics, and clean shutdown. Repository diff and secret checks found no
+credential, temporary protected-preview access material, or unrelated file.
+
+Independent final read-only review returned `ACCEPT` with no material findings.
+It independently confirmed the live alias remained on B, A no longer held the
+alias, both deployment/SHA chains were exact `READY` previews, ordinary and
+production alias state remained isolated, protected HTTP returned the expected
+application response, all 26 authoritative hashes agreed, and the complete
+controller and API gates passed. Historical intermediate states remain
+represented by the sanitized, hash-bound provider response record because only
+the restored final alias state is live-queryable.
+
+Only `f04.rollback_reversion` is removed. F04 remains
+`FAILED_RETRYABLE / Revise` with `f04.deployed_page_verification`,
+`f04.build_reproducibility`, `f04.resource_measurements`, and
+`f04.repository_payload_hygiene`. V00 remains `WAITING_EXTERNAL / Revise`; V01
+remains locked. This run stops after independent review, exact-head publication,
+remote check verification, durable PR/issue evidence, and a final proof-alias
+stability read. It does not implement another F04 blocker or create an
+acceptance-state revision.

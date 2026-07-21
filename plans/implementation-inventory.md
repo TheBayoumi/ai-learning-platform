@@ -1,11 +1,12 @@
 # Implementation Inventory
 
-Current bounded repair starts from exact F04 acceptance head
-`ca08301b46e49945a805f20a07866a931a8e81e0`, which passed GitHub Actions run
-`29616557723` and has a GitHub-linked `READY` preview deployment. The live
-audit found incomplete and invalid F04 exit evidence, so this projection
-returns F04 to `FAILED_RETRYABLE / Revise`. F03 remains durably accepted;
-F03/F04 are technical foundation, not product or validation evidence.
+Current bounded repair starts from exact F04 head
+`ceaf60d2ce5adf826b8268c32e513569a35eeb0c`, which passed both exact GitHub
+workflow runs and has GitHub-linked `READY` preview deployment
+`dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z`. The dedicated non-production alias proof
+resolves only `f04.rollback_reversion`; F04 remains
+`FAILED_RETRYABLE / Revise` with four other blockers. F03 remains durably
+accepted; F03/F04 are technical foundation, not product or validation evidence.
 The machine-readable record is `plans/implementation-inventory.json`; this
 prose is a synchronized human-readable projection.
 
@@ -131,10 +132,18 @@ prose is a synchronized human-readable projection.
   which fails Next.js detection); corrected to `apps/web` via
   `PATCH /v9/projects/{id}`, confirmed via a follow-up `GET`. No GitHub
   Actions secret was created; Vercel's native GitHub App integration needs
-  none. The current exact head has `READY` preview deployment
-  `dpl_64G3A2Zim5iWcQ2YzrQnW9runPii` and all five GitHub jobs green, but these
-  facts do not close the phase. `vercel rollback` returned HTTP 422 for the
-  preview target; this is rejected-command evidence, not traffic reversion.
+  none. Exact repair-start head
+  `ceaf60d2ce5adf826b8268c32e513569a35eeb0c` has `READY` preview deployment
+  `dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` and both exact GitHub workflow runs green.
+  `vercel rollback` returned HTTP 422 for the preview target; this remains
+  rejected-command evidence, not traffic reversion.
+  `f04-reversion-proof-web.vercel.app` subsequently moved B to prior preview A
+  and back to intended final B through Vercel's supported alias API. Each
+  transition verified exclusive alias ownership, exact deployment ID and SHA,
+  `READY` preview state, and protected application HTTP without a redirect or
+  confidential browser content. The Git-managed branch alias and production
+  aliases were unchanged. Sanitized evidence is committed at
+  `plans/F04-vercel-alias-reversion-evidence.json`.
   User visual confirmation is not a committed protected-page gate, remote
   project and Node/npm behavior are not yet reproducible from versioned
   configuration, and build/artifact/cache/latency/runtime/cost measurements
@@ -160,7 +169,7 @@ prose is a synchronized human-readable projection.
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
 | F03 | Foundation | `PASSED` | Implementation and acceptance revisions passed their own exact required runs |
-| F04 | Foundation | `FAILED_RETRYABLE` | Revise rollback, deployed-page proof, reproducibility, measurements, and payload hygiene |
+| F04 | Foundation | `FAILED_RETRYABLE` | Revise deployed-page proof, reproducibility, measurements, and payload hygiene |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -212,14 +221,14 @@ assertion.
 F03 adds repository automation only: a standard-library policy validator,
 deterministic projection, and exact-head CI jobs. F04 has a verified remote
 Vercel preview for the existing Next.js web tier, but no accepted reproducible
-deployment baseline, no deployed FastAPI API, and no production deployment.
+deployment baseline, no deployed FastAPI API, and no production traffic alias.
 The F04 reconciliation passes 137 controller tests, all 405 API tests at 97%
 coverage, all 97 web tests plus lint/typecheck/build/confidentiality gates, and a
 final 48-event cross-process smoke. The controller now starts a validated,
 entry-ready `NOT_STARTED` successor and waits fail-closed on a failed successor
 or empty entry set; implementation-to-acceptance transition also rejects any
-failed entry. These are repair evidence only; they do not close any of F04's
-five remaining blockers.
+failed entry. The supported B-to-A-to-B alias proof removes only
+`f04.rollback_reversion`; four F04 blockers remain.
 The repository still has no OCI artifact or container harness. It also has no persistent telemetry, authentication,
 learner or role state, events/outbox/replay, competency graph, curriculum,
 assessment, tutoring, LLM access, mastery, readiness, unique work, simulation,
@@ -227,10 +236,9 @@ provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-This bounded repair records F04 as `FAILED_RETRYABLE / Revise` and fixes only
-controller/frontier derivation plus authoritative state reconciliation. Require
-its exact implementation revision checks and Vercel status to pass, record the
-correction durably in pull request #5 and issue #3, and stop. Do not treat
-F00-F04 as V00 evidence. The only next eligible action is a supported
-non-production verification-alias reversion with exact served-SHA proof and
-restoration of the intended final target.
+This bounded repair records the supported non-production B-to-A-to-B alias
+reversion while keeping F04 `FAILED_RETRYABLE / Revise`. Require the bounded
+implementation revision's exact GitHub and Vercel checks to pass, record the
+immutable proof durably in pull request #5 and issue #3, and stop. Do not treat
+F00-F04 as V00 evidence. The only next eligible action is
+`f04.deployed_page_verification`.
