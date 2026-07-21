@@ -17,10 +17,13 @@ integration, or deployment-protection policy.
 - `VERCEL_API_TOKEN` is required because GitHub's deployment payload proves the
   exact SHA, provider, environment, success, and immutable hostname, but does not
   expose Vercel's canonical deployment ID, project ID, READY state, Git ref, and
-  complete source metadata. The current credential uses existing team-authorized
-  Vercel CLI access because that OAuth application is forbidden from creating a
-  child token. Replace it with a dedicated, shorter-lived, team-scoped token when
-  Vercel permits one to be created interactively.
+  complete source metadata. The current credential is a dedicated one-day Vercel
+  access token created interactively with the narrowest UI scope that includes
+  the owning team (`Full Account`, non-SAML accounts). A personal-project scope
+  was proven insufficient by HTTP 403 and was revoked. The credential expires on
+  2026-07-22 and must be replaced before another run after that date. Vercel's
+  CLI OAuth application was also proven unable to create a child token through
+  the API.
 
 The dedicated workflow reads both secrets only in the trusted same-repository
 push job for `automation/f04-vercel-deployment-baseline`. It does not run on pull
