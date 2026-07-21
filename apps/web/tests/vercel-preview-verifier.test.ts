@@ -117,7 +117,14 @@ function createScenario() {
       })
     ]
   ]);
-  return { status, deployments, deploymentStatuses, vercel, pages };
+  return {
+    status,
+    deployments,
+    deploymentStatuses,
+    vercel,
+    pages,
+    protectedRequests: [] as RequestInit[]
+  };
 }
 
 function input(overrides: Record<string, unknown> = {}) {
@@ -151,6 +158,9 @@ function dependencies(scenario: Scenario) {
       return jsonResponse(scenario.vercel);
     }
     const page = scenario.pages.get(url);
+    if (page) {
+      scenario.protectedRequests.push(init ?? {});
+    }
     if (typeof page === "function") {
       return page(init);
     }
@@ -186,7 +196,8 @@ async function expectFailure(
 
 describe("exact-SHA Vercel preview verifier", () => {
   it("accepts an exact ready preview and emits deterministic sanitized evidence", async () => {
-    const first = await verifyVercelPreview(input(), dependencies(createScenario()));
+    const firstScenario = createScenario();
+    const first = await verifyVercelPreview(input(), dependencies(firstScenario));
     const second = await verifyVercelPreview(input(), dependencies(createScenario()));
 
     expect(first).toEqual(second);
@@ -207,6 +218,9 @@ describe("exact-SHA Vercel preview verifier", () => {
     expect(serialized).not.toContain("github-test-token");
     expect(serialized).not.toContain("vercel-test-token");
     expect(validateEvidence(first, input())).toBe(true);
+    const requestHeaders = new Headers(firstScenario.protectedRequests[0]?.headers);
+    expect(requestHeaders.get("x-vercel-protection-bypass")).toBe(BYPASS_SECRET);
+    expect(requestHeaders.get("x-vercel-set-bypass-cookie")).toBeNull();
   });
 
   it("rejects a missing Vercel status after bounded polling", async () => {

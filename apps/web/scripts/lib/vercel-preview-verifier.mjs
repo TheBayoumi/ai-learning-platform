@@ -358,8 +358,7 @@ async function fetchProtectedText(
       redirect: "manual",
       signal: controller.signal,
       headers: {
-        "x-vercel-protection-bypass": bypassSecret,
-        "x-vercel-set-bypass-cookie": "samesitenone"
+        "x-vercel-protection-bypass": bypassSecret
       }
     });
     body = await readBoundedResponse(response, maximumBytes, label);
