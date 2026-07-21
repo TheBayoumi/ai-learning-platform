@@ -4,16 +4,23 @@
   "private": true,
   "packageManager": "npm@11.18.0",
   "engines": {
-    "node": ">=20.9.0 <26",
-    "npm": ">=11.18.0 <12"
+    "node": "24.x",
+    "npm": "11.18.0"
   },
   "overrides": {
     "postcss": "8.5.17"
   },
   "scripts": {
+    "preinstall": "node scripts/verify-build-toolchain.mjs",
+    "prebuild": "node scripts/verify-build-toolchain.mjs",
+    "postbuild": "node scripts/verify-build-toolchain.mjs",
     "dev": "next dev",
     "build": "next build && npm run check:browser-confidentiality",
     "check:browser-confidentiality": "node scripts/check-browser-confidentiality.mjs",
+    "verify:build-toolchain": "node scripts/verify-build-toolchain.mjs",
+    "vercel:config:check": "node scripts/vercel-project-build-config.mjs check",
+    "vercel:config:apply": "node scripts/vercel-project-build-config.mjs apply",
+    "verify:vercel-build": "node scripts/verify-vercel-build-reproducibility.mjs",
     "verify:vercel-preview": "node scripts/verify-vercel-preview.mjs",
     "start": "next start",
     "lint": "eslint .",

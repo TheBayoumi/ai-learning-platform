@@ -16,6 +16,10 @@ export interface VerificationInput {
   };
 }
 
+export type ExactDeploymentInput = Omit<VerificationInput, "bypassSecret" | "httpTimeoutMs"> & {
+  bypassSecret?: never;
+};
+
 export interface VerificationDependencies {
   fetchImpl?: typeof fetch;
   sleep?: (milliseconds: number) => Promise<void>;
@@ -65,6 +69,26 @@ export function verifyVercelPreview(
   input: VerificationInput,
   dependencies?: VerificationDependencies
 ): Promise<VerificationEvidence>;
+
+export function discoverAndValidateExactDeployment(
+  input: ExactDeploymentInput,
+  dependencies?: VerificationDependencies
+): Promise<{
+  exact: {
+    expectedSha: string;
+    repository: string;
+    branch: string;
+    projectId: string;
+    teamId: string;
+  };
+  discovery: Record<string, unknown>;
+  deployment: VerificationEvidence["deployment"] & {
+    immutable_hostname: string;
+    git_branch: string;
+    project_id: string;
+  };
+  runtime: VerificationDependencies & { fetchImpl: typeof fetch; now: () => number };
+}>;
 
 export function validateEvidence(
   evidence: VerificationEvidence,

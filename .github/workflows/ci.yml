@@ -93,9 +93,12 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - name: Pin npm
+        working-directory: .
         run: npm install --global npm@11.18.0
       - name: Verify npm version
         run: test "$(npm --version)" = "11.18.0"
+      - name: Verify committed build toolchain
+        run: npm run verify:build-toolchain
       - name: Synchronize locked dependencies
         run: npm ci
       - name: Lint
@@ -134,6 +137,9 @@ jobs:
         run: npm install --global npm@11.18.0
       - name: Verify npm version
         run: test "$(npm --version)" = "11.18.0"
+      - name: Verify committed web build toolchain
+        working-directory: apps/web
+        run: npm run verify:build-toolchain
       - name: Synchronize locked API dependencies
         working-directory: apps/api
         run: uv sync --locked --all-groups

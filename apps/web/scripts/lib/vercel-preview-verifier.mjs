@@ -80,7 +80,7 @@ function assertExactKeys(value, allowed, label, kind = "metadata_mismatch") {
   }
 }
 
-function validateInputs(input) {
+function validateExactDeploymentInputs(input) {
   const expectedSha = requireString(input.expectedSha, "expected SHA");
   if (!/^[0-9a-f]{40}$/.test(expectedSha)) {
     fail("configuration", "Expected SHA must be a full lowercase Git SHA.");
@@ -94,11 +94,16 @@ function validateInputs(input) {
   const teamId = requireString(input.teamId, "Vercel team ID");
   requireString(input.githubToken, "GitHub token");
   requireString(input.vercelApiToken, "Vercel API token");
+  return { expectedSha, repository, branch, projectId, teamId };
+}
+
+function validateInputs(input) {
+  const exact = validateExactDeploymentInputs(input);
   requireString(input.bypassSecret, "Vercel automation bypass secret");
   if (!/^[A-Za-z0-9]{32}$/.test(input.bypassSecret)) {
     fail("configuration", "Vercel automation bypass secret has an invalid shape.");
   }
-  return { expectedSha, repository, branch, projectId, teamId };
+  return exact;
 }
 
 function safeJsonParse(text, kind, label) {
@@ -672,14 +677,7 @@ async function inspectProtectedPage(input, deployment, fetchImpl) {
   };
 }
 
-export async function verifyVercelPreview(input, dependencies = {}) {
-  const exact = validateInputs(input);
-  if (
-    input.httpTimeoutMs !== undefined &&
-    (!Number.isFinite(input.httpTimeoutMs) || input.httpTimeoutMs <= 0)
-  ) {
-    fail("configuration", "HTTP timeout must be finite and positive.");
-  }
+function boundedPolling(input) {
   const polling = Object.freeze({ ...DEFAULT_POLLING, ...(input.polling ?? {}) });
   if (
     !Number.isFinite(polling.maximum_duration_ms) ||
@@ -695,6 +693,10 @@ export async function verifyVercelPreview(input, dependencies = {}) {
   ) {
     fail("configuration", "Polling policy must be finite and bounded.");
   }
+  return polling;
+}
+
+function verificationRuntime(dependencies) {
   const runtime = {
     fetchImpl: dependencies.fetchImpl ?? globalThis.fetch,
     sleep: dependencies.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))),
@@ -703,9 +705,29 @@ export async function verifyVercelPreview(input, dependencies = {}) {
   if (typeof runtime.fetchImpl !== "function") {
     fail("configuration", "A Fetch implementation is required.");
   }
+  return runtime;
+}
+
+export async function discoverAndValidateExactDeployment(input, dependencies = {}) {
+  const exact = validateExactDeploymentInputs(input);
+  const polling = boundedPolling(input);
+  const runtime = verificationRuntime(dependencies);
 
   const discovery = await discoverExactDeployment(input, runtime, polling);
   const deployment = await fetchAndValidateDeployment(input, discovery, runtime.fetchImpl);
+  return { exact, discovery, deployment, runtime };
+}
+
+export async function verifyVercelPreview(input, dependencies = {}) {
+  validateInputs(input);
+  if (
+    input.httpTimeoutMs !== undefined &&
+    (!Number.isFinite(input.httpTimeoutMs) || input.httpTimeoutMs <= 0)
+  ) {
+    fail("configuration", "HTTP timeout must be finite and positive.");
+  }
+  const { exact, discovery, deployment, runtime } =
+    await discoverAndValidateExactDeployment(input, dependencies);
   const page = await inspectProtectedPage(input, deployment, runtime.fetchImpl);
   const evidence = {
     schema_version: 1,

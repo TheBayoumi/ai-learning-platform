@@ -51,7 +51,7 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Pin npm
-        working-directory: apps/web
+        working-directory: .
         run: npm install --global npm@11.18.0
 
       - name: Verify npm version
@@ -79,5 +79,71 @@ jobs:
         with:
           name: f04-vercel-deployed-page-verification-${{ github.sha }}
           path: ${{ runner.temp }}/f04-vercel-deployed-page-verification.json
+          if-no-files-found: error
+          retention-days: 30
+
+  verify-vercel-build-reproducibility:
+    name: Vercel build reproducibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Enforce the trusted exact-SHA boundary
+        env:
+          EXPECTED_REPOSITORY: TheBayoumi/ai-learning-platform
+          EXPECTED_REF: refs/heads/automation/f04-vercel-deployment-baseline
+          EVENT_REPOSITORY: ${{ github.event.repository.full_name }}
+          EVENT_AFTER: ${{ github.event.after }}
+          EXACT_SHA: ${{ github.sha }}
+          EXACT_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_DELETED: ${{ github.event.deleted }}
+          EVENT_ACTOR: ${{ github.actor }}
+        run: |
+          test "$EVENT_NAME" = "push"
+          test "$EVENT_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$EXACT_REF" = "$EXPECTED_REF"
+          test "$EVENT_AFTER" = "$EXACT_SHA"
+          test "$EVENT_DELETED" != "true"
+          test -n "$EVENT_ACTOR"
+          test "$(git rev-parse HEAD)" = "$EXACT_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Pin npm
+        working-directory: .
+        run: npm install --global npm@11.18.0
+
+      - name: Verify committed build toolchain
+        working-directory: apps/web
+        run: npm run verify:build-toolchain
+
+      - name: Verify the exact Vercel build
+        working-directory: apps/web
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          EVIDENCE_PATH: ${{ runner.temp }}/f04-vercel-build-reproducibility.json
+        run: >-
+          npm run verify:vercel-build --
+          --expected-sha "${{ github.sha }}"
+          --repository "TheBayoumi/ai-learning-platform"
+          --branch "automation/f04-vercel-deployment-baseline"
+          --project-id "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN"
+          --team-id "team_bZWPrEPMa4sBoWU7syo3ZIRZ"
+          --evidence-output "$EVIDENCE_PATH"
+
+      - name: Upload sanitized build evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: f04-vercel-build-reproducibility-${{ github.sha }}
+          path: ${{ runner.temp }}/f04-vercel-build-reproducibility.json
           if-no-files-found: error
           retention-days: 30

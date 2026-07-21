@@ -551,6 +551,7 @@ describe("deployed-page workflow secret boundary", () => {
     const workflow = await readFile(workflowPath, "utf8");
 
     expect(workflow).toContain("name: Vercel deployed-page verification");
+    expect(workflow).toContain("name: Vercel build reproducibility");
     expect(workflow).toContain("- automation/f04-vercel-deployment-baseline");
     expect(workflow).not.toContain("pull_request_target");
     expect(workflow).not.toContain("pull_request:");
@@ -563,8 +564,10 @@ describe("deployed-page workflow secret boundary", () => {
     expect(workflow.indexOf("Enforce the secret-execution boundary")).toBeLessThan(
       workflow.indexOf("secrets.VERCEL_API_TOKEN")
     );
-    expect(workflow.match(/secrets\.VERCEL_API_TOKEN/g)).toHaveLength(1);
+    expect(workflow.match(/secrets\.VERCEL_API_TOKEN/g)).toHaveLength(2);
     expect(workflow.match(/secrets\.VERCEL_AUTOMATION_BYPASS_SECRET/g)).toHaveLength(1);
+    const buildJob = workflow.slice(workflow.indexOf("verify-vercel-build-reproducibility:"));
+    expect(buildJob).not.toContain("VERCEL_AUTOMATION_BYPASS_SECRET");
     for (const use of workflow.matchAll(/uses:\s*[^@\s]+@([^\s]+)/g)) {
       expect(use[1]).toMatch(/^[0-9a-f]{40}$/);
     }
