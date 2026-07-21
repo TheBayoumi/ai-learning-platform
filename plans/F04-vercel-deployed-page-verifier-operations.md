@@ -37,20 +37,25 @@ requests or forks.
    or project settings, and make it active for the environment-variable header
    mechanism.
 3. Pipe the same replacement to `gh secret set
-   VERCEL_AUTOMATION_BYPASS_SECRET --body -` without command tracing.
+   VERCEL_AUTOMATION_BYPASS_SECRET` through standard input, without command
+   tracing. Do not pass `--body -`; that stores a literal hyphen rather than
+   reading standard input.
 4. Confirm only that the named GitHub secret exists and that exactly one intended
    Vercel automation bypass remains active; never read either value back.
 5. Remove the superseded Vercel bypass immediately.
 
 Rotate `VERCEL_API_TOKEN` in the token owner's Vercel account or team settings,
-pipe the replacement to `gh secret set VERCEL_API_TOKEN --body -`, confirm only
-secret-name presence, and revoke the superseded credential. If the credential is
-suspected to be exposed, rotate and revoke before rerunning the workflow.
+pipe the replacement through standard input to `gh secret set VERCEL_API_TOKEN`
+without `--body`, confirm only secret-name presence, and revoke the superseded
+credential. If the credential is suspected to be exposed, rotate and revoke
+before rerunning the workflow.
 
-During this repair, a read-only inspection intended to show only bypass property
-names exposed the previous bypass identifier in ephemeral tool output. The value
-was treated as compromised: it was replaced in Vercel and GitHub, then revoked.
-No value was written to Git, workflow logs, evidence, pull requests, or issues.
+During this repair, two read-only inspections intended to show only bypass
+metadata exposed superseded bypass values in ephemeral tool output. Each value
+was treated as compromised and revoked immediately. A final unexposed bypass was
+made the system environment value and stored in GitHub through standard input.
+No bypass value was written to Git, workflow logs, evidence, pull requests, or
+issues.
 
 ## Evidence handling
 
