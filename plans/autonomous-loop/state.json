@@ -71,7 +71,7 @@
     "plans/implementation-inventory.md": "b5b16516c6ebcc658d99a101fd98b3cf3d8e0fa3efccada3c872d9556efc8ac0",
     "plans/F04-vercel-deployment-baseline.md": "db1a4b5e03cfd9d9c6d5cf23d3b06ba06957b99482d8f9e30233788f9b8bfcbb",
     "plans/F04-vercel-alias-reversion-evidence.json": "03a0d9f16bb012f97c04656546c01a875a583e5b608ea7b389b091f10269a67d",
-    ".github/workflows/vercel-preview-verification.yml": "0d770ec52c9cdd72523139ef5c6db8ecd36184fcb40c74863aab31c6ca0781e7",
+    ".github/workflows/vercel-preview-verification.yml": "c6362b96f1c3c6840d3f005e6a408fa229c4d45288d7180f25491014ac696621",
     "plans/F04-vercel-deployed-page-verifier-operations.md": "d5698a545b3b9eb14a2d23b4f417749e351babc931934df42e9d081b15ac3c45",
     "plans/F04-vercel-deployed-page-verification-evidence.json": "53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b",
     "apps/web/package.json": "808b16c4aba8a61a05c6072bb203ab8e7266d7c09c84f8028154c6a715801bbd",
@@ -80,7 +80,7 @@
     "apps/web/scripts/lib/vercel-preview-verifier.mjs": "64e884b906c264967a72a9428e219a9f51650b340891d376c86d5fd3dd4d1473",
     "apps/web/scripts/lib/vercel-preview-verifier.d.mts": "f6458b242a72c7b9ad29195633301d86d344bc9fa34ed50f529928ff64da4984",
     "apps/web/scripts/verify-vercel-preview.mjs": "59806a73eb03a59e7359eac978c55f0ba97be9b660586457e52bee149a0a36f6",
-    "apps/web/tests/vercel-preview-verifier.test.ts": "8da5884b399a336c16e584ffd9727aa10e4a482f2a89f6b59a72bdb2620ba6df"
+    "apps/web/tests/vercel-preview-verifier.test.ts": "f81f9b4f149a31ef3470fcd1f477ca5319cde948b3a86f83229e62528b138512"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "run_number": 27,

@@ -566,6 +566,7 @@ describe("deployed-page workflow secret boundary", () => {
     );
     expect(workflow.match(/secrets\.VERCEL_API_TOKEN/g)).toHaveLength(2);
     expect(workflow.match(/secrets\.VERCEL_AUTOMATION_BYPASS_SECRET/g)).toHaveLength(1);
+    expect(workflow.match(/cache-dependency-path: apps\/web\/package-lock\.json/g)).toHaveLength(2);
     const buildJob = workflow.slice(workflow.indexOf("verify-vercel-build-reproducibility:"));
     expect(buildJob).not.toContain("VERCEL_AUTOMATION_BYPASS_SECRET");
     for (const use of workflow.matchAll(/uses:\s*[^@\s]+@([^\s]+)/g)) {
