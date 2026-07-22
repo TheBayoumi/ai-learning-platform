@@ -117,10 +117,16 @@ async function requestEvents(fetchImpl, token, deploymentId, teamId) {
   if (typeof token !== "string" || token.length === 0) {
     fail("configuration", "VERCEL_API_TOKEN is required.");
   }
+  const parameters = new URLSearchParams({
+    direction: "forward",
+    follow: "0",
+    limit: String(MAX_EVENTS),
+    teamId
+  });
   let response;
   try {
     response = await fetchImpl(
-      `https://api.vercel.com/v2/deployments/${deploymentId}/events?teamId=${encodeURIComponent(teamId)}`,
+      `https://api.vercel.com/v3/deployments/${encodeURIComponent(deploymentId)}/events?${parameters.toString()}`,
       {
         headers: { authorization: `Bearer ${token}` },
         redirect: "manual"
