@@ -206,7 +206,16 @@ function dependencies(scenario: Scenario) {
         return jsonResponse(scenario.githubDeploymentStatuses);
       }
       if (url.includes("/v13/deployments/")) return jsonResponse(scenario.deployment);
-      if (url.includes("/v2/deployments/") && url.includes("/events?")) {
+      if (url.includes(`/v3/deployments/${DEPLOYMENT_ID}/events?`)) {
+        const requestUrl = new URL(url);
+        if (
+          requestUrl.searchParams.get("direction") !== "forward" ||
+          requestUrl.searchParams.get("follow") !== "0" ||
+          requestUrl.searchParams.get("limit") !== "2000" ||
+          requestUrl.searchParams.get("teamId") !== TEAM_ID
+        ) {
+          throw new Error(`Unexpected Vercel events query: ${url}`);
+        }
         return jsonResponse(scenario.events);
       }
       if (url.includes("/v9/projects/") && url.includes("/env?")) {
