@@ -156,26 +156,37 @@ async function requestEvents(fetchImpl, token, deploymentId, teamId) {
 
 function normalizeLogs(events, expectedDeploymentId) {
   let aggregate = 0;
-  const normalized = events.map((event, index) => {
-    if (
-      !Number.isFinite(event?.created) ||
-      event?.payload?.deploymentId !== expectedDeploymentId ||
-      typeof event?.payload?.text !== "string"
-    ) {
+  const normalized = [];
+  for (const [index, event] of events.entries()) {
+    const payload =
+      event?.payload && typeof event.payload === "object" && !Array.isArray(event.payload)
+        ? event.payload
+        : event;
+    if (payload?.deploymentId !== expectedDeploymentId) {
       fail("logs", "A Vercel build event is malformed or belongs to another deployment.");
     }
-    const text = event.payload.text.replace(/\u001b\[[0-9;]*m/g, "").trim();
+    const rawText = payload?.text;
+    if (rawText === undefined) {
+      continue;
+    }
+    if (typeof rawText !== "string" || !Number.isFinite(event?.created)) {
+      fail("logs", "A textual Vercel build event is malformed.");
+    }
+    const text = rawText.replace(/\u001b\[[0-9;]*m/g, "").trim();
     aggregate += Buffer.byteLength(text);
     if (aggregate > MAX_LOG_BYTES) {
       fail("logs", "Normalized Vercel build logs exceeded the size limit.");
     }
-    return {
+    normalized.push({
       index,
       created: event.created,
-      serial: Number(event.payload.serial ?? index),
+      serial: Number(payload.serial ?? index),
       text
-    };
-  });
+    });
+  }
+  if (normalized.length === 0) {
+    fail("logs", "Vercel build events contain no textual log records.");
+  }
   if (normalized.some(({ serial }) => !Number.isFinite(serial))) {
     fail("logs", "A Vercel build-event serial is malformed.");
   }
