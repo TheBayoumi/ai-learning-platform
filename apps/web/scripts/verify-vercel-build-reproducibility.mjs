@@ -53,8 +53,26 @@ function parseArguments(argv) {
   return options;
 }
 
+function sanitizedFailure(error) {
+  if (error instanceof VercelBuildReproducibilityError) {
+    return { code: error.code, message: error.message };
+  }
+  if (error instanceof VerifierError) {
+    return { code: error.kind, message: error.message };
+  }
+  if (error instanceof VercelProjectConfigError) {
+    return { code: `project_${error.code}`, message: error.message };
+  }
+  return { code: "unexpected", message: "Sanitized unexpected verifier failure." };
+}
+
+let diagnosticOutput = null;
+
 try {
   const options = parseArguments(process.argv.slice(2));
+  diagnosticOutput = options["--evidence-output"]
+    ? resolve(options["--evidence-output"])
+    : null;
   const requiredIdentityOptions = [
     "--expected-sha",
     "--repository",
@@ -117,14 +135,27 @@ try {
     process.stdout.write("Exact-SHA Vercel build reproducibility verification passed.\n");
   }
 } catch (error) {
-  if (error instanceof VercelBuildReproducibilityError) {
-    process.stderr.write(`Vercel build reproducibility failed [${error.code}]: ${error.message}\n`);
-  } else if (error instanceof VerifierError) {
-    process.stderr.write(`Vercel build reproducibility failed [${error.kind}]: ${error.message}\n`);
-  } else if (error instanceof VercelProjectConfigError) {
-    process.stderr.write(`Vercel build reproducibility failed [project_${error.code}]: ${error.message}\n`);
-  } else {
-    process.stderr.write("Vercel build reproducibility failed [unexpected]: sanitized failure.\n");
+  const failure = sanitizedFailure(error);
+  if (diagnosticOutput) {
+    const diagnostic = {
+      schema_version: 1,
+      phase: "F04",
+      blocker_id: "f04.build_reproducibility",
+      result: "FAILED",
+      code: failure.code,
+      message: failure.message
+    };
+    try {
+      await writeFile(diagnosticOutput, `${JSON.stringify(diagnostic, null, 2)}\n`, {
+        encoding: "utf8",
+        flag: "wx"
+      });
+    } catch {
+      // Preserve the original verifier failure; never emit file-system details.
+    }
   }
+  process.stderr.write(
+    `Vercel build reproducibility failed [${failure.code}]: ${failure.message}\n`
+  );
   process.exitCode = 1;
 }
