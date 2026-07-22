@@ -5,6 +5,8 @@ import { checkVercelProjectBuildConfig } from "./vercel-project-build-config.mjs
 
 const MAX_EVENTS = 2_000;
 const MAX_LOG_BYTES = 1024 * 1024;
+const MAX_LOG_ATTEMPTS = 12;
+const LOG_RETRY_INTERVAL_MS = 5_000;
 const SOURCE_KEYS = Object.freeze([
   ".nvmrc",
   "package.json",
@@ -133,9 +135,12 @@ async function requestEvents(fetchImpl, token, deploymentId, teamId) {
       }
     );
   } catch {
-    fail("logs", "Vercel build-log request failed.");
+    fail("logs_pending", "Vercel build-log request failed.");
   }
   if (!response.ok) {
+    if ([404, 409, 429].includes(response.status) || response.status >= 500) {
+      fail("logs_pending", `Vercel build-log request returned HTTP ${response.status}.`);
+    }
     fail("logs", `Vercel build-log request returned HTTP ${response.status}.`);
   }
   const text = await response.text();
@@ -148,7 +153,13 @@ async function requestEvents(fetchImpl, token, deploymentId, teamId) {
   } catch {
     fail("logs", "Vercel build-log response was not valid JSON.");
   }
-  if (!Array.isArray(payload) || payload.length === 0 || payload.length > MAX_EVENTS) {
+  if (!Array.isArray(payload)) {
+    fail("logs", "Vercel build-log response is malformed.");
+  }
+  if (payload.length === 0) {
+    fail("logs_pending", "Vercel build-log response is missing or unbounded.");
+  }
+  if (payload.length > MAX_EVENTS) {
     fail("logs", "Vercel build-log response is missing or unbounded.");
   }
   return payload;
@@ -185,7 +196,7 @@ function normalizeLogs(events, expectedDeploymentId) {
     });
   }
   if (normalized.length === 0) {
-    fail("logs", "Vercel build events contain no textual log records.");
+    fail("logs_pending", "Vercel build events contain no textual log records.");
   }
   if (normalized.some(({ serial }) => !Number.isFinite(serial))) {
     fail("logs", "A Vercel build-event serial is malformed.");
@@ -219,7 +230,10 @@ function parseToolchainMarkers(logs, expectedLockHash) {
     }
   }
   const expectedLifecycles = ["preinstall", "prebuild", "postbuild"];
-  if (markers.length !== expectedLifecycles.length) {
+  if (markers.length < expectedLifecycles.length) {
+    fail("logs_pending", "Build logs must contain exactly three toolchain contract records.");
+  }
+  if (markers.length > expectedLifecycles.length) {
     fail("logs", "Build logs must contain exactly three toolchain contract records.");
   }
   for (let index = 0; index < expectedLifecycles.length; index += 1) {
@@ -247,7 +261,7 @@ function parseToolchainMarkers(logs, expectedLockHash) {
 
 function requireLog(logs, predicate, message) {
   if (!logs.some(({ text }) => predicate(text))) {
-    fail("logs", message);
+    fail("logs_pending", message);
   }
 }
 
@@ -291,6 +305,37 @@ function validateBuildLogs(logs, expectedLockHash) {
   );
   rejectLog(logs, /Running "npm install"/i, "Build logs used npm install instead of npm ci.");
   return markers;
+}
+
+async function collectBuildLogs(fetchImpl, token, deploymentId, teamId, runtime, expectedLockHash) {
+  if (typeof runtime?.sleep !== "function") {
+    fail("configuration", "A bounded sleep implementation is required.");
+  }
+  let lastPendingError = null;
+  for (let attempt = 1; attempt <= MAX_LOG_ATTEMPTS; attempt += 1) {
+    try {
+      const events = await requestEvents(fetchImpl, token, deploymentId, teamId);
+      const logs = normalizeLogs(events, deploymentId);
+      const markers = validateBuildLogs(logs, expectedLockHash);
+      return { logs, markers, attempts: attempt };
+    } catch (error) {
+      if (
+        !(error instanceof VercelBuildReproducibilityError) ||
+        error.code !== "logs_pending"
+      ) {
+        throw error;
+      }
+      lastPendingError = error;
+      if (attempt === MAX_LOG_ATTEMPTS) {
+        break;
+      }
+      await runtime.sleep(LOG_RETRY_INTERVAL_MS);
+    }
+  }
+  throw new VercelBuildReproducibilityError(
+    "logs",
+    `Vercel build logs did not become complete after ${MAX_LOG_ATTEMPTS} bounded attempts: ${lastPendingError?.message ?? "pending logs"}.`
+  );
 }
 
 function assertEvidenceSafe(evidence, secretValues = []) {
@@ -406,15 +451,15 @@ export async function verifyVercelBuildReproducibility(input, dependencies = {})
     fetchImpl: dependencies.fetchImpl ?? globalThis.fetch,
     token: input.vercelApiToken
   });
-  const events = await requestEvents(
+  const buildLogs = await collectBuildLogs(
     dependencies.fetchImpl ?? globalThis.fetch,
     input.vercelApiToken,
     exactDeployment.deployment.deployment_id,
-    input.teamId
+    input.teamId,
+    exactDeployment.runtime,
+    sourceHashes["apps/web/package-lock.json"]
   );
-  const logs = normalizeLogs(events, exactDeployment.deployment.deployment_id);
-  const markers = validateBuildLogs(logs, sourceHashes["apps/web/package-lock.json"]);
-  const finalMarker = markers.at(-1);
+  const finalMarker = buildLogs.markers.at(-1);
   const evidence = {
     schema_version: 1,
     phase: "F04",
