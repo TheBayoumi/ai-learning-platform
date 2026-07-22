@@ -201,15 +201,10 @@ function normalizeLogs(events, expectedDeploymentId) {
   if (normalized.some(({ serial }) => !Number.isFinite(serial))) {
     fail("logs", "A Vercel build-event serial is malformed.");
   }
-  normalized.sort((left, right) => left.created - right.created || left.serial - right.serial);
-  for (let index = 1; index < normalized.length; index += 1) {
-    if (
-      normalized[index].created === normalized[index - 1].created &&
-      normalized[index].serial === normalized[index - 1].serial
-    ) {
-      fail("logs", "Vercel build-event ordering is ambiguous.");
-    }
-  }
+  normalized.sort(
+    (left, right) =>
+      left.created - right.created || left.serial - right.serial || left.index - right.index
+  );
   return normalized.map((log, index) => ({ ...log, index }));
 }
 
