@@ -46,17 +46,20 @@ jobs:
             *) exit 1 ;;
           esac
           test "$(git rev-parse HEAD)" = "$EXACT_SHA"
-
-      - name: Set up Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version-file: .nvmrc
+          jq -n --arg commit_sha "$EXACT_SHA" '{
+            schema_version:1,
+            result:"FAILED",
+            commit_sha:$commit_sha,
+            message:"Deployment did not reach completed verification"
+          }' >"$RUNNER_TEMP/product-deployment-evidence.json"
 
       - name: Install deployment CLI
         run: |
+          node --version
           npm install --global npm@11.18.0
           npm install --global vercel@56.5.0
           test "$(npm --version)" = "11.18.0"
+          vercel --version
 
       - name: Provision projects and stable environment
         env:
@@ -235,10 +238,13 @@ jobs:
             --data-binary "@$progress_payload" >"$progress"
           jq -e '.sequence == 1 and .completed_count == 1' "$progress" >/dev/null
 
+          environment=preview
+          if test "$GITHUB_REF" = "refs/heads/main"; then
+            environment=production
+          fi
           jq -n \
-            --arg schema_version "1" \
             --arg commit_sha "$GITHUB_SHA" \
-            --arg environment "$([[ "$GITHUB_REF" = refs/heads/main ]] && echo production || echo preview)" \
+            --arg environment "$environment" \
             --arg backend_project_id "$BACKEND_PROJECT_ID" \
             --arg backend_url "$BACKEND_URL" \
             --arg frontend_project_id "$FRONTEND_PROJECT_ID" \
@@ -246,7 +252,7 @@ jobs:
             --argjson initial_readiness "$(jq '.readiness_percent' "$plan")" \
             --argjson progressed_readiness "$(jq '.readiness_percent' "$progress")" \
             '{
-              schema_version:($schema_version|tonumber),
+              schema_version:1,
               result:"PASSED",
               commit_sha:$commit_sha,
               environment:$environment,
