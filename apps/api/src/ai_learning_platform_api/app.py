@@ -42,10 +42,12 @@ def create_app(
 
     app = FastAPI(
         title="AI Career Learning Platform API",
-        version="0.1.0",
+        version="0.1.0" if include_product_routes else "0.0.0",
         description=(
             "Health, role diagnosis, personalized competency planning, and signed progress "
             "state for the first deployed career-learning slice."
+            if include_product_routes
+            else "Role-neutral technical foundation endpoints only."
         ),
         lifespan=lifespan,
     )
