@@ -138,9 +138,11 @@ def _json_response(value: object, *, status: int = 200) -> smoke.HttpResponse:
 
 def _available_html() -> str:
     return """<!doctype html>
-<section data-api-state="available" aria-labelledby="api-integration-heading">
-  <p role="status" aria-atomic="true" aria-labelledby="api-status-label">Local API available</p>
-  <p>This status reports local process liveness only.</p>
+<section class="service-state service-state-available" aria-labelledby="learning-product-heading">
+  <h2 id="learning-product-heading">Build your personal path</h2>
+  <p role="status">Learning service online</p>
+  <p>Junior Python Backend Engineer</p>
+  <p>Rate your current evidence</p>
 </section>
 """
 
@@ -443,7 +445,7 @@ def test_json_contract_rejects_transport_shape_without_echoing_body(
     assert "not-json" not in str(raised.value)
 
 
-def test_health_and_openapi_require_exact_contracts() -> None:
+def test_health_contract_is_exact_and_openapi_allows_product_extensions() -> None:
     smoke._assert_health(
         _json_response({"status": "ok", "detail": "process is live"}),
         path="/health/live",
@@ -455,9 +457,30 @@ def test_health_and_openapi_require_exact_contracts() -> None:
             path="/health/live",
             detail="process is live",
         )
-    smoke._assert_openapi(_json_response({"openapi": "3.1.0"}), {"openapi": "3.1.0"})
-    with pytest.raises(smoke.SmokeFailure, match="canonical"):
-        smoke._assert_openapi(_json_response({"openapi": "different"}), {"openapi": "3.1.0"})
+    health_path = {"get": {"operationId": "health_live"}}
+    health_schema = {"type": "object"}
+    runtime_paths = {
+        "/health/live": health_path,
+        "/api/v1/roles": {"get": {"operationId": "list_roles"}},
+    }
+    runtime_schemas = {"Health": health_schema, "Role": {"type": "object"}}
+    canonical = {
+        "openapi": "3.1.0",
+        "paths": {"/health/live": health_path},
+        "components": {"schemas": {"Health": health_schema}},
+    }
+    runtime = {
+        "openapi": "3.1.0",
+        "info": {"title": "Product API", "version": "0.1.0"},
+        "paths": runtime_paths,
+        "components": {"schemas": runtime_schemas},
+    }
+    smoke._assert_openapi(_json_response(runtime), canonical)
+    runtime_paths["/health/live"] = {"get": {"operationId": "changed"}}
+    with pytest.raises(smoke.SmokeFailure, match="canonical path"):
+        smoke._assert_openapi(_json_response(runtime), canonical)
+    with pytest.raises(smoke.SmokeFailure, match="OpenAPI version"):
+        smoke._assert_openapi(_json_response({"openapi": "different"}), canonical)
 
 
 @pytest.mark.parametrize(
@@ -466,9 +489,9 @@ def test_health_and_openapi_require_exact_contracts() -> None:
         (smoke.HttpResponse(500, "text/html", b""), "HTTP 500"),
         (smoke.HttpResponse(200, "application/json", b"{}"), "media type"),
         (smoke.HttpResponse(200, "text/html", b"\xff"), "UTF-8"),
-        (_web_response("<main>Local API available</main>"), "accessible available"),
+        (_web_response("<main>Learning service online</main>"), "accessible available"),
         (
-            _web_response(_available_html() + '<i data-api-state="unavailable"></i>'),
+            _web_response(_available_html() + "<i service-state-unavailable></i>"),
             "forbidden state",
         ),
         (
@@ -503,8 +526,8 @@ def test_web_contract_accepts_only_accessible_available_state() -> None:
 def test_invalid_web_contract_is_accessible_and_confidential() -> None:
     response = _web_response(
         _available_html()
-        .replace('data-api-state="available"', 'data-api-state="invalid-response"')
-        .replace("Local API available", "Local API response invalid")
+        .replace("service-state-available", "service-state-invalid-response")
+        .replace("Learning service online", "Learning service contract mismatch")
     )
     smoke._assert_invalid_web(response)
 
@@ -529,16 +552,16 @@ def test_invalid_web_contract_is_accessible_and_confidential() -> None:
         ),
         (
             smoke._assert_unavailable_web,
-            _web_response("<main>Local API unavailable</main>"),
+            _web_response("<main>Learning service unavailable</main>"),
             "accessible unavailable",
         ),
         (
             smoke._assert_unavailable_web,
             _web_response(
                 _available_html()
-                .replace('data-api-state="available"', 'data-api-state="unavailable"')
-                .replace("Local API available", "Local API unavailable")
-                + '<i data-api-state="available"></i>'
+                .replace("service-state-available", "service-state-unavailable")
+                .replace("Learning service online", "Learning service unavailable")
+                + "<i service-state-available></i>"
             ),
             "forbidden state",
         ),
@@ -559,16 +582,16 @@ def test_invalid_web_contract_is_accessible_and_confidential() -> None:
         ),
         (
             smoke._assert_invalid_web,
-            _web_response("<main>Local API response invalid</main>"),
+            _web_response("<main>Learning service contract mismatch</main>"),
             "accessible invalid-response",
         ),
         (
             smoke._assert_invalid_web,
             _web_response(
                 _available_html()
-                .replace('data-api-state="available"', 'data-api-state="invalid-response"')
-                .replace("Local API available", "Local API response invalid")
-                + '<i data-api-state="unavailable"></i>'
+                .replace("service-state-available", "service-state-invalid-response")
+                .replace("Learning service online", "Learning service contract mismatch")
+                + "<i service-state-unavailable></i>"
             ),
             "forbidden state",
         ),
@@ -1368,8 +1391,8 @@ def test_runtime_diagnostic_scenario_exercises_concurrency_roots_and_fixture_sta
     def state_response(state: str, label: str) -> smoke.HttpResponse:
         html = (
             _available_html()
-            .replace('data-api-state="available"', f'data-api-state="{state}"')
-            .replace("Local API available", label)
+            .replace("service-state-available", f"service-state-{state}")
+            .replace("Learning service online", label)
         )
         return _web_response(html)
 
@@ -1390,8 +1413,8 @@ def test_runtime_diagnostic_scenario_exercises_concurrency_roots_and_fixture_sta
         if call <= smoke.FIXED_LATENCY_SAMPLE_COUNT + 1:
             return _web_response()
         if call == smoke.FIXED_LATENCY_SAMPLE_COUNT + 2:
-            return state_response("unavailable", "Local API unavailable")
-        return state_response("invalid-response", "Local API response invalid")
+            return state_response("unavailable", "Learning service unavailable")
+        return state_response("invalid-response", "Learning service contract mismatch")
 
     class FakeFailureServer:
         response_count = 3
