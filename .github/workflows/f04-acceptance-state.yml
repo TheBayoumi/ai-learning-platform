@@ -14,7 +14,6 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event.head_commit.message != 'Accept F04 Vercel deployment baseline'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -45,10 +44,21 @@ jobs:
           deployment = "dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH"
           quality_run = "30001175093"
           vercel_run = "30001172411"
-          now = datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-
+          state_path = Path("plans/autonomous-loop/state.json")
           inventory_path = Path("plans/implementation-inventory.json")
-          inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+          current_state = json.loads(state_path.read_text(encoding="utf-8"))
+          current_inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+          current_f04 = next(item for item in current_inventory["phases"] if item["id"] == "F04")
+          if (
+              current_state.get("active_slice") == "F04-acceptance-state-revision"
+              and current_state.get("status") == "READY"
+              and current_f04.get("status") == "PASSED"
+          ):
+              print("F04 acceptance state already published; validation-only rerun")
+              raise SystemExit(0)
+
+          now = datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+          inventory = current_inventory
           inventory["generated_at"] = now
           inventory["repository"]["head"] = sha
           inventory["repository"]["working_tree"] = (
@@ -222,8 +232,7 @@ a synchronized human-readable projection.'''
           )
           inventory_md_path.write_text(inventory_md, encoding="utf-8", newline="\n")
 
-          state_path = Path("plans/autonomous-loop/state.json")
-          state = json.loads(state_path.read_text(encoding="utf-8"))
+          state = current_state
           state.update(
               status="READY",
               active_phase="F04",
@@ -267,6 +276,9 @@ a synchronized human-readable projection.'''
 
       - name: Commit acceptance state
         run: |
+          if git diff --quiet; then
+            exit 0
+          fi
           git config user.name "TheBayoumi Automation"
           git config user.email "107598562+TheBayoumi@users.noreply.github.com"
           git add \
