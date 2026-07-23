@@ -1,0 +1,61 @@
+name: F04 resource cache parser repair
+
+on:
+  push:
+    branches:
+      - automation/f04-vercel-deployment-baseline
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply bounded event parser repair
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          core_path = Path('apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs')
+          core = core_path.read_text(encoding='utf-8')
+          old = r'/^Uploading build cache \[([0-9.]+) MB\]$/'
+          new = r'/Uploading build cache \[([0-9.]+) MB\]/'
+          if old not in core:
+              raise SystemExit(0)
+          if core.count(old) != 1:
+              raise SystemExit('unexpected cache parser match count')
+          core_path.write_text(core.replace(old, new), encoding='utf-8', newline='\n')
+
+          test_path = Path('apps/web/tests/vercel-resource-measurement-verifier.test.ts')
+          test = test_path.read_text(encoding='utf-8')
+          old_test = '    "Uploading build cache [120.17 MB]",'
+          new_test = '    "Preparing upload\\nUploading build cache [120.17 MB]\\nContinuing upload",'
+          if test.count(old_test) != 1:
+              raise SystemExit('unexpected cache test fixture count')
+          test_path.write_text(test.replace(old_test, new_test), encoding='utf-8', newline='\n')
+
+          state_path = Path('plans/autonomous-loop/state.json')
+          state = json.loads(state_path.read_text(encoding='utf-8'))
+          for raw in [str(core_path), str(test_path)]:
+              data = Path(raw).read_bytes().replace(b'\r\n', b'\n')
+              state['authoritative_file_hashes'][raw] = hashlib.sha256(data).hexdigest()
+          state_path.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8', newline='\n')
+          PY
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs apps/web/tests/vercel-resource-measurement-verifier.test.ts plans/autonomous-loop/state.json
+          git commit -m "fix(f04): parse bundled cache metrics"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
