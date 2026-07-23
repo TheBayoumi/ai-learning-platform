@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "phase": "F04",
+  "blocker_id": "f04.rollback_reversion",
+  "result": "PASSED",
+  "recorded_at_utc": "2026-07-21T13:08:49.546Z",
+  "alias": "f04-reversion-proof-web.vercel.app",
+  "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+  "team_id": "team_bZWPrEPMa4sBoWU7syo3ZIRZ",
+  "control_mechanism": {
+    "kind": "vercel_rest_api",
+    "method": "POST",
+    "endpoint_template": "/v2/deployments/{deployment-id}/aliases",
+    "cli": "vercel api",
+    "cli_version": "56.3.1"
+  },
+  "polling_policy": {
+    "bounded": true,
+    "max_duration_ms": 60000,
+    "backoff_ms": 2000
+  },
+  "deployments": {
+    "A": {
+      "deployment_id": "dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
+      "immutable_url": "web-mvburaat2-mahmoudbayoumimb-7868s-projects.vercel.app",
+      "git_sha": "ca08301b46e49945a805f20a07866a931a8e81e0",
+      "git_branch": "automation/f04-vercel-deployment-baseline",
+      "git_org": "TheBayoumi",
+      "git_repo": "ai-learning-platform",
+      "created_at_utc": "2026-07-17T22:00:51.867Z",
+      "ready_at_utc": "2026-07-17T22:01:11.519Z",
+      "region": "iad1",
+      "state": "READY",
+      "target": null,
+      "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN"
+    },
+    "B": {
+      "deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+      "immutable_url": "web-jaev76h8p-mahmoudbayoumimb-7868s-projects.vercel.app",
+      "git_sha": "ceaf60d2ce5adf826b8268c32e513569a35eeb0c",
+      "git_branch": "automation/f04-vercel-deployment-baseline",
+      "git_org": "TheBayoumi",
+      "git_repo": "ai-learning-platform",
+      "created_at_utc": "2026-07-21T12:17:58.572Z",
+      "ready_at_utc": "2026-07-21T12:18:18.445Z",
+      "region": "iad1",
+      "state": "READY",
+      "target": null,
+      "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN"
+    }
+  },
+  "isolation": {
+    "ordinary_aliases_before": [
+      {
+        "alias": "web-git-automation-f04-v-7bfc07-mahmoudbayoumimb-7868s-projects.vercel.app",
+        "deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+        "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN"
+      }
+    ],
+    "ordinary_aliases_after": [
+      {
+        "alias": "web-git-automation-f04-v-7bfc07-mahmoudbayoumimb-7868s-projects.vercel.app",
+        "deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+        "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN"
+      }
+    ],
+    "ordinary_aliases_unchanged": true,
+    "production_aliases_before": [],
+    "production_aliases_after": [],
+    "production_aliases_unchanged": true,
+    "project_root_directory_before": "apps/web",
+    "project_root_directory_after": "apps/web",
+    "production_branch_before": "main",
+    "production_branch_after": "main",
+    "project_configuration_unchanged": true,
+    "project_team_id": "team_bZWPrEPMa4sBoWU7syo3ZIRZ",
+    "post_sequence_observed_at_utc": "2026-07-21T13:08:15.449Z",
+    "production_target_observation_after": {
+      "deployment_id": "dpl_GifUKev12i4pAf6nVy3K3AmSsXFx",
+      "git_sha": "2a70b9b1872024f5f83a9672260de52b906ba973",
+      "state": "ERROR",
+      "target": "production",
+      "aliases": []
+    }
+  },
+  "transitions": [
+    {
+      "from": null,
+      "to": "B",
+      "expected_deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+      "observed_deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+      "observed_git_sha": "ceaf60d2ce5adf826b8268c32e513569a35eeb0c",
+      "elapsed_ms": 270610,
+      "assignment": {
+        "requested_at_utc": "2026-07-21T12:59:23.784Z",
+        "elapsed_ms": 2209,
+        "response_alias": "f04-reversion-proof-web.vercel.app",
+        "old_deployment_id": null
+      },
+      "polling": {
+        "bounded": true,
+        "started_at_utc": "2026-07-21T13:03:29.914Z",
+        "max_duration_ms": 60000,
+        "backoff_ms": 2000,
+        "attempts": 1,
+        "elapsed_ms": 24480
+      },
+      "alias_observation": {
+        "observed_at_utc": "2026-07-21T13:03:54.394Z",
+        "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+        "observed_deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+        "target_deployment_has_alias": true,
+        "previous_deployment_has_alias": false,
+        "metadata_verified": true
+      },
+      "deployment_observation": {
+        "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+        "deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+        "git_sha": "ceaf60d2ce5adf826b8268c32e513569a35eeb0c",
+        "state": "READY",
+        "target": null
+      },
+      "http": {
+        "requested_at_utc": "2026-07-21T13:04:11.957Z",
+        "observed_at_utc": "2026-07-21T13:04:17.504Z",
+        "elapsed_ms": 5547,
+        "status": 200,
+        "redirect_chain": [
+          200
+        ],
+        "authentication_redirect": false,
+        "application_response": true,
+        "effective_host": "f04-reversion-proof-web.vercel.app",
+        "selected_headers": {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate"
+        },
+        "body_bytes": 8402,
+        "body_sha256": "142d63fa1a5b9160cc3f12782957e7540a8a6535a5a8938b6e73a31cb9fb38bc",
+        "assertions": {
+          "application_title": true,
+          "accessible_status_role": true,
+          "api_unavailable_state": true,
+          "api_unavailable_label": true,
+          "loopback_origin_absent": true,
+          "trace_identifier_absent": true,
+          "health_path_absent": true,
+          "confidential_diagnostic_absent": true
+        }
+      }
+    },
+    {
+      "from": "B",
+      "to": "A",
+      "expected_deployment_id": "dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
+      "observed_deployment_id": "dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
+      "observed_git_sha": "ca08301b46e49945a805f20a07866a931a8e81e0",
+      "elapsed_ms": 27947,
+      "assignment": {
+        "requested_at_utc": "2026-07-21T13:04:31.531Z",
+        "elapsed_ms": 1947,
+        "response_alias": "f04-reversion-proof-web.vercel.app",
+        "old_deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z"
+      },
+      "polling": {
+        "bounded": true,
+        "started_at_utc": "2026-07-21T13:04:51.795Z",
+        "max_duration_ms": 60000,
+        "backoff_ms": 2000,
+        "attempts": 1,
+        "elapsed_ms": 7683
+      },
+      "alias_observation": {
+        "observed_at_utc": "2026-07-21T13:04:59.478Z",
+        "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+        "observed_deployment_id": "dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
+        "target_deployment_has_alias": true,
+        "previous_deployment_has_alias": false,
+        "metadata_verified": true
+      },
+      "deployment_observation": {
+        "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+        "deployment_id": "dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
+        "git_sha": "ca08301b46e49945a805f20a07866a931a8e81e0",
+        "state": "READY",
+        "target": null
+      },
+      "http": {
+        "requested_at_utc": "2026-07-21T13:05:16.229Z",
+        "observed_at_utc": "2026-07-21T13:05:22.102Z",
+        "elapsed_ms": 5872,
+        "status": 200,
+        "redirect_chain": [
+          200
+        ],
+        "authentication_redirect": false,
+        "application_response": true,
+        "effective_host": "f04-reversion-proof-web.vercel.app",
+        "selected_headers": {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate"
+        },
+        "body_bytes": 8402,
+        "body_sha256": "e614f0803ee2307b67b7fa6d2f44e32076f96fd87b45393dd498bd03e3ea7ce2",
+        "assertions": {
+          "application_title": true,
+          "accessible_status_role": true,
+          "api_unavailable_state": true,
+          "api_unavailable_label": true,
+          "loopback_origin_absent": true,
+          "trace_identifier_absent": true,
+          "health_path_absent": true,
+          "confidential_diagnostic_absent": true
+        }
+      }
+    },
+    {
+      "from": "A",
+      "to": "B",
+      "expected_deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+      "observed_deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+      "observed_git_sha": "ceaf60d2ce5adf826b8268c32e513569a35eeb0c",
+      "elapsed_ms": 30694,
+      "assignment": {
+        "requested_at_utc": "2026-07-21T13:05:34.370Z",
+        "elapsed_ms": 1945,
+        "response_alias": "f04-reversion-proof-web.vercel.app",
+        "old_deployment_id": "dpl_64G3A2Zim5iWcQ2YzrQnW9runPii"
+      },
+      "polling": {
+        "bounded": true,
+        "started_at_utc": "2026-07-21T13:05:54.829Z",
+        "max_duration_ms": 60000,
+        "backoff_ms": 2000,
+        "attempts": 1,
+        "elapsed_ms": 10235
+      },
+      "alias_observation": {
+        "observed_at_utc": "2026-07-21T13:06:05.064Z",
+        "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+        "observed_deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+        "target_deployment_has_alias": true,
+        "previous_deployment_has_alias": false,
+        "metadata_verified": true
+      },
+      "deployment_observation": {
+        "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+        "deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+        "git_sha": "ceaf60d2ce5adf826b8268c32e513569a35eeb0c",
+        "state": "READY",
+        "target": null
+      },
+      "http": {
+        "requested_at_utc": "2026-07-21T13:06:27.818Z",
+        "observed_at_utc": "2026-07-21T13:06:31.456Z",
+        "elapsed_ms": 3638,
+        "status": 200,
+        "redirect_chain": [
+          200
+        ],
+        "authentication_redirect": false,
+        "application_response": true,
+        "effective_host": "f04-reversion-proof-web.vercel.app",
+        "selected_headers": {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate"
+        },
+        "body_bytes": 8402,
+        "body_sha256": "142d63fa1a5b9160cc3f12782957e7540a8a6535a5a8938b6e73a31cb9fb38bc",
+        "assertions": {
+          "application_title": true,
+          "accessible_status_role": true,
+          "api_unavailable_state": true,
+          "api_unavailable_label": true,
+          "loopback_origin_absent": true,
+          "trace_identifier_absent": true,
+          "health_path_absent": true,
+          "confidential_diagnostic_absent": true
+        }
+      }
+    }
+  ],
+  "final_target": {
+    "deployment_id": "dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z",
+    "git_sha": "ceaf60d2ce5adf826b8268c32e513569a35eeb0c",
+    "alias_metadata_verified": true,
+    "deployment_metadata_verified": true,
+    "application_http_verified": true,
+    "alias_left_in_place": true,
+    "observed_at_utc": "2026-07-21T13:06:59.470Z"
+  }
+}

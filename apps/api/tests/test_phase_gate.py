@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 from collections.abc import Callable
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -22,6 +24,7 @@ SUCCESS_RESULTS = (
     "Runtime smoke=success",
     "Phase gate=success",
 )
+F04_ALIAS_EVIDENCE_PATH = Path("plans/F04-vercel-alias-reversion-evidence.json")
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -111,6 +114,11 @@ def _assert_violation(root: Path, code: str) -> None:
         _validate(root)
 
 
+def _retarget_active_foundation(value: dict[str, Any], identifier: str) -> None:
+    value["active_phase"] = identifier
+    cast(dict[str, Any], value["foundation_track"])["active_phase"] = identifier
+
+
 def _projection_model(
     model: phase_gate.RepositoryModel,
     *,
@@ -120,10 +128,12 @@ def _projection_model(
     missing_outputs: tuple[str, ...],
 ) -> phase_gate.RepositoryModel:
     state = cast(dict[str, Any], json.loads(json.dumps(model.state)))
-    cast(dict[str, Any], state["foundation_track"])["status"] = status
+    foundation = cast(dict[str, Any], state["foundation_track"])
+    foundation["status"] = status
+    active_phase = cast(str, foundation["active_phase"])
     phases = dict(model.phases)
-    phases["F03"] = replace(
-        phases["F03"],
+    phases[active_phase] = replace(
+        phases[active_phase],
         status="PASSED" if status == "PHASE_PASSED" else "IMPLEMENTED_UNVERIFIED",
         pending_entries=pending_entries,
         blocker_ids=blocker_ids,
@@ -161,11 +171,11 @@ def test_known_good_fixture_projects_deterministically_without_mutation(
     }
     assert accepted.upstream_success is True
     assert accepted.payload["commit_sha"] == EXACT_SHA
-    assert accepted.payload["passed_prerequisite_chain"] == ["F00", "F01", "F02"]
+    assert accepted.payload["passed_prerequisite_chain"] == ["F00", "F01", "F02", "F03"]
     assert accepted.payload["next_action"] == {
         "code": "CREATE_ACCEPTANCE_STATE_REVISION",
         "kind": "acceptance",
-        "phase": "F03",
+        "phase": "F04",
     }
     assert (
         accepted.as_json()
@@ -507,6 +517,10 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
         (lambda value: value.update(status="RUNNING"), "state_controller_status_disagreement"),
         (lambda value: value.update(active_phase="F02"), "state_active_phase_disagreement"),
         (
+            lambda value: _retarget_active_foundation(value, "F03"),
+            "state_active_phase_disagreement",
+        ),
+        (
             lambda value: cast(dict[str, Any], value["foundation_track"]).update(
                 status="IN_PROGRESS"
             ),
@@ -525,7 +539,7 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
             "state_inventory_timestamp_disagreement",
         ),
         (
-            lambda value: value.update(external_blockers=["f03.implementation_checks"]),
+            lambda value: value.update(external_blockers=["controller.implementation_checks"]),
             "state_external_blockers_invalid",
         ),
         (
@@ -533,7 +547,7 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
             "state_human_blockers_invalid",
         ),
         (
-            lambda value: cast(dict[str, Any], value["future_phase_boundary"]).update(phase="F03"),
+            lambda value: cast(dict[str, Any], value["future_phase_boundary"]).update(phase="F04"),
             "state_future_boundary_invalid",
         ),
         (
@@ -852,7 +866,9 @@ def test_additional_policy_guards(
         ),
         (lambda value: value.update(claims=["target_selected"]), "repository_claim_invalid"),
         (
-            lambda value: _phase(value, "V00").update(blocker_ids=["f03.implementation_checks"]),
+            lambda value: _phase(value, "V00").update(
+                blocker_ids=["controller.implementation_checks"]
+            ),
             "external_blocker_class_invalid",
         ),
         (
@@ -864,7 +880,9 @@ def test_additional_policy_guards(
             "foundation_blocker_class_invalid",
         ),
         (
-            lambda value: _phase(value, "F00").update(blocker_ids=["f03.implementation_checks"]),
+            lambda value: _phase(value, "F00").update(
+                blocker_ids=["controller.implementation_checks"]
+            ),
             "passed_blockers_present",
         ),
         (
@@ -1000,7 +1018,7 @@ def test_additional_state_guards(
     [
         ("permissions:\n  contents: read", "permissions:", "workflow_permissions_invalid"),
         (
-            "branches: [main, automation/v00-phase-loop]",
+            'branches: [main, "automation/**"]',
             "branches: [main]",
             "workflow_trigger_invalid",
         ),
@@ -1062,8 +1080,8 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
     )
     passed = phase_gate.build_projection(passed_model, SUCCESS_RESULTS, require_check_results=True)
     assert passed.payload["next_action"] == {
-        "code": "DEFINE_F04",
-        "kind": "phase",
+        "code": "STOP_AT_FOUNDATION_BOUNDARY",
+        "kind": "stop",
         "phase": "F04",
     }
 
@@ -1071,7 +1089,7 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
         model,
         status="IMPLEMENTED_UNVERIFIED",
         pending_entries=("Independent verification remains pending",),
-        blocker_ids=("f03.independent_verification",),
+        blocker_ids=("controller.independent_verification",),
         missing_outputs=("Independent verification remains pending",),
     )
     repair = phase_gate.build_projection(repair_model, SUCCESS_RESULTS, require_check_results=True)
@@ -1079,7 +1097,7 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
     assert repair.payload["next_action"] == {
         "code": "REPAIR_FOUNDATION_STATE",
         "kind": "repair",
-        "phase": "F03",
+        "phase": "F04",
     }
     assert acceptance["reason_codes"] == ["IMPLEMENTATION_EVIDENCE_INCOMPLETE"]
     assert acceptance["eligible"] is False
@@ -1110,7 +1128,7 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
         pending_entries=(model.policy.implementation_pending_condition,),
         blocker_ids=(
             *model.policy.implementation_transition_blockers,
-            "f03.independent_verification",
+            "controller.independent_verification",
         ),
         missing_outputs=model.policy.implementation_transition_missing_outputs,
     )
@@ -1142,7 +1160,7 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
     assert validation_wait.payload["next_action"] == {
         "code": "CREATE_ACCEPTANCE_STATE_REVISION",
         "kind": "acceptance",
-        "phase": "F03",
+        "phase": "F04",
     }
     assert validation_acceptance == {"eligible": True, "reason_codes": []}
     assert cast(dict[str, Any], validation_wait.payload["blockers"])["human_decision"] == [
@@ -1150,7 +1168,746 @@ def test_projection_covers_passed_repair_and_validation_human_paths(
     ]
 
 
+def test_valid_new_foundation_successor_projects_start_action(controller_root: Path) -> None:
+    synthetic_roadmap = """### F05 - Synthetic Successor
+
+- **Dependencies:** `F04` only.
+
+"""
+    _mutate_text(
+        controller_root,
+        "specs/roadmap.md",
+        lambda value: value.replace(
+            "## Initial Validation Sequence", synthetic_roadmap + "## Initial Validation Sequence"
+        ),
+    )
+
+    def add_successor(value: dict[str, Any]) -> None:
+        f04 = _phase(value, "F04")
+        f04["status"] = "PASSED"
+        f04["gate_decision"] = "Continue"
+        f04["missing_outputs"] = []
+        f04["blocker_ids"] = []
+        phases = cast(list[dict[str, Any]], value["phases"])
+        validation_start = next(index for index, item in enumerate(phases) if item["id"] == "V00")
+        phases.insert(
+            validation_start,
+            {
+                "id": "F05",
+                "name": "Synthetic Successor",
+                "lane": "foundation",
+                "status": "NOT_STARTED",
+                "entry_conditions": [
+                    {
+                        "condition": "F04 passed",
+                        "result": "PASSED",
+                        "evidence": ["synthetic exact F04 evidence"],
+                    }
+                ],
+                "implemented_files": [],
+                "tests": [],
+                "missing_outputs": ["Synthetic implementation remains pending"],
+                "external_blockers": [],
+                "human_decisions": [],
+                "next_smallest_action": "Start the synthetic successor",
+                "gate_decision": None,
+                "blocker_ids": [],
+                "claims": [],
+                "gate_effects": {"satisfies": [], "unlocks": [], "weakens": []},
+            },
+        )
+
+    _mutate_json(controller_root, "plans/implementation-inventory.json", add_successor)
+
+    def retarget_state(value: dict[str, Any]) -> None:
+        value["status"] = "READY"
+        value["active_phase"] = "F05"
+        value["active_slice"] = "F05-not-started"
+        value["gate_decision"] = None
+        foundation = cast(dict[str, Any], value["foundation_track"])
+        foundation.update(
+            active_phase="F05",
+            status="NOT_STARTED",
+            gate_decision=None,
+            next_action="Start the synthetic successor",
+        )
+        future = cast(dict[str, Any], value["future_phase_boundary"])
+        future.update(
+            phase=None,
+            status="LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",
+            next_action="Start or complete F05 before evaluating a successor",
+        )
+
+    _mutate_json(controller_root, "plans/autonomous-loop/state.json", retarget_state)
+    model = _validate(controller_root)
+    projection = phase_gate.build_projection(
+        model,
+        SUCCESS_RESULTS,
+        require_check_results=True,
+    )
+
+    assert projection.payload["foundation_lane"] == {
+        "gate": None,
+        "phase": "F05",
+        "status": "NOT_STARTED",
+    }
+    assert projection.payload["next_action"] == {
+        "code": "START_FOUNDATION_PHASE",
+        "kind": "phase",
+        "phase": "F05",
+    }
+    assert projection.payload["autonomous_acceptance"] == {
+        "eligible": True,
+        "reason_codes": [],
+    }
+
+    def fail_successor_entry(value: dict[str, Any]) -> None:
+        entries = cast(list[dict[str, Any]], _phase(value, "F05")["entry_conditions"])
+        entries[0]["result"] = "FAILED"
+
+    _mutate_json(
+        controller_root,
+        "plans/implementation-inventory.json",
+        fail_successor_entry,
+    )
+    blocked = phase_gate.build_projection(
+        _validate(controller_root),
+        SUCCESS_RESULTS,
+        require_check_results=True,
+    )
+    assert blocked.payload["next_action"] == {
+        "code": "AWAIT_FOUNDATION_ENTRY_CONDITIONS",
+        "kind": "wait",
+        "phase": "F05",
+    }
+    assert blocked.payload["autonomous_acceptance"] == {
+        "eligible": False,
+        "reason_codes": ["FOUNDATION_ENTRY_CONDITIONS_INCOMPLETE"],
+    }
+
+    _mutate_json(
+        controller_root,
+        "plans/implementation-inventory.json",
+        lambda value: _phase(value, "F05").update(entry_conditions=[]),
+    )
+    empty_entries = phase_gate.build_projection(
+        _validate(controller_root),
+        SUCCESS_RESULTS,
+        require_check_results=True,
+    )
+    assert empty_entries.payload["next_action"] == {
+        "code": "AWAIT_FOUNDATION_ENTRY_CONDITIONS",
+        "kind": "wait",
+        "phase": "F05",
+    }
+    assert empty_entries.payload["autonomous_acceptance"] == {
+        "eligible": False,
+        "reason_codes": ["FOUNDATION_ENTRY_CONDITIONS_INCOMPLETE"],
+    }
+
+
+def test_failed_entry_cannot_advance_implementation_to_acceptance(
+    controller_root: Path,
+) -> None:
+    policy = _read_json(controller_root / phase_gate.POLICY_PATH)
+    github = cast(dict[str, Any], policy["github"])
+    pending_condition = cast(str, github["implementation_pending_condition"])
+    transition_blockers = cast(list[str], github["implementation_transition_blockers"])
+    transition_outputs = cast(list[str], github["implementation_transition_missing_outputs"])
+
+    def prepare_failed_transition(value: dict[str, Any]) -> None:
+        phase = _phase(value, "F04")
+        phase["status"] = "IMPLEMENTED_UNVERIFIED"
+        phase["gate_decision"] = None
+        phase["blocker_ids"] = transition_blockers
+        phase["missing_outputs"] = transition_outputs
+        entries = cast(list[dict[str, Any]], phase["entry_conditions"])
+        assert len(entries) >= 2
+        entries[0]["result"] = "FAILED"
+        entries[1].update(
+            condition=pending_condition,
+            result="PENDING",
+            evidence=[],
+        )
+
+    _mutate_json(
+        controller_root,
+        "plans/implementation-inventory.json",
+        prepare_failed_transition,
+    )
+
+    def prepare_transition_state(value: dict[str, Any]) -> None:
+        value["status"] = "IMPLEMENTED_UNVERIFIED"
+        value["gate_decision"] = None
+        value["next_action"] = "Repair the failed entry before acceptance"
+        foundation = cast(dict[str, Any], value["foundation_track"])
+        foundation.update(
+            status="IMPLEMENTED_UNVERIFIED",
+            gate_decision=None,
+            next_action="Repair the failed entry before acceptance",
+        )
+        future = cast(dict[str, Any], value["future_phase_boundary"])
+        future.update(
+            phase=None,
+            status="LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",
+            next_action="Repair and accept F04 before evaluating a successor",
+        )
+
+    _mutate_json(
+        controller_root,
+        "plans/autonomous-loop/state.json",
+        prepare_transition_state,
+    )
+    model = _validate(controller_root)
+    projection = phase_gate.build_projection(
+        model,
+        SUCCESS_RESULTS,
+        require_check_results=True,
+    )
+
+    assert model.phases["F04"].failed_entries
+    assert projection.payload["next_action"] == {
+        "code": "REPAIR_FOUNDATION_STATE",
+        "kind": "repair",
+        "phase": "F04",
+    }
+    assert projection.payload["autonomous_acceptance"] == {
+        "eligible": False,
+        "reason_codes": ["IMPLEMENTATION_EVIDENCE_INCOMPLETE"],
+    }
+
+
 def test_real_git_helpers_read_exact_local_history() -> None:
     head = phase_gate._git_head(REPOSITORY_ROOT)
     assert phase_gate.SHA_PATTERN.fullmatch(head)
     assert phase_gate._git_is_ancestor(REPOSITORY_ROOT, head, head) is True
+
+
+class _F04EvidenceViolation(AssertionError):
+    pass
+
+
+def _evidence_require(condition: bool) -> None:
+    if not condition:
+        raise _F04EvidenceViolation
+
+
+def _evidence_exact_keys(value: dict[str, Any], expected: set[str]) -> None:
+    _evidence_require(set(value) == expected)
+
+
+def _evidence_object(value: object) -> dict[str, Any]:
+    _evidence_require(isinstance(value, dict))
+    return cast(dict[str, Any], value)
+
+
+def _evidence_list(value: object) -> list[Any]:
+    _evidence_require(isinstance(value, list))
+    return cast(list[Any], value)
+
+
+def _evidence_text(value: object) -> str:
+    _evidence_require(isinstance(value, str) and bool(value))
+    return cast(str, value)
+
+
+def _evidence_utc(value: object) -> datetime:
+    text = _evidence_text(value)
+    _evidence_require(text.endswith("Z"))
+    parsed = datetime.fromisoformat(text[:-1] + "+00:00")
+    _evidence_require(parsed.tzinfo == UTC)
+    return parsed
+
+
+def _validate_f04_alias_reversion_evidence(value: dict[str, Any]) -> None:
+    _evidence_exact_keys(
+        value,
+        {
+            "schema_version",
+            "phase",
+            "blocker_id",
+            "result",
+            "recorded_at_utc",
+            "alias",
+            "project_id",
+            "team_id",
+            "control_mechanism",
+            "polling_policy",
+            "deployments",
+            "isolation",
+            "transitions",
+            "final_target",
+        },
+    )
+    _evidence_require(value.get("schema_version") == 1)
+    _evidence_require(value.get("phase") == "F04")
+    _evidence_require(value.get("blocker_id") == "f04.rollback_reversion")
+    _evidence_require(value.get("result") == "PASSED")
+    recorded_at = _evidence_utc(value.get("recorded_at_utc"))
+    alias = _evidence_text(value.get("alias"))
+    project_id = _evidence_text(value.get("project_id"))
+    _evidence_text(value.get("team_id"))
+    _evidence_require(alias.endswith(".vercel.app"))
+
+    control = _evidence_object(value.get("control_mechanism"))
+    _evidence_exact_keys(control, {"kind", "method", "endpoint_template", "cli", "cli_version"})
+    _evidence_require(control.get("kind") == "vercel_rest_api")
+    _evidence_require(control.get("method") == "POST")
+    _evidence_require(control.get("endpoint_template") == "/v2/deployments/{deployment-id}/aliases")
+
+    policy = _evidence_object(value.get("polling_policy"))
+    _evidence_exact_keys(policy, {"bounded", "max_duration_ms", "backoff_ms"})
+    _evidence_require(policy.get("bounded") is True)
+    maximum = policy.get("max_duration_ms")
+    backoff = policy.get("backoff_ms")
+    _evidence_require(isinstance(maximum, int))
+    _evidence_require(isinstance(backoff, int))
+    maximum_ms = cast(int, maximum)
+    backoff_ms = cast(int, backoff)
+    _evidence_require(0 < maximum_ms <= 60000)
+    _evidence_require(0 < backoff_ms <= maximum_ms)
+
+    deployments = _evidence_object(value.get("deployments"))
+    _evidence_require(set(deployments) == {"A", "B"})
+    parsed_deployments: dict[str, dict[str, Any]] = {}
+    created: dict[str, datetime] = {}
+    for label in ("A", "B"):
+        deployment = _evidence_object(deployments.get(label))
+        _evidence_exact_keys(
+            deployment,
+            {
+                "deployment_id",
+                "immutable_url",
+                "git_sha",
+                "git_branch",
+                "git_org",
+                "git_repo",
+                "created_at_utc",
+                "ready_at_utc",
+                "region",
+                "state",
+                "target",
+                "project_id",
+            },
+        )
+        parsed_deployments[label] = deployment
+        deployment_id = _evidence_text(deployment.get("deployment_id"))
+        sha = _evidence_text(deployment.get("git_sha"))
+        _evidence_require(deployment_id.startswith("dpl_"))
+        _evidence_require(phase_gate.SHA_PATTERN.fullmatch(sha) is not None)
+        _evidence_require(deployment.get("project_id") == project_id)
+        _evidence_require(deployment.get("state") == "READY")
+        _evidence_require(deployment.get("target") is None)
+        _evidence_require(
+            deployment.get("git_branch") == "automation/f04-vercel-deployment-baseline"
+        )
+        _evidence_require(deployment.get("git_org") == "TheBayoumi")
+        _evidence_require(deployment.get("git_repo") == "ai-learning-platform")
+        _evidence_require(_evidence_text(deployment.get("immutable_url")).endswith(".vercel.app"))
+        _evidence_require(_evidence_text(deployment.get("region")) == "iad1")
+        created[label] = _evidence_utc(deployment.get("created_at_utc"))
+        ready_at = _evidence_utc(deployment.get("ready_at_utc"))
+        _evidence_require(created[label] < ready_at)
+    _evidence_require(created["A"] < created["B"])
+    _evidence_require(
+        parsed_deployments["A"]["deployment_id"] != parsed_deployments["B"]["deployment_id"]
+    )
+    _evidence_require(parsed_deployments["A"]["git_sha"] != parsed_deployments["B"]["git_sha"])
+
+    transitions = _evidence_list(value.get("transitions"))
+    _evidence_require(len(transitions) == 3)
+    expected_sequence: tuple[tuple[str | None, str], ...] = (
+        (None, "B"),
+        ("B", "A"),
+        ("A", "B"),
+    )
+    previous_http_at: datetime | None = None
+    for raw_transition, (expected_from, expected_to) in zip(
+        transitions, expected_sequence, strict=True
+    ):
+        transition = _evidence_object(raw_transition)
+        _evidence_exact_keys(
+            transition,
+            {
+                "from",
+                "to",
+                "expected_deployment_id",
+                "observed_deployment_id",
+                "observed_git_sha",
+                "elapsed_ms",
+                "assignment",
+                "polling",
+                "alias_observation",
+                "deployment_observation",
+                "http",
+            },
+        )
+        _evidence_require(transition.get("from") == expected_from)
+        _evidence_require(transition.get("to") == expected_to)
+        if expected_from is not None:
+            _evidence_require(expected_from != expected_to)
+        expected_deployment = parsed_deployments[expected_to]
+        expected_id = expected_deployment["deployment_id"]
+        expected_sha = expected_deployment["git_sha"]
+        _evidence_require(transition.get("expected_deployment_id") == expected_id)
+        _evidence_require(transition.get("observed_deployment_id") == expected_id)
+        _evidence_require(transition.get("observed_git_sha") == expected_sha)
+
+        assignment = _evidence_object(transition.get("assignment"))
+        _evidence_exact_keys(
+            assignment,
+            {"requested_at_utc", "elapsed_ms", "response_alias", "old_deployment_id"},
+        )
+        assignment_at = _evidence_utc(assignment.get("requested_at_utc"))
+        _evidence_require(assignment.get("response_alias") == alias)
+        expected_old_id = (
+            None if expected_from is None else parsed_deployments[expected_from]["deployment_id"]
+        )
+        _evidence_require(assignment.get("old_deployment_id") == expected_old_id)
+        _evidence_require(
+            isinstance(assignment.get("elapsed_ms"), int) and assignment["elapsed_ms"] >= 0
+        )
+        if previous_http_at is not None:
+            _evidence_require(previous_http_at < assignment_at)
+
+        polling = _evidence_object(transition.get("polling"))
+        _evidence_exact_keys(
+            polling,
+            {
+                "bounded",
+                "started_at_utc",
+                "max_duration_ms",
+                "backoff_ms",
+                "attempts",
+                "elapsed_ms",
+            },
+        )
+        _evidence_require(polling.get("bounded") is True)
+        polling_started_at = _evidence_utc(polling.get("started_at_utc"))
+        _evidence_require(polling.get("max_duration_ms") == maximum_ms)
+        _evidence_require(polling.get("backoff_ms") == backoff_ms)
+        _evidence_require(isinstance(polling.get("attempts"), int) and polling["attempts"] > 0)
+        _evidence_require(
+            isinstance(polling.get("elapsed_ms"), int) and 0 <= polling["elapsed_ms"] <= maximum_ms
+        )
+
+        alias_observation = _evidence_object(transition.get("alias_observation"))
+        _evidence_exact_keys(
+            alias_observation,
+            {
+                "observed_at_utc",
+                "project_id",
+                "observed_deployment_id",
+                "target_deployment_has_alias",
+                "previous_deployment_has_alias",
+                "metadata_verified",
+            },
+        )
+        alias_at = _evidence_utc(alias_observation.get("observed_at_utc"))
+        _evidence_require(assignment_at <= polling_started_at < alias_at)
+        polling_elapsed = round((alias_at - polling_started_at).total_seconds() * 1000)
+        transition_elapsed = round((alias_at - assignment_at).total_seconds() * 1000)
+        _evidence_require(abs(polling_elapsed - polling["elapsed_ms"]) <= 1)
+        _evidence_require(transition.get("elapsed_ms") == transition_elapsed)
+        _evidence_require(alias_observation.get("project_id") == project_id)
+        _evidence_require(alias_observation.get("observed_deployment_id") == expected_id)
+        _evidence_require(alias_observation.get("target_deployment_has_alias") is True)
+        _evidence_require(alias_observation.get("previous_deployment_has_alias") is False)
+        _evidence_require(alias_observation.get("metadata_verified") is True)
+
+        deployment_observation = _evidence_object(transition.get("deployment_observation"))
+        _evidence_exact_keys(
+            deployment_observation,
+            {"project_id", "deployment_id", "git_sha", "state", "target"},
+        )
+        _evidence_require(deployment_observation.get("project_id") == project_id)
+        _evidence_require(deployment_observation.get("deployment_id") == expected_id)
+        _evidence_require(deployment_observation.get("git_sha") == expected_sha)
+        _evidence_require(deployment_observation.get("state") == "READY")
+        _evidence_require(deployment_observation.get("target") is None)
+
+        http = _evidence_object(transition.get("http"))
+        _evidence_exact_keys(
+            http,
+            {
+                "requested_at_utc",
+                "observed_at_utc",
+                "elapsed_ms",
+                "status",
+                "redirect_chain",
+                "authentication_redirect",
+                "application_response",
+                "effective_host",
+                "selected_headers",
+                "body_bytes",
+                "body_sha256",
+                "assertions",
+            },
+        )
+        http_requested_at = _evidence_utc(http.get("requested_at_utc"))
+        http_observed_at = _evidence_utc(http.get("observed_at_utc"))
+        _evidence_require(alias_at < http_requested_at <= http_observed_at)
+        previous_http_at = http_observed_at
+        _evidence_require(http.get("status") == 200)
+        _evidence_require(http.get("redirect_chain") == [200])
+        _evidence_require(http.get("authentication_redirect") is False)
+        _evidence_require(http.get("application_response") is True)
+        _evidence_require(http.get("effective_host") == alias)
+        _evidence_require(isinstance(http.get("elapsed_ms"), int) and http["elapsed_ms"] >= 0)
+        _evidence_require(
+            isinstance(http.get("body_bytes"), int) and 0 < http["body_bytes"] <= 65536
+        )
+        _evidence_require(
+            re.fullmatch(r"[0-9a-f]{64}", _evidence_text(http.get("body_sha256"))) is not None
+        )
+        headers = _evidence_object(http.get("selected_headers"))
+        _evidence_exact_keys(headers, {"content-type", "cache-control"})
+        _evidence_require(_evidence_text(headers.get("content-type")).startswith("text/html"))
+        assertions = _evidence_object(http.get("assertions"))
+        _evidence_exact_keys(
+            assertions,
+            {
+                "application_title",
+                "accessible_status_role",
+                "api_unavailable_state",
+                "api_unavailable_label",
+                "loopback_origin_absent",
+                "trace_identifier_absent",
+                "health_path_absent",
+                "confidential_diagnostic_absent",
+            },
+        )
+        _evidence_require(all(item is True for item in assertions.values()))
+
+    if previous_http_at is None:
+        raise _F04EvidenceViolation
+    final = _evidence_object(value.get("final_target"))
+    _evidence_exact_keys(
+        final,
+        {
+            "deployment_id",
+            "git_sha",
+            "alias_metadata_verified",
+            "deployment_metadata_verified",
+            "application_http_verified",
+            "alias_left_in_place",
+            "observed_at_utc",
+        },
+    )
+    deployment_b = parsed_deployments["B"]
+    _evidence_require(final.get("deployment_id") == deployment_b["deployment_id"])
+    _evidence_require(final.get("git_sha") == deployment_b["git_sha"])
+    for field in (
+        "alias_metadata_verified",
+        "deployment_metadata_verified",
+        "application_http_verified",
+        "alias_left_in_place",
+    ):
+        _evidence_require(final.get(field) is True)
+    final_at = _evidence_utc(final.get("observed_at_utc"))
+    _evidence_require(previous_http_at <= final_at <= recorded_at)
+
+    isolation = _evidence_object(value.get("isolation"))
+    _evidence_exact_keys(
+        isolation,
+        {
+            "ordinary_aliases_before",
+            "ordinary_aliases_after",
+            "ordinary_aliases_unchanged",
+            "production_aliases_before",
+            "production_aliases_after",
+            "production_aliases_unchanged",
+            "project_root_directory_before",
+            "project_root_directory_after",
+            "production_branch_before",
+            "production_branch_after",
+            "project_configuration_unchanged",
+            "project_team_id",
+            "post_sequence_observed_at_utc",
+            "production_target_observation_after",
+        },
+    )
+    ordinary_before = _evidence_list(isolation.get("ordinary_aliases_before"))
+    ordinary_after = _evidence_list(isolation.get("ordinary_aliases_after"))
+    _evidence_require(ordinary_before == ordinary_after and bool(ordinary_before))
+    _evidence_require(isolation.get("ordinary_aliases_unchanged") is True)
+    _evidence_require(isolation.get("production_aliases_before") == [])
+    _evidence_require(isolation.get("production_aliases_after") == [])
+    _evidence_require(isolation.get("production_aliases_unchanged") is True)
+    _evidence_require(isolation.get("project_root_directory_before") == "apps/web")
+    _evidence_require(isolation.get("project_root_directory_after") == "apps/web")
+    _evidence_require(isolation.get("production_branch_before") == "main")
+    _evidence_require(isolation.get("production_branch_after") == "main")
+    _evidence_require(isolation.get("project_configuration_unchanged") is True)
+    _evidence_require(isolation.get("project_team_id") == value.get("team_id"))
+    for item in ordinary_before + ordinary_after:
+        ordinary_alias = _evidence_object(item)
+        _evidence_exact_keys(ordinary_alias, {"alias", "deployment_id", "project_id"})
+        _evidence_require(ordinary_alias.get("alias") != alias)
+    production_observation = _evidence_object(isolation.get("production_target_observation_after"))
+    _evidence_exact_keys(
+        production_observation, {"deployment_id", "git_sha", "state", "target", "aliases"}
+    )
+    _evidence_utc(isolation.get("post_sequence_observed_at_utc"))
+
+    serialized = json.dumps(value, sort_keys=True).lower()
+    for forbidden in (
+        "access_token",
+        "authorization",
+        "bearer ",
+        "bypass_secret",
+        "cookie",
+        "protection-bypass",
+        "protection_bypass",
+        "set-cookie",
+        "share_url",
+        "vercel.live",
+        "vercelprotectionbypass",
+    ):
+        _evidence_require(forbidden not in serialized)
+
+
+def _f04_deployments(value: dict[str, Any]) -> dict[str, Any]:
+    return cast(dict[str, Any], value["deployments"])
+
+
+def _f04_transitions(value: dict[str, Any]) -> list[dict[str, Any]]:
+    return cast(list[dict[str, Any]], value["transitions"])
+
+
+def _remove_f04_deployment(value: dict[str, Any], label: str) -> None:
+    _f04_deployments(value).pop(label)
+
+
+def _make_f04_deployment_ids_identical(value: dict[str, Any]) -> None:
+    deployments = _f04_deployments(value)
+    cast(dict[str, Any], deployments["B"])["deployment_id"] = cast(
+        dict[str, Any], deployments["A"]
+    )["deployment_id"]
+
+
+def _make_f04_transition_stationary(value: dict[str, Any]) -> None:
+    _f04_transitions(value)[1]["from"] = "A"
+
+
+def _set_f04_deployment(value: dict[str, Any], label: str, field: str, item: Any) -> None:
+    cast(dict[str, Any], _f04_deployments(value)[label])[field] = item
+
+
+def _set_f04_transition_nested(
+    value: dict[str, Any], index: int, section: str, field: str, item: Any
+) -> None:
+    cast(dict[str, Any], _f04_transitions(value)[index][section])[field] = item
+
+
+def _set_f04_final(value: dict[str, Any], field: str, item: Any) -> None:
+    cast(dict[str, Any], value["final_target"])[field] = item
+
+
+def _clear_f04_transitions(value: dict[str, Any]) -> None:
+    value["transitions"] = []
+
+
+def _add_f04_credential(value: dict[str, Any]) -> None:
+    value["token"] = "redacted-test-value"
+
+
+def _add_f04_temporary_share_url(value: dict[str, Any]) -> None:
+    value["share_url"] = "https://temporary-share.invalid/protected-preview"
+
+
+def _remove_f04_required_http_assertion(value: dict[str, Any]) -> None:
+    assertions = cast(dict[str, Any], _f04_transitions(value)[0]["http"]["assertions"])
+    assertions.pop("api_unavailable_state")
+
+
+def _add_f04_raw_response(value: dict[str, Any]) -> None:
+    cast(dict[str, Any], _f04_transitions(value)[0]["http"])["raw_response"] = "omitted"
+
+
+def _add_f04_creator(value: dict[str, Any]) -> None:
+    cast(dict[str, Any], _f04_transitions(value)[0]["assignment"])["creator"] = {
+        "email": "example@example.invalid"
+    }
+
+
+def test_f04_alias_reversion_evidence_contract_is_complete() -> None:
+    evidence = _read_json(REPOSITORY_ROOT / F04_ALIAS_EVIDENCE_PATH)
+    _validate_f04_alias_reversion_evidence(evidence)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda value: _remove_f04_deployment(value, "A"),
+        lambda value: _remove_f04_deployment(value, "B"),
+        _make_f04_deployment_ids_identical,
+        _make_f04_transition_stationary,
+        lambda value: _set_f04_deployment(value, "A", "state", "ERROR"),
+        lambda value: _set_f04_deployment(value, "A", "project_id", "prj_other"),
+        lambda value: _set_f04_deployment(value, "A", "git_sha", ""),
+        lambda value: _set_f04_transition_nested(
+            value, 0, "deployment_observation", "git_sha", "b" * 40
+        ),
+        lambda value: _set_f04_transition_nested(
+            value, 1, "alias_observation", "previous_deployment_has_alias", True
+        ),
+        lambda value: _set_f04_transition_nested(value, 1, "http", "authentication_redirect", True),
+        lambda value: _set_f04_transition_nested(
+            value, 2, "alias_observation", "metadata_verified", False
+        ),
+        lambda value: _set_f04_final(
+            value,
+            "deployment_id",
+            cast(dict[str, Any], _f04_deployments(value)["A"])["deployment_id"],
+        ),
+        _clear_f04_transitions,
+        lambda value: cast(dict[str, Any], value["polling_policy"]).update(bounded=False),
+        _add_f04_credential,
+        _add_f04_temporary_share_url,
+        _remove_f04_required_http_assertion,
+        _add_f04_raw_response,
+        _add_f04_creator,
+    ],
+    ids=[
+        "missing-A",
+        "missing-B",
+        "identical-deployments",
+        "stationary-transition",
+        "deployment-not-ready",
+        "wrong-project",
+        "missing-git-sha",
+        "observed-sha-mismatch",
+        "previous-deployment-still-aliased",
+        "authentication-redirect-as-success",
+        "http-without-alias-verification",
+        "restored-to-A",
+        "empty-transitions",
+        "unbounded-polling",
+        "committed-credential",
+        "committed-temporary-share-url",
+        "missing-required-http-assertion",
+        "committed-raw-response",
+        "committed-creator-metadata",
+    ],
+)
+def test_f04_alias_reversion_evidence_rejects_invalid_proof(
+    mutation: Callable[[dict[str, Any]], object],
+) -> None:
+    evidence = _read_json(REPOSITORY_ROOT / F04_ALIAS_EVIDENCE_PATH)
+    mutation(evidence)
+    with pytest.raises(_F04EvidenceViolation):
+        _validate_f04_alias_reversion_evidence(evidence)
+
+
+def test_f04_alias_reversion_evidence_is_hash_bound(controller_root: Path) -> None:
+    evidence_path = controller_root / F04_ALIAS_EVIDENCE_PATH
+    assert evidence_path.is_file()
+    evidence = _read_json(evidence_path)
+    evidence["recorded_at_utc"] = "2026-07-21T13:08:49.547Z"
+    _write_json(evidence_path, evidence)
+    _assert_violation(controller_root, "state_hash_mismatch")
+
+    controller_root = _copy_controller_fixture(controller_root.parent / "missing-evidence")
+    (controller_root / F04_ALIAS_EVIDENCE_PATH).unlink()
+    _assert_violation(controller_root, "state_hash_path_invalid")

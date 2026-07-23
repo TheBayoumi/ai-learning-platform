@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-07-17T00:10:00.000Z",
+  "generated_at": "2026-07-23T11:16:35.957Z",
   "repository": {
-    "branch": "automation/v00-phase-loop",
-    "head": "fe49b609767e27d52fae999c229502ed98866dff",
-    "working_tree": "F03 implementation revision fe49b609767e27d52fae999c229502ed98866dff passed all five required GitHub jobs on both its push and pull-request runs; this acceptance-state revision records F03 as PASSED / Continue and requires its own exact five-job GitHub run before durable confirmation in pull request #1",
+    "branch": "automation/f04-vercel-deployment-baseline",
+    "head": "76a90647f0028c58c3f7955fde575d4d21f2774c",
+    "working_tree": "F04 acceptance state: implementation 76a90647f0028c58c3f7955fde575d4d21f2774c passed READY deployment dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH, Quality Gates run 30001175093, and dedicated Vercel run 30001172411; no successor foundation phase is defined",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",
@@ -23,7 +23,17 @@
       "plans/autonomous-loop/controller-policy.json",
       ".github/workflows/ci.yml",
       "apps/api/src/ai_learning_platform_api/automation/phase_gate.py",
-      "apps/api/tests/test_phase_gate.py"
+      "apps/api/tests/test_phase_gate.py",
+      "plans/F04-vercel-alias-reversion-evidence.json",
+      ".github/workflows/vercel-preview-verification.yml",
+      "apps/web/scripts/lib/browser-confidentiality.mjs",
+      "apps/web/scripts/lib/vercel-preview-verifier.mjs",
+      "apps/web/scripts/verify-vercel-preview.mjs",
+      "apps/web/tests/vercel-preview-verifier.test.ts",
+      "plans/F04-vercel-deployed-page-verifier-operations.md",
+      "plans/F04-vercel-deployed-page-verification-evidence.json",
+      "plans/F04-vercel-resource-measurements-evidence.json",
+      "plans/F04-vercel-deployment-baseline.md"
     ]
   },
   "runtime_capabilities": {
@@ -47,14 +57,16 @@
       "static Next.js App Router technical shell",
       "locked API and web dependency workflows",
       "format, lint, strict type, test, coverage, build, and CI quality gates",
-      "versioned fail-closed GitHub phase policy, exact-head validator, deterministic lane projection, and five-job acceptance workflow"
+      "versioned fail-closed GitHub phase policy, exact-head validator, deterministic lane projection, and five-job acceptance workflow",
+      "exact-SHA deployment-protection-aware Vercel preview verification with canonical GitHub/Vercel identity, bounded protected HTTP, accessible API-unavailable semantics, and shared browser confidentiality rules",
+      "exact-SHA Vercel build reproducibility, protected deployed-page verification, bounded resource measurements, and repository payload-hygiene enforcement"
     ],
     "not_implemented": [
       "database schema, ORM, migrations, or persistence",
       "domain event ledger, outbox, replay, projections, or jobs",
       "authentication, authorization, tenancy, privacy lifecycle, or deletion",
       "telemetry backend or exporter",
-      "object storage, LLM gateway, OCI artifacts, container runtime, or deployment",
+      "object storage, LLM gateway, OCI artifacts, container runtime, or API/backend deployment",
       "Target or RoleProfile runtime model",
       "competency graph or Blueprint and ItemFamily runtime contracts",
       "learner model, diagnosis, curriculum, tutoring, or assessment",
@@ -453,7 +465,130 @@
       "missing_outputs": [],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "No further F03 implementation; F04 Vercel deployment baseline is the next eligible foundation phase and is out of scope for this invocation",
+      "next_smallest_action": "F03 is durably accepted; no further F03 implementation is eligible",
+      "gate_decision": "Continue",
+      "blocker_ids": [],
+      "claims": [],
+      "gate_effects": {
+        "satisfies": [],
+        "unlocks": [],
+        "weakens": []
+      }
+    },
+    {
+      "id": "F04",
+      "name": "Vercel Deployment Baseline",
+      "lane": "foundation",
+      "status": "PASSED",
+      "entry_conditions": [
+        {
+          "condition": "F03 passes on both its implementation and acceptance-state revisions",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F03-github-phase-gate-control-plane.md",
+            "Implementation SHA fe49b609767e27d52fae999c229502ed98866dff, runs 29528587173/29528587169",
+            "Acceptance SHA c2938f2d0496088ea117acf387424530ad0b4c59, runs 29577006084/29577007722"
+          ]
+        },
+        {
+          "condition": "GitHub issue #3 is the approved control contract",
+          "result": "PASSED",
+          "evidence": [
+            "https://github.com/TheBayoumi/ai-learning-platform/issues/3"
+          ]
+        },
+        {
+          "condition": "The topology decision required by issue #3 is recorded using current Vercel documentation",
+          "result": "PASSED",
+          "evidence": [
+            "plans/F04-vercel-deployment-baseline.md",
+            "specs/tech-stack.md (Runtime: Containers on a managed PaaS, Approved)",
+            "specs/roadmap.md F04 section"
+          ]
+        },
+        {
+          "condition": "No Vercel secret or connected project exists yet, recorded rather than assumed",
+          "result": "PASSED",
+          "evidence": [
+            "gh secret list returned empty",
+            "gh api repos/.../commits/HEAD/check-runs showed only the five existing F03 jobs",
+            "gh api repos/.../commits/HEAD/status showed zero commit statuses"
+          ]
+        },
+        {
+          "condition": "A real Vercel account, project, and GitHub Login Connection exist to enable GitHub-linked preview deployment checks",
+          "result": "PASSED",
+          "evidence": [
+            "vercel git connect succeeded: project prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN linked to github.com/TheBayoumi/ai-learning-platform (link.type=github, productionBranch=main)",
+            "Root Directory misconfiguration (was \".\", repo root) fixed via Vercel REST API PATCH to \"apps/web\"; confirmed via GET showing rootDirectory=apps/web, framework=nextjs"
+          ]
+        }
+      ],
+      "implemented_files": [
+        "specs/roadmap.md",
+        "plans/F04-vercel-deployment-baseline.md",
+        "apps/web/.gitignore",
+        "plans/autonomous-loop/controller-policy.json",
+        "apps/api/src/ai_learning_platform_api/automation/phase_gate.py",
+        "apps/api/tests/test_phase_gate.py",
+        ".github/workflows/ci.yml",
+        "plans/autonomous-loop/goal.md",
+        "plans/autonomous-loop/state.json",
+        "plans/autonomous-loop/checkpoint.md",
+        "plans/autonomous-loop/run-log.md",
+        "plans/implementation-inventory.json",
+        "plans/implementation-inventory.md",
+        "plans/F04-vercel-alias-reversion-evidence.json",
+        ".github/workflows/vercel-preview-verification.yml",
+        "apps/web/package.json",
+        "apps/web/scripts/check-browser-confidentiality.mjs",
+        "apps/web/scripts/lib/browser-confidentiality.mjs",
+        "apps/web/scripts/lib/vercel-preview-verifier.mjs",
+        "apps/web/scripts/lib/vercel-preview-verifier.d.mts",
+        "apps/web/scripts/verify-vercel-preview.mjs",
+        "apps/web/tests/vercel-preview-verifier.test.ts",
+        "plans/F04-vercel-deployed-page-verifier-operations.md",
+        "plans/F04-vercel-deployed-page-verification-evidence.json",
+        ".gitignore",
+        "apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs",
+        "apps/web/scripts/lib/vercel-resource-measurement-verifier.d.mts",
+        "apps/web/scripts/verify-vercel-resource-measurements.mjs",
+        "apps/web/tests/vercel-resource-measurement-verifier.test.ts",
+        "plans/F04-vercel-resource-measurements-evidence.json"
+      ],
+      "tests": [
+        "Starting exact head ca08301b46e49945a805f20a07866a931a8e81e0 passed GitHub Actions run 29616557723: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded; Vercel status was success for deployment dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
+        "Real Vercel preview deployment dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5 (target=preview, region=iad1) reached readyState=READY for exact commit 787534a16506c45c9b953e95dd33aa6c1b8aa35a; GitHub commit status success (\"Deployment has completed\"); user visually confirmed the deployed page renders the F01/F02 health-status surface showing API unavailable/offline as expected, since no API origin is configured for this web-tier-only deployment",
+        "Audit correction: vercel rollback returned HTTP 422 because the preview had never served production traffic. This is rejected-command evidence, not rollback. Independent preview URLs prove addressability only and do not prove traffic reversion.",
+        "Authenticated vercel curl retrieval of deployment dpl_64G3A2Zim5iWcQ2YzrQnW9runPii returned the rendered HTTP 200 API-unavailable state with role=status semantics; this live diagnostic is not yet a committed exact-SHA deployed-page gate.",
+        "F04 reconciliation controller suite passed 137 tests, including active-frontier, nullable-successor, valid-successor start, failed-entry and empty-entry waits, failed-entry transition rejection, post-F04 boundary, generic blocker, and automation/** branch regressions",
+        "Affected API gates passed: canonical OpenAPI and TypeScript generation current; Ruff format/lint and strict mypy pass; 405 tests pass at 97% total line coverage with phase_gate.py at 96%",
+        "Initial independent post-change verification returned Revise because a valid newly defined NOT_STARTED foundation successor projected as a repair; the defect is fixed with explicit failed-entry tracking and an end-to-end validated synthetic F05 regression",
+        "Focused rereview returned Revise because a failed non-transition entry could still project acceptance and empty entry conditions could start vacuously; transition and start readiness now reject both states under validated regressions",
+        "Final independent focused rereview returned ACCEPT with no material findings after 137 controller tests, Ruff, strict mypy, authoritative hash/state validation with only the intentional dirty-worktree guard bypassed, and git diff --check",
+        "Affected web gates passed on local Node 25.2.1 and npm 11.18.0: clean npm install, lint, strict typecheck, 97 tests, production build, and 629,565-byte browser confidentiality scan",
+        "Final Windows public runtime smoke passed with 48 exact events, 21 correlations, four concurrent requests, 12,639 diagnostic bytes, 14,224 captured bytes, API live in 1,416 ms, smoke in 4,724 ms, and shutdown in 51 ms; one preceding event-volume failure was not reproducible and retained no raw child evidence by design",
+        "Dirty-worktree exact-head validation failed closed with worktree_not_exact_head; clean exact-revision validation remains a publication gate",
+        "Supported Vercel REST alias assignments moved f04-reversion-proof-web.vercel.app from B (dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z / ceaf60d2ce5adf826b8268c32e513569a35eeb0c) to A (dpl_64G3A2Zim5iWcQ2YzrQnW9runPii / ca08301b46e49945a805f20a07866a931a8e81e0) and restored it to B; both moves returned the exact prior deployment ID",
+        "Every B-A-B transition passed bounded exclusive alias metadata, READY preview project/SHA metadata, and authenticated HTTP 200 application assertions with no redirect, loopback origin, health path, trace identifier, or confidential diagnostic marker",
+        "The focused alias-reversion contract suite passed 21 tests covering the valid proof, authoritative hash binding, missing deployments, identical or stationary transitions, readiness/project/SHA mismatch, stale alias ownership, authentication redirects, missing alias verification, incorrect restoration, empty evidence, unbounded polling, credential/share-URL leakage, missing required HTTP assertions, raw responses, and creator metadata",
+        "Focused deployed-page verifier suite passed 40 tests covering exact GitHub/Vercel identity, stale or ambiguous deployment rejection, redirects and authentication content, bounded polling and bytes, API-unavailable accessibility semantics, shared confidentiality rules, and secret-free evidence",
+        "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed Vercel status plus deployed-page workflow run 29865352967/job 88752059522; artifact 8508962218 validated exact READY deployment dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA, protected HTTP 200 with no redirect, API-unavailable semantics, and seven confidential-marker-free assets",
+        "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed push Quality Gates run 29865352971: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded",
+        "Independent read-only review found one PowerShell npm.ps1 argument-forwarding defect; the runbook now requires the verified npm.cmd entrypoint on PowerShell, 40 focused tests pass, and focused rereview returned PASS / Continue",
+        "First evidence/state revision cde7940a308ba81324713d1763a56908922b8886 deployed successfully but verifier run 29866121231/job 88754662946 exposed an empty GitHub deployment-status propagation race; the bounded-poll repair passes 41 focused tests, all 138 web tests, lint, strict typecheck, production build, confidentiality scan, and focused independent rereview",
+        "Exact resource revision 3f83e3e74d1fc587d90c30b1756c7f2dec994ba3 passed dedicated workflow run 29977879812; artifact 8552120216 records the exact READY preview build, footprint, cache, latency, runtime, and bounded cost evidence",
+        "Payload diagnostic head 3d0b9e8b02eb0a8a149247b6c1a0a25fac5eebcb found only ai-learning-platform.7z: 66,312,302 bytes, introduced by 25994d214ed5b39d4b6c73ba0e075b10ee4a5a66, with three planning-document references",
+        "The payload repair removes the archive from the current tree without rewriting history, updates all references, adds only /ai-learning-platform.7z to .gitignore, and adds a fail-closed Phase gate check",
+        "Exact implementation 76a90647f0028c58c3f7955fde575d4d21f2774c deployed as dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH in READY preview state and passed dedicated Vercel run 30001172411",
+        "Exact Quality Gates run 30001175093 passed API quality, Web quality, Runtime smoke, Phase gate, and Gate projection on 76a90647f0028c58c3f7955fde575d4d21f2774c",
+        "Resource parsing accepts only identical duplicated provider metrics, rejects conflicts, and normalizes bounded clone-duration seconds or milliseconds",
+        "Payload hygiene passed with ai-learning-platform.7z absent and untracked and exactly one /ai-learning-platform.7z ignore rule"
+      ],
+      "missing_outputs": [],
+      "external_blockers": [],
+      "human_decisions": [],
+      "next_smallest_action": "No further F04 implementation; confirm this acceptance-state revision's exact checks and stop because no successor foundation phase is defined",
       "gate_decision": "Continue",
       "blocker_ids": [],
       "claims": [],

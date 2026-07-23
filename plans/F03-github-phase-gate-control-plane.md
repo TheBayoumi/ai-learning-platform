@@ -2,7 +2,12 @@
 
 **Phase:** `F03 - GitHub Phase-Gate Control Plane`
 **Class:** Technical foundation
-**Status:** `PASSED / Continue`. Implementation revision `fe49b609767e27d52fae999c229502ed98866dff` passed exact GitHub Actions push run `29528587173` and pull-request run `29528587169`. This acceptance-state revision records that evidence; its own exact five-job GitHub run is the final confirmation step.
+**Status:** `PASSED / Continue`. Implementation revision
+`fe49b609767e27d52fae999c229502ed98866dff` passed exact GitHub Actions push
+run `29528587173` and pull-request run `29528587169`. Acceptance revision
+`c2938f2d0496088ea117acf387424530ad0b4c59` passed its own exact push run
+`29577006084` and pull-request run `29577007722`; all five required jobs
+succeeded in both runs. F03 is durably accepted.
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** Pull request #1 on `automation/v00-phase-loop`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -281,9 +286,10 @@ All ten job executions across both runs succeeded on the exact implementation
 SHA. This satisfies the implementation-side exit condition of the F03
 acceptance sequence. This ExecPlan revision is the separate acceptance-state
 commit required by Step 5 of the sequence below: it records the implementation
-evidence, sets F03 to `PASSED / Continue`, and requires its own exact-head
-five-job GitHub run as the final confirmation, to be recorded as durable pull
-request #1 evidence once observed.
+evidence and sets F03 to `PASSED / Continue`. That acceptance revision is
+`c2938f2d0496088ea117acf387424530ad0b4c59`; its exact push run `29577006084`
+and pull-request run `29577007722` each completed all five required jobs with
+`success`, completing the F03 acceptance sequence.
 
 ## Implementation Files
 

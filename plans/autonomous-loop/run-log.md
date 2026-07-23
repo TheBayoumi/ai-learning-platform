@@ -608,3 +608,350 @@ committed. This acceptance-state revision's own exact five-job GitHub run is
 now required and will be recorded as durable pull request #1 evidence once
 observed. A successful implementation SHA does not automatically accept this
 later state-update SHA.
+
+### F04 defined; definition revision passed exact-head CI
+
+Formally defined F04 in specs/roadmap.md and
+plans/F04-vercel-deployment-baseline.md, recording the topology decision
+required by GitHub issue #3: specs/tech-stack.md approves containers on a
+managed PaaS as the backend runtime (binding; only the vendor is
+Provisional), so F04 selects Option 2 -- Vercel hosts only the Next.js web
+tier. Verified directly (gh secret list, GitHub check-runs, commit-status
+queries) that no Vercel secret or connected project existed before this
+phase. Added a matching IN_PROGRESS F04 inventory entry, positioned
+immediately after F03 to satisfy the phase-gate validator's positional
+roadmap-inventory pairing.
+
+Definition revision `001b0eeb1faa3939057732fd80a0bafa635bddc7` was pushed and
+opened as pull request #5. Its exact five required checks passed via
+pull-request run `29596684247`: API quality `87938687679`, Phase gate
+`87938687704`, Web quality `87938687741`, Runtime smoke `87938871665`, Gate
+projection `87939008145` -- all success. This confirms the definition is
+internally consistent; it is not F04 acceptance. A real Vercel account and
+project (`web`, scoped to apps/web) now exist locally via the Vercel CLI
+(.vercel/ and .env.local confirmed git-ignored). Connecting Vercel's GitHub
+Git integration failed with "You need to add a Login Connection to your
+GitHub account first" -- a browser OAuth action only the account owner can
+complete, recorded as F04's next blocking dependency.
+
+### Vercel Git integration connected; first real deployment blocked
+
+The user authorized the GitHub Login Connection and ran `vercel git connect`
+successfully, verified via the Vercel REST API (`link.type=github`,
+`link.repo=ai-learning-platform`). Found and fixed the project's
+`rootDirectory` (was `.`, corrected to `apps/web`) via the Vercel API.
+Pushed revision `b37bfc130ce3f436c32eb8b5481142c378fca68b`, which triggered
+the first real, GitHub-linked deployment (`dpl_7hovy7BzNQBC7vG9MVZBbyAzBdAw`)
+-- but it reported `readyState: BLOCKED` and a `failure` commit status
+("Deployment was blocked"). Diagnosed the likely cause: the commit's author
+email (`mahmoud.bayoumi@valeo.com`, from this machine's global git config,
+never set by the executor) does not match the email verified on the
+`TheBayoumi` GitHub/Vercel account, matching Vercel's documented
+committer-association block. The user reports this is now fixed; this
+revision retriggers a fresh deployment attempt to confirm.
+
+### Real deployment succeeded; health-status surface verified
+
+The blocked deployment's actual cause was confirmed by GitHub itself:
+"GitHub couldn't verify an account for the commit" -- neither the work email
+nor the user's personal Gmail address were verified on the `TheBayoumi`
+GitHub account. Switched the local (repo-scoped only) git identity to
+GitHub's guaranteed noreply address
+(`107598562+TheBayoumi@users.noreply.github.com`), amended and
+force-pushed the affected unmerged commit (`f5206e2` -> `787534a`, content
+unchanged, confirmed via `git diff`). The resulting deployment
+`dpl_F4HfP5AL5Nv4KPnqGYbLhrWQ71U5` reached `readyState=READY`
+(target=preview, region=iad1); GitHub commit status `success` ("Deployment
+has completed"). The user visually confirmed (browser access bypasses
+Vercel's Deployment Protection SSO wall, which blocked the executor's own
+fetch attempts) that the deployed page renders the F01/F02 health-status
+surface showing API unavailable/offline, the correct and expected behavior
+since this web-tier-only deployment has no API origin configured.
+
+## Run 25 - 2026-07-21 (F04 closure repair: state and controller reconciliation)
+
+Reverified the clean live starting state before writing. Branch
+`automation/f04-vercel-deployment-baseline` was synchronized at exact SHA
+`ca08301b46e49945a805f20a07866a931a8e81e0`; pull request #5 was open,
+mergeable, and ahead of `main`. GitHub Actions run `29616557723` passed API
+quality, Web quality, Runtime smoke, Phase gate, and Gate projection on that
+exact SHA. GitHub deployment `5496257300` and Vercel deployment
+`dpl_64G3A2Zim5iWcQ2YzrQnW9runPii` reported successful/`READY` preview state
+for the same revision. The Vercel project remained `web`, project ID
+`prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN`, Root Directory `apps/web`, Node.js `24.x`,
+with no production deployment observed.
+
+The live audit rejected the earlier `PASSED` conclusion. The controller
+projected passed F04 as `DEFINE_F04 / F04`; `future_phase_boundary` called F04
+eligible after F03; goal, checkpoint, and inventory Markdown still described
+F03 acceptance as pending; repository metadata named the obsolete
+`automation/v00-phase-loop` branch and predecessor SHA; and the workflow push
+filter also named that obsolete branch. All 134 existing phase-gate tests passed
+while preserving that self-loop, proving a regression-suite blind spot.
+
+The deployment evidence also failed F04's own exit contract. `vercel rollback`
+returned HTTP 422 because a preview had never served production traffic. A
+rejected production rollback command and continued reachability of two preview
+URLs do not move traffic. Unauthenticated requests followed Vercel Deployment
+Protection redirects to a login page that returned HTTP 200. An authenticated
+`vercel curl` diagnostic reached the exact deployment and rendered the expected
+API-unavailable state with accessible `role=status` semantics, but no committed
+exact-SHA verifier exists. Version-controlled Vercel configuration, compatible
+Vercel npm installation, deployed confidentiality proof, required resource/cost
+measurements, and the tracked 66,312,302-byte archive also remain unresolved.
+
+Read-only mission, roadmap, architecture, and controller reviewers independently
+returned `Revise` and confirmed the same evidence defects. They also confirmed
+that the repair remains role-neutral, V00 remains `WAITING_EXTERNAL / Revise`,
+V01 remains locked, and no readiness or validation claim is introduced.
+
+This bounded repair returns F04 to `FAILED_RETRYABLE / Revise`, derives the
+active lane frontier and foundation successor from roadmap/inventory state,
+represents no defined successor explicitly, generalizes controller transition
+blockers and automation-branch matching, clarifies the traffic-reversion gate,
+and synchronizes authoritative records. It does not change an alias, deploy an
+API, promote production, remove the archive, define F05, merge the PR, or close
+issue #3.
+
+Local affected validation passed before publication. The controller suite passed
+137 tests, including active-frontier, nullable-successor, valid-successor start,
+failed-entry and empty-entry waits, failed-entry transition rejection,
+branch-pattern, and
+post-F04 boundary regressions. API canonical generation, Ruff format/lint, strict
+mypy, and the full suite passed: 405 tests, 97% total line coverage, and 96%
+coverage for `phase_gate.py`. Web `npm ci`, lint, strict typecheck, 97 tests, the
+Next.js production build, and the 629,565-byte browser confidentiality scan
+passed. The local machine used Node 25.2.1 and npm 11.18.0; Node remains inside
+the manifest's supported range but differs from `.nvmrc` 24.18.0 and the Vercel
+project setting 24.x, so this is an observation rather than reproducibility
+evidence.
+
+The first runtime-smoke attempt after the production build failed closed on an
+unexpected diagnostic-event count. Its public wrapper intentionally suppressed
+the raw child evidence, so no exact cause can be claimed. A bounded direct-child
+rerun then produced exactly 24 API and 24 web events with the required
+classifications, and the public runtime smoke passed with 48 events, 21
+correlations, four concurrent requests, 12,639 diagnostic bytes, 14,224 captured
+bytes, API live in 1,416 ms, total smoke in 4,724 ms, and 51 ms shutdown. No smoke
+code was changed for the non-reproduced observation. Dirty-worktree phase-gate
+validation failed closed as designed with `worktree_not_exact_head`; clean-head
+proof is deferred to the published exact revision.
+
+Independent post-change verification, publication of the implementation
+revision, and its exact GitHub/Vercel results are recorded in the durable pull
+request evidence after they complete. F04 remains `Revise`; the only next
+eligible action is a supported non-production verification-alias reversion with
+exact served-SHA proof and restoration of the intended final target.
+
+The first independent post-change review returned `Revise` because a newly
+defined, entry-ready `F05 / NOT_STARTED` frontier fell through to a repair action;
+the earlier successor unit test had bypassed repository validation. The repair
+now records failed entry conditions explicitly, projects an entry-ready frontier
+as `START_FOUNDATION_PHASE`, projects a failed entry as a non-eligible wait, and
+uses an end-to-end synthetic-roadmap/inventory/state regression. The same review
+also tightened the formal F04 exit gate to repeat build reproducibility,
+measurement/cost, and archive-hygiene requirements. Focused independent rereview
+then found that a failed non-transition entry could coexist with the exact
+implementation-transition tuple and still project acceptance, while an empty
+entry list could start vacuously. Transition readiness now rejects any failed
+entry, start readiness requires declared entry conditions, and validated
+regressions prove both paths fail closed. Final focused rereview returned
+`ACCEPT` with no material findings after independently passing all 137 controller
+tests, Ruff, strict mypy, authoritative hash/state validation (bypassing only the
+intentional dirty-worktree guard), and `git diff --check`. Publication evidence
+remains pending; the review accepts this bounded repair, not F04 itself.
+
+## Run 26 - 2026-07-21 (F04 non-production alias traffic reversion)
+
+Reverified the authoritative clean starting state before mutation. Repository
+`TheBayoumi/ai-learning-platform` was on branch
+`automation/f04-vercel-deployment-baseline` at exact SHA
+`ceaf60d2ce5adf826b8268c32e513569a35eeb0c`; pull request #5 was open and
+mergeable. Exact push run `29829521304` and pull-request run `29829523486` each
+passed API quality, Web quality, Runtime smoke, Phase gate, and Gate projection.
+GitHub's Vercel status was successful for `READY` preview
+`dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` at the same SHA. The Vercel project still
+used project ID `prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN`, team ID
+`team_bZWPrEPMa4sBoWU7syo3ZIRZ`, Root Directory `apps/web`, GitHub repository
+`TheBayoumi/ai-learning-platform`, and production branch `main`.
+
+Selected two distinct immutable `READY` previews from the same project and F04
+branch. Prior A was `dpl_64G3A2Zim5iWcQ2YzrQnW9runPii` at exact SHA
+`ca08301b46e49945a805f20a07866a931a8e81e0`, created
+`2026-07-17T22:00:51.867Z` and ready `2026-07-17T22:01:11.519Z`. Intended final
+B was `dpl_GdiQHUzEAKrXo1LE4hcoUu1de22Z` at exact SHA
+`ceaf60d2ce5adf826b8268c32e513569a35eeb0c`, created
+`2026-07-21T12:17:58.572Z` and ready `2026-07-21T12:18:18.445Z`. Both were
+preview targets in `iad1`; GitHub confirmed both commits belong to the
+repository and A is an ancestor of B.
+
+Created only the new dedicated hostname
+`f04-reversion-proof-web.vercel.app`. Using Vercel CLI 56.3.1's authenticated
+`vercel api` wrapper over the supported
+`POST /v2/deployments/{deployment-id}/aliases` endpoint, the same alias followed
+the exact sequence B to A to B. Initial B assignment returned no prior target.
+The backward move returned B as `oldDeploymentId`; final restoration returned A
+as `oldDeploymentId`. Each bounded metadata observation converged in one
+attempt within a declared 60,000 ms limit and 2,000 ms backoff, proved the alias
+was present only on the target deployment, and mapped the target to its exact
+expected SHA, project, `READY` state, and preview target.
+
+After every control-plane verification, authenticated `vercel curl` requested
+the proof hostname. Each request returned HTTP 200 application HTML with no
+redirect, `role=status`, and the expected API-unavailable state. Bounded
+assertions found no loopback API origin, `/health/live`, trace identifier, or
+confidential diagnostic marker. Only content type, cache control, bounded body
+size, and a response digest were retained; no full HTML, token, cookie, bypass
+value, temporary share URL, raw authorization header, or CLI authentication
+state entered the repository.
+
+Before the proof, the only ordinary project alias was the Git-managed branch
+alias on B. After final restoration, that exact mapping remained unchanged and
+the dedicated proof alias pointed to B. No production alias existed before or
+after, Root Directory and production branch remained unchanged, and the existing
+errored production-target deployment still had no aliases. No production,
+custom-domain, environment, Git-integration, protection, or project-setting
+mutation was performed.
+
+The machine-readable proof is
+`plans/F04-vercel-alias-reversion-evidence.json`. The focused evidence contract
+suite passed 21 tests: the valid proof, authoritative hash binding, and required
+fail-closed cases for missing deployments, identical or stationary transitions,
+non-READY or wrong-project deployments, missing or mismatched SHAs, stale
+previous alias ownership, authentication redirects, HTTP without alias
+verification, restoration to A, empty transitions, unbounded polling, and
+committed credential/share material. Exact assertion and object-key allowlists
+also reject incomplete response semantics, raw responses, and creator metadata.
+
+Local validation passed before publication: all 21 focused evidence tests and
+all 158 controller tests; canonical OpenAPI and TypeScript generation checks;
+Ruff format and lint; strict mypy; and all 426 API tests at 97% total coverage.
+Web clean install, lint, strict typecheck, all 97 tests, production build, and
+the 629,565-byte browser confidentiality scan passed. The root runtime smoke
+passed with 48 exact events, 21 correlations, four concurrent requests, bounded
+diagnostics, and clean shutdown. Repository diff and secret checks found no
+credential, temporary protected-preview access material, or unrelated file.
+
+Independent final read-only review returned `ACCEPT` with no material findings.
+It independently confirmed the live alias remained on B, A no longer held the
+alias, both deployment/SHA chains were exact `READY` previews, ordinary and
+production alias state remained isolated, protected HTTP returned the expected
+application response, all 26 authoritative hashes agreed, and the complete
+controller and API gates passed. Historical intermediate states remain
+represented by the sanitized, hash-bound provider response record because only
+the restored final alias state is live-queryable.
+
+Only `f04.rollback_reversion` is removed. F04 remains
+`FAILED_RETRYABLE / Revise` with `f04.deployed_page_verification`,
+`f04.build_reproducibility`, `f04.resource_measurements`, and
+`f04.repository_payload_hygiene`. V00 remains `WAITING_EXTERNAL / Revise`; V01
+remains locked. This run stops after independent review, exact-head publication,
+remote check verification, durable PR/issue evidence, and a final proof-alias
+stability read. It does not implement another F04 blocker or create an
+acceptance-state revision.
+
+## Run 27 - 2026-07-21 (F04 exact-SHA deployed-page verification)
+
+Reverified the authoritative clean starting state before mutation. Repository
+`TheBayoumi/ai-learning-platform` was on branch
+`automation/f04-vercel-deployment-baseline` at exact SHA
+`4b4d1944ee34ded8921c88222902f0de0be1fb53`; pull request #5 was open and
+mergeable, F04 was `FAILED_RETRYABLE / Revise`, V00 was
+`WAITING_EXTERNAL / Revise`, V01 was locked, and exactly four F04 blockers
+remained. This run addressed only `f04.deployed_page_verification`.
+
+Added a dedicated push-only GitHub workflow and a bounded Node verifier. The
+verifier joins an exact GitHub Vercel commit status and unique GitHub Preview
+deployment to Vercel's canonical deployment ID, exact repository/branch/SHA,
+project, `READY` state, and immutable hostname before it accepts protected HTTP.
+It rejects redirects, authentication pages, stale or ambiguous deployment
+identity, non-HTML or oversized responses, unexpected assets, missing accessible
+API-unavailable semantics, confidential browser markers, and incomplete or
+secret-bearing evidence. The local build scan and deployed verifier now share
+one canonical confidentiality implementation. The artifact schema retains only
+bounded metadata, hashes, counts, and assertions.
+
+Several fail-closed setup defects were reproduced and corrected before evidence
+was accepted. Vercel's inspector target uses the raw deployment UID suffix while
+the API returns the canonical `dpl_` identifier. The existing Vercel CLI OAuth
+token had expired and its application cannot create child tokens. A
+personal-project access-token scope returned HTTP 403 and was revoked; the
+dedicated one-day token uses the narrowest available UI scope covering the
+owning team and expires 2026-07-22. `gh secret set --body -` stores a literal
+hyphen instead of reading standard input, so both required GitHub secrets were
+reinstalled through standard input without `--body`. Direct automation-bypass
+headers are used without the optional cookie-setting header because the latter
+caused an authentication redirect.
+
+Two superseded automation-bypass values were exposed only in ephemeral local
+inspection output. Both were treated as compromised and revoked immediately.
+The final bypass is unexposed, and no bypass value, token, cookie, raw
+authorization header, full HTML, temporary share URL, or CLI authentication
+state entered Git, workflow logs, evidence, pull requests, or issues. These
+security and correctness repairs required exceeding the invocation's soft tool
+and token ceilings; stopping earlier would have left a known invalid credential
+or false verification path.
+
+Independent review then reproduced a PowerShell portability defect: `npm.ps1`
+with pinned npm 11.18.0 stripped the named arguments after `--`. The committed
+operations guide now requires the verified `npm.cmd` shim on PowerShell while
+retaining the ordinary `npm run` form for Bash/CI. The PowerShell evidence
+validation passed, all 40 focused tests passed, and focused read-only rereview
+returned `PASS / Continue` with no material finding.
+
+Final implementation revision
+`4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c` passed Vercel deployment status and
+dedicated Actions run `29865352967`, job `88752059522`. Sanitized artifact
+`8508962218` has SHA-256
+`53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b`.
+The verifier joined GitHub deployment `5545146544` to exact Vercel deployment
+`dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA`, which was `READY` for the exact branch,
+project, and SHA. Bounded discovery completed in three attempts and 14,001 ms.
+The immutable host returned HTTP 200 with no redirect or authentication
+response, the accessible API-unavailable state, and no loopback origin, health
+path, trace context, or shared confidential marker across 8,402 HTML bytes and
+seven browser assets totaling 629,464 bytes.
+
+Exact push run `29865352971` passed API quality, Web quality, Runtime smoke,
+Phase gate, and Gate projection. Local gates also passed: 40 focused verifier
+tests; 137 total web tests plus lint, strict typecheck, production build, and
+confidentiality scan; 426 API tests at 97% total coverage plus canonical
+generation, Ruff, and strict mypy; the 48-event root runtime smoke; controller
+tests; phase validation; gate projection; diff checks; and repository secret
+checks. No data migration, public schema change, production traffic mutation,
+or persistent runtime cost was introduced.
+
+The committed machine-readable record is
+`plans/F04-vercel-deployed-page-verification-evidence.json`. This record removes
+only `f04.deployed_page_verification`. F04 remains
+`FAILED_RETRYABLE / Revise` with `f04.build_reproducibility`,
+`f04.resource_measurements`, and `f04.repository_payload_hygiene`; V00 remains
+`WAITING_EXTERNAL / Revise`, and V01 remains locked. The evidence/state revision
+must pass its own exact Vercel and GitHub checks before publication is complete.
+No F04 acceptance-state revision is created. The only next eligible blocker is
+`f04.build_reproducibility`.
+
+The first evidence/state revision
+`cde7940a308ba81324713d1763a56908922b8886` then received a successful Vercel
+deployment, but dedicated verifier run `29866121231`, job `88754662946`, failed
+after 14 seconds with a sanitized `GitHub deployment status is missing` error.
+Live evidence showed a provider race: the exact GitHub deployment was already
+discoverable while its deployment-status list had not propagated. The verifier
+now treats only an empty list as retryable under the existing five-minute bound;
+non-array responses, invalid timestamps, ambiguous latest statuses, and
+terminal failure/error/inactive states remain immediate failures. A regression
+serves an empty list then success and requires two attempts plus the final exact
+status ID. All 41 focused tests and all 138 web tests, lint, strict typecheck,
+production build, and confidentiality scan pass; focused independent rereview
+returned `PASS / Continue`. A new bounded repair revision must pass the exact
+Vercel deployment, dedicated verifier, and five quality jobs; the failed
+revision is not accepted.
+
+## Run 29 - 2026-07-23 (F04 acceptance-state publication)
+
+Implementation `76a90647f0028c58c3f7955fde575d4d21f2774c` passed Vercel deployment `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH`, Quality Gates run
+`30001175093`, and dedicated Vercel run `30001172411`. This separate state revision
+sets F04 to `PASSED / Continue`, clears all F04 blockers and missing outputs, records
+the implementation SHA as last verified, and projects `NO_DEFINED_SUCCESSOR`. Its own
+exact checks remain required. V00/V01 boundaries and false readiness claims are
+unchanged; no merge or F05 definition occurs.

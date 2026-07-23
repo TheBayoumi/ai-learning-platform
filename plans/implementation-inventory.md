@@ -1,13 +1,12 @@
 # Implementation Inventory
 
-Generated from exact-CI-accepted F03 implementation revision
-`fe49b609767e27d52fae999c229502ed98866dff`, which passed GitHub Actions
-push run `29528587173` and pull-request run `29528587169` (API quality,
-Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded
-in both runs). This acceptance-state revision records F03 as `PASSED`.
-F03 is automation, not product runtime.
-The machine-readable record is `plans/implementation-inventory.json`; this
-prose is a synchronized human-readable projection.
+Current exact implementation head
+`76a90647f0028c58c3f7955fde575d4d21f2774c` passed Vercel deployment `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH`, all five Quality Gates in run
+`30001175093`, and dedicated build/protected-page/resource run `30001172411`.
+The separate acceptance-state revision marks F04 `PASSED / Continue`; its own exact
+checks remain the final publication confirmation. F03 remains durably accepted.
+The machine-readable record is `plans/implementation-inventory.json`; this prose is
+a synchronized human-readable projection.
 
 ## Current Evidence
 
@@ -108,17 +107,21 @@ prose is a synchronized human-readable projection.
   `fe49b609767e27d52fae999c229502ed98866dff` then passed exact GitHub Actions
   push run `29528587173` and pull-request run `29528587169`: API quality, Web
   quality, Runtime smoke, Phase gate, and Gate projection all succeeded on the
-  exact SHA in both runs. This acceptance-state revision records that evidence,
-  sets F03 to `PASSED / Continue`, and requires its own exact five-job GitHub
-  run before durable confirmation in pull request #1.
+  exact SHA in both runs. Acceptance revision
+  `c2938f2d0496088ea117acf387424530ad0b4c59` subsequently passed exact runs
+  `29577006084` and `29577007722`, making F03 durably `PASSED / Continue`.
 - GitHub remains the source, CI, exact-revision acceptance, and integration
-  control plane. Vercel deployment is outside F03 and remains a separately
-  gated F04 boundary from issue #3. A pre-existing integration may create an
-  unverified provider side effect on push; it is neither F03 evidence nor phase
-  progress.
-- The externally created commit also tracks the unrelated 66,312,302-byte
-  `ai-learning-platform.7z`. This amendment does not modify it; its repository and
-  CI-checkout cost remains an explicit scope risk.
+  control plane.
+- F04 - Vercel Deployment Baseline is `PASSED / Continue`. Exact implementation
+  `76a90647f0028c58c3f7955fde575d4d21f2774c` deployed as `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH` (`READY`), passed all five Quality Gates in
+  run `30001175093`, and passed build reproducibility plus protected deployed-page/resource
+  verification in run `30001172411`. Rollback reversion, confidentiality, real resource
+  observations, and payload hygiene are bound by sanitized evidence. No API deployment,
+  V00/V01 effect, production promotion, or readiness claim is introduced.
+- Payload diagnostics confirmed the unrelated `ai-learning-platform.7z` was
+  66,312,302 bytes and 97.6% of tracked blob bytes. This repair removes it from the
+  current tree without history rewriting, updates its three references, and adds
+  only `/ai-learning-platform.7z` to the root ignore file.
 - Four protected V00 Markdown working copies remain mixed-EOL locally while
   their index blobs are LF and Git reports no content diff. This amendment does
   not rewrite validation evidence; a clean Linux checkout retains the indexed
@@ -133,7 +136,8 @@ prose is a synchronized human-readable projection.
 | F00 | Foundation | `PASSED` | Exit gate verified; no further F00 implementation |
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
-| F03 | Foundation | `PASSED` | Implementation revision fe49b60 passed exact runs 29528587173/29528587169; acceptance revision's own five checks pending |
+| F03 | Foundation | `PASSED` | Implementation and acceptance revisions passed their own exact required runs |
+| F04 | Foundation | `PASSED` | Exact implementation evidence passed; acceptance revision checks pending |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |
@@ -183,18 +187,26 @@ Accepted F02-03 adds the automated real-process correlation, safe-root,
 concurrency, failure, confidentiality, event-volume, resource, and lifecycle
 assertion.
 F03 adds repository automation only: a standard-library policy validator,
-deterministic projection, and exact-head CI jobs. The repository still has no
-OCI artifact, container harness, deployment manifest, local Vercel link, or
-verified remote deployment. It also has no persistent telemetry, authentication,
+  deterministic projection, and exact-head CI jobs. F04 has a verified remote
+  Vercel preview for the existing Next.js web tier plus a committed exact-SHA,
+  deployment-protection-aware page verifier, but no accepted reproducible
+  deployment baseline, no deployed FastAPI API, and no production traffic alias.
+  The current gates pass all 426 API tests at 97% coverage, all 138 web tests
+  plus lint/typecheck/build/confidentiality, the 41-test focused verifier suite,
+  and the final 48-event cross-process smoke. The supported B-to-A-to-B alias
+  proof removes `f04.rollback_reversion`; the exact GitHub/Vercel deployment,
+  protected HTTP, accessibility, and shared confidentiality chain removes
+  `f04.deployed_page_verification`. Three F04 blockers remain.
+The repository still has no OCI artifact or container harness. It also has no persistent telemetry, authentication,
 learner or role state, events/outbox/replay, competency graph, curriculum,
 assessment, tutoring, LLM access, mastery, readiness, unique work, simulation,
 provenance, privacy lifecycle, jobs, or telemetry backend.
 
 ## Next Inventory Update
 
-This acceptance-state revision records F03 as `PASSED / Continue` from
-implementation revision `fe49b609767e27d52fae999c229502ed98866dff`'s exact
-five-job success. Require this acceptance-state revision's own exact five
-GitHub jobs to pass, record both revisions and both accepted workflow runs in
-pull request #1, and stop before F04. Do not treat F00-F03 as V00 evidence.
-F04 becomes the next eligible foundation phase only in a future invocation.
+This bounded repair records the committed exact-SHA deployed-page proof while
+keeping F04 `FAILED_RETRYABLE / Revise`. Require the bounded propagation-race
+repair revision's own exact GitHub and Vercel checks to pass, record the
+immutable proof durably in pull request #5 and issue #3, and stop. Do not treat
+F00-F04 as V00 evidence. The only next eligible action is
+`f04.build_reproducibility`.

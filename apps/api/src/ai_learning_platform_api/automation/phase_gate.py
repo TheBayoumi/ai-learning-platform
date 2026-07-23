@@ -11,6 +11,7 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Final, cast
 
@@ -79,7 +80,9 @@ class InventoryPhase:
     dependencies: tuple[str, ...]
     blocker_ids: tuple[str, ...]
     missing_outputs: tuple[str, ...]
+    entry_condition_count: int
     pending_entries: tuple[str, ...]
+    failed_entries: tuple[str, ...]
     claims: tuple[str, ...]
 
 
@@ -350,10 +353,10 @@ def load_policy(repository_root: Path) -> Policy:
     ):
         raise _violation("policy_blockers_invalid")
     canonical_blocker_classes = {
-        "f03.implementation_checks": "technical",
-        "f03.acceptance_revision": "technical",
-        "f03.local_validation": "technical",
-        "f03.independent_verification": "technical",
+        "controller.implementation_checks": "technical",
+        "controller.acceptance_revision": "technical",
+        "controller.local_validation": "technical",
+        "controller.independent_verification": "technical",
         "v00.symmetric_demand": "external",
         "v00.practitioner_confirmations": "external",
         "v00.recruitment_channel": "external",
@@ -415,7 +418,7 @@ def load_policy(repository_root: Path) -> Policy:
         implementation_pending_condition
         != "The exact implementation revision passes all five required GitHub jobs"
         or implementation_transition_blockers
-        != {"f03.implementation_checks", "f03.acceptance_revision"}
+        != {"controller.implementation_checks", "controller.acceptance_revision"}
         or implementation_transition_missing_outputs
         != (
             "Exact implementation revision must pass all five required GitHub checks",
@@ -452,7 +455,7 @@ def load_policy(repository_root: Path) -> Policy:
         raise _violation("policy_claims_invalid")
 
     branch = _string(github["branch"], "policy_branch_invalid")
-    if branch != "automation/v00-phase-loop":
+    if branch != "automation/**":
         raise _violation("policy_branch_invalid")
 
     return Policy(
@@ -579,6 +582,55 @@ def parse_roadmap(text: str, policy: Policy) -> tuple[RoadmapPhase, ...]:
     return tuple(phases)
 
 
+def _lane_phases(roadmap: Sequence[RoadmapPhase], lane: str) -> tuple[RoadmapPhase, ...]:
+    phases = tuple(phase for phase in roadmap if phase.lane == lane and phase.kind == "phase")
+    if not phases:
+        raise _violation("roadmap_lane_empty")
+    return phases
+
+
+def _expected_active_phase(
+    roadmap: Sequence[RoadmapPhase],
+    inventory: Mapping[str, InventoryPhase],
+    lane: str,
+) -> RoadmapPhase:
+    phases = _lane_phases(roadmap, lane)
+    return next(
+        (phase for phase in phases if inventory[phase.identifier].status != "PASSED"),
+        phases[-1],
+    )
+
+
+def _next_lane_phase(
+    roadmap: Sequence[RoadmapPhase], active_phase: str, lane: str
+) -> RoadmapPhase | None:
+    phases = _lane_phases(roadmap, lane)
+    for index, phase in enumerate(phases):
+        if phase.identifier == active_phase:
+            return phases[index + 1] if index + 1 < len(phases) else None
+    raise _violation("state_track_phase_invalid")
+
+
+def _expected_future_boundary(
+    roadmap: Sequence[RoadmapPhase],
+    inventory: Mapping[str, InventoryPhase],
+    active_phase: str,
+) -> tuple[str | None, str]:
+    successor = _next_lane_phase(roadmap, active_phase, "foundation")
+    active_accepted = inventory[active_phase].status == "PASSED"
+    if not active_accepted:
+        return (
+            successor.identifier if successor is not None else None,
+            "LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",
+        )
+    if successor is None:
+        return None, "NO_DEFINED_SUCCESSOR"
+    dependencies_passed = all(
+        inventory[dependency].status == "PASSED" for dependency in successor.dependencies
+    )
+    return successor.identifier, "ELIGIBLE" if dependencies_passed else "LOCKED_BY_DEPENDENCIES"
+
+
 def _validate_claim_rules(policy: Policy, roadmap: Sequence[RoadmapPhase]) -> None:
     known = {phase.identifier: phase for phase in roadmap}
     for prerequisites in policy.claim_rules.values():
@@ -648,6 +700,7 @@ def _validate_inventory_phase(
 
     entries = _sequence(raw["entry_conditions"], "inventory_entries_invalid")
     pending_entries: list[str] = []
+    failed_entries: list[str] = []
     for entry_value in entries:
         entry = _mapping(entry_value, "inventory_entry_invalid")
         _exact_keys(entry, {"condition", "result", "evidence"}, "inventory_entry_fields_invalid")
@@ -660,6 +713,8 @@ def _validate_inventory_phase(
             raise _violation("passed_entry_evidence_missing")
         if result == "PENDING":
             pending_entries.append(condition)
+        elif result == "FAILED":
+            failed_entries.append(condition)
     implemented_files = _string_list(raw["implemented_files"], "inventory_files_invalid")
     tests = _string_list(raw["tests"], "inventory_tests_invalid")
     missing_outputs = tuple(_string_list(raw["missing_outputs"], "inventory_outputs_invalid"))
@@ -719,7 +774,9 @@ def _validate_inventory_phase(
         dependencies=roadmap.dependencies,
         blocker_ids=blockers,
         missing_outputs=missing_outputs,
+        entry_condition_count=len(entries),
         pending_entries=tuple(pending_entries),
+        failed_entries=tuple(failed_entries),
         claims=claims,
     )
 
@@ -750,7 +807,7 @@ def _validate_inventory(
         {"branch", "head", "working_tree", "source_of_truth"},
         "inventory_repository_invalid",
     )
-    if _string(repository["branch"], "inventory_branch_invalid") != policy.branch:
+    if not fnmatchcase(_string(repository["branch"], "inventory_branch_invalid"), policy.branch):
         raise _violation("inventory_branch_invalid")
     _string(repository["head"], "inventory_head_invalid")
     _string(repository["working_tree"], "inventory_repository_invalid")
@@ -828,6 +885,7 @@ def _validate_effects(
 
 def _validate_state(
     raw: Mapping[str, object],
+    roadmap: Sequence[RoadmapPhase],
     inventory: Mapping[str, InventoryPhase],
     raw_inventory: Mapping[str, object],
     policy: Policy,
@@ -884,6 +942,8 @@ def _validate_state(
         phase_id = _string(track["active_phase"], "state_track_phase_invalid")
         if phase_id not in inventory or inventory[phase_id].lane != lane:
             raise _violation("state_track_phase_invalid")
+        if phase_id != _expected_active_phase(roadmap, inventory, lane).identifier:
+            raise _violation("state_active_phase_disagreement")
         status = _string(track["status"], "state_track_status_invalid")
         if status not in policy.track_statuses:
             raise _violation("state_track_status_invalid")
@@ -960,13 +1020,11 @@ def _validate_state(
     future = _mapping(raw["future_phase_boundary"], "state_future_boundary_invalid")
     _exact_keys(future, {"phase", "status", "next_action"}, "state_future_boundary_invalid")
     future_status = _string(future["status"], "state_future_boundary_invalid")
-    expected_future_status = (
-        "ELIGIBLE_AFTER_F03"
-        if inventory[active_phase].status == "PASSED"
-        else "LOCKED_UNTIL_F03_ACCEPTED"
+    expected_future_phase, expected_future_status = _expected_future_boundary(
+        roadmap, inventory, active_phase
     )
     if (
-        _string(future["phase"], "state_future_boundary_invalid") != "F04"
+        _optional_string(future["phase"], "state_future_boundary_invalid") != expected_future_phase
         or future_status != expected_future_status
     ):
         raise _violation("state_future_boundary_invalid")
@@ -1029,7 +1087,7 @@ def validate_workflow_contract(text: str, policy: Policy) -> None:
         raise _violation("workflow_controller_bypass_invalid")
     if "permissions:\n  contents: read" not in text:
         raise _violation("workflow_permissions_invalid")
-    if "pull_request:" not in text or "branches: [main, automation/v00-phase-loop]" not in text:
+    if "pull_request:" not in text or 'branches: [main, "automation/**"]' not in text:
         raise _violation("workflow_trigger_invalid")
     if "cancel-in-progress: true" not in text:
         raise _violation("workflow_concurrency_invalid")
@@ -1189,7 +1247,7 @@ def validate_repository(
     _validate_claim_rules(policy, roadmap)
     inventory = _validate_inventory(raw_inventory, roadmap, policy)
     _validate_effects(raw_inventory, roadmap)
-    _validate_state(state, inventory, raw_inventory, policy)
+    _validate_state(state, roadmap, inventory, raw_inventory, policy)
     _validate_hashes(root, state, policy)
     validate_workflow_contract(workflow_text, policy)
 
@@ -1290,6 +1348,7 @@ def build_projection(
     technical = sorted(foundation_phase.blocker_ids)
     transition_ready = (
         foundation_status == "IMPLEMENTED_UNVERIFIED"
+        and not foundation_phase.failed_entries
         and foundation_phase.pending_entries == (model.policy.implementation_pending_condition,)
         and frozenset(foundation_phase.blocker_ids)
         == model.policy.implementation_transition_blockers
@@ -1301,6 +1360,14 @@ def build_projection(
         and not foundation_phase.pending_entries
         and not foundation_phase.blocker_ids
         and not foundation_phase.missing_outputs
+    )
+    start_ready = (
+        foundation_status == "NOT_STARTED"
+        and foundation_phase.entry_condition_count > 0
+        and not foundation_phase.pending_entries
+        and not foundation_phase.failed_entries
+        and not foundation_phase.blocker_ids
+        and all(model.phases[item].status == "PASSED" for item in foundation_phase.dependencies)
     )
 
     if not upstream_success:
@@ -1315,12 +1382,29 @@ def build_projection(
             "kind": "acceptance",
             "phase": foundation_id,
         }
+    elif start_ready:
+        next_action = {
+            "code": "START_FOUNDATION_PHASE",
+            "kind": "phase",
+            "phase": foundation_id,
+        }
     elif accepted_ready:
-        next_action = {"code": "DEFINE_F04", "kind": "phase", "phase": "F04"}
+        next_action = {
+            "code": "STOP_AT_FOUNDATION_BOUNDARY",
+            "kind": "stop",
+            "phase": foundation_id,
+        }
+    elif foundation_status == "NOT_STARTED":
+        reasons.append("FOUNDATION_ENTRY_CONDITIONS_INCOMPLETE")
+        next_action = {
+            "code": "AWAIT_FOUNDATION_ENTRY_CONDITIONS",
+            "kind": "wait",
+            "phase": foundation_id,
+        }
     else:
         reasons.append("IMPLEMENTATION_EVIDENCE_INCOMPLETE")
         next_action = {"code": "REPAIR_FOUNDATION_STATE", "kind": "repair", "phase": foundation_id}
-    eligible = upstream_success and (transition_ready or accepted_ready)
+    eligible = upstream_success and (start_ready or transition_ready or accepted_ready)
     payload: dict[str, object] = {
         "schema_version": 1,
         "commit_sha": model.exact_sha,

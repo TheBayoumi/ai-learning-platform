@@ -1,14 +1,9 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { scanBrowserText } from "./lib/browser-confidentiality.mjs";
+
 const browserRoot = resolve(process.cwd(), ".next/static");
-const forbiddenMarkers = Object.freeze([
-  "web.health.request.completed",
-  "ai-learning-platform-web.health",
-  "Invalid bounded web health diagnostic completion.",
-  "AI_PLATFORM_API_BASE_URL",
-  "http://127.0.0.1:8000"
-]);
 
 async function listFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -37,14 +32,7 @@ let scannedBytes = 0;
 for (const file of files) {
   const content = await readFile(file);
   scannedBytes += content.byteLength;
-  const text = content.toString("utf8");
-  for (const marker of forbiddenMarkers) {
-    if (text.includes(marker)) {
-      throw new Error(
-        `Browser confidentiality check failed: ${marker} appeared in ${file}.`
-      );
-    }
-  }
+  scanBrowserText(content.toString("utf8"), { sourceLabel: file });
 }
 
 console.log(

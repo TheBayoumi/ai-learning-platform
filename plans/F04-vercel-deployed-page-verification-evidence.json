@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "phase": "F04",
+  "blocker_id": "f04.deployed_page_verification",
+  "result": "PASSED",
+  "verified_at": "2026-07-21T20:21:15.334Z",
+  "expected": {
+    "repository": "TheBayoumi/ai-learning-platform",
+    "branch": "automation/f04-vercel-deployment-baseline",
+    "git_sha": "4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c",
+    "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+    "team_id": "team_bZWPrEPMa4sBoWU7syo3ZIRZ"
+  },
+  "discovery": {
+    "provider": "vercel",
+    "commit_status_context": "Vercel",
+    "github_deployment_id": 5545146544,
+    "github_deployment_status_id": 15765734222,
+    "vercel_status_target_url": "https://vercel.com/mahmoudbayoumimb-7868s-projects/web/6U2FrqVs6paxCpnN7EaCd6dLMDTA",
+    "polling_started_at": "2026-07-21T20:20:59.753Z",
+    "polling_ended_at": "2026-07-21T20:21:13.754Z",
+    "attempts": 3,
+    "elapsed_ms": 14001,
+    "final_status_context": "Vercel",
+    "final_status_state": "success",
+    "final_status_timestamp": "2026-07-21T20:21:08Z",
+    "polling": {
+      "maximum_duration_ms": 300000,
+      "initial_interval_ms": 5000,
+      "maximum_interval_ms": 15000,
+      "backoff_multiplier": 1.5
+    }
+  },
+  "deployment": {
+    "deployment_id": "dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA",
+    "immutable_hostname": "web-3t2s0sl71-mahmoudbayoumimb-7868s-projects.vercel.app",
+    "project_id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+    "git_sha": "4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c",
+    "git_branch": "automation/f04-vercel-deployment-baseline",
+    "ready_state": "READY",
+    "target": null,
+    "source": "git",
+    "git_source_type": "github",
+    "created_at": "2026-07-21T20:20:46.198Z",
+    "ready_at": "2026-07-21T20:21:07.619Z",
+    "regions": [
+      "iad1"
+    ]
+  },
+  "http": {
+    "url": "https://web-3t2s0sl71-mahmoudbayoumimb-7868s-projects.vercel.app/",
+    "status": 200,
+    "redirect_chain": [
+      200
+    ],
+    "authentication_response": false,
+    "content_type": "text/html; charset=utf-8",
+    "cache_control": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "body_bytes": 8402,
+    "body_sha256": "4d255b8a3a10b69a66ba67f9be5f403e2cdbc9a7ffcc731da049c6169e142f4c"
+  },
+  "semantics": {
+    "api_state": "unavailable",
+    "status_role_count": 1,
+    "status_label": "Local API unavailable",
+    "status_description_present": true,
+    "required_copy": [
+      "AI Career Learning Platform",
+      "Technical foundation",
+      "API integration",
+      "Local API unavailable",
+      "Foundation boundary"
+    ]
+  },
+  "confidentiality": {
+    "forbidden_markers_absent": true,
+    "loopback_absent": true,
+    "health_path_absent": true,
+    "trace_context_absent": true,
+    "html_scanned_bytes": 8402,
+    "assets_scanned": 7,
+    "bytes_scanned": 629464,
+    "assets": [
+      {
+        "content_type": "application/javascript",
+        "bytes": 112594,
+        "sha256": "0973c1d64c88adc8e3c950410cb58b288f72118d5965b78049438deb8f2f9683"
+      },
+      {
+        "content_type": "application/javascript",
+        "bytes": 57910,
+        "sha256": "c16c1aeadb91a2ea2b3900e27a1794b772212859a00f36490d3741da65bdc1a8"
+      },
+      {
+        "content_type": "application/javascript",
+        "bytes": 17477,
+        "sha256": "642624f750fb1e67c76ad6de4bc0ef64fae94ace975f6b812bf04469a4eadc33"
+      },
+      {
+        "content_type": "text/css",
+        "bytes": 2187,
+        "sha256": "618edd58fccde3edbac2329d81849716b2bb8bcb00ffc2ef1006ab5efbe3d724"
+      },
+      {
+        "content_type": "application/javascript",
+        "bytes": 200925,
+        "sha256": "daa01a6bf6590f190e38894422d8b6437ce17e11e17b7c01fc98c334c56cc18e"
+      },
+      {
+        "content_type": "application/javascript",
+        "bytes": 227536,
+        "sha256": "cf4847524b00f915e8cddeedccd6051efe8146ee0ff4448f9e34d564b28baa91"
+      },
+      {
+        "content_type": "application/javascript",
+        "bytes": 10835,
+        "sha256": "f5de105ac0fbdd24d075605ce9b4821c47231e95b6a39dbb2d474f232f60de57"
+      }
+    ]
+  }
+}

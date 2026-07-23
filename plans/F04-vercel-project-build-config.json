@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "project": {
+    "id": "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN",
+    "team_id": "team_bZWPrEPMa4sBoWU7syo3ZIRZ",
+    "name": "web",
+    "root_directory": "apps/web",
+    "framework": "nextjs",
+    "node_version": "24.x",
+    "production_branch": "main",
+    "git_repository": "TheBayoumi/ai-learning-platform"
+  },
+  "build": {
+    "package_manager": "npm@11.18.0",
+    "install_command": "npm ci",
+    "build_command": "npm run build",
+    "lockfile": "apps/web/package-lock.json"
+  },
+  "environment": {
+    "ENABLE_EXPERIMENTAL_COREPACK": {
+      "required": true,
+      "value": "1",
+      "targets": [
+        "preview"
+      ],
+      "git_branch": "automation/f04-vercel-deployment-baseline"
+    }
+  }
+}

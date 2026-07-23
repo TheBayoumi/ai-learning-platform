@@ -1,0 +1,212 @@
+name: Vercel deployed-page verification
+
+on:
+  push:
+    branches:
+      - automation/f04-vercel-deployment-baseline
+
+permissions:
+  contents: read
+  statuses: read
+  deployments: read
+
+concurrency:
+  group: vercel-deployed-page-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-vercel-preview:
+    name: Vercel deployed-page verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      statuses: write
+      deployments: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Enforce the secret-execution boundary
+        env:
+          EXPECTED_REPOSITORY: TheBayoumi/ai-learning-platform
+          EXPECTED_REF: refs/heads/automation/f04-vercel-deployment-baseline
+          EVENT_REPOSITORY: ${{ github.event.repository.full_name }}
+          EVENT_AFTER: ${{ github.event.after }}
+          EXACT_SHA: ${{ github.sha }}
+          EXACT_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_DELETED: ${{ github.event.deleted }}
+          EVENT_ACTOR: ${{ github.actor }}
+        run: |
+          test "$EVENT_NAME" = "push"
+          test "$EVENT_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$EXACT_REF" = "$EXPECTED_REF"
+          test "$EVENT_AFTER" = "$EXACT_SHA"
+          test "$EVENT_DELETED" != "true"
+          test -n "$EVENT_ACTOR"
+          test "$(git rev-parse HEAD)" = "$EXACT_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Pin npm
+        working-directory: .
+        run: npm install --global npm@11.18.0
+
+      - name: Verify npm version
+        working-directory: apps/web
+        run: test "$(npm --version)" = "11.18.0"
+
+      - name: Verify the exact protected preview and measure resources
+        working-directory: apps/web
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          EVIDENCE_PATH: ${{ runner.temp }}/f04-vercel-deployed-page-verification.json
+          RESOURCE_EVIDENCE_PATH: ${{ runner.temp }}/f04-vercel-resource-measurements.json
+        run: |
+          npm run verify:vercel-preview -- \
+            --expected-sha "${{ github.sha }}" \
+            --repository "TheBayoumi/ai-learning-platform" \
+            --branch "automation/f04-vercel-deployment-baseline" \
+            --project-id "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN" \
+            --team-id "team_bZWPrEPMa4sBoWU7syo3ZIRZ" \
+            --evidence-output "$EVIDENCE_PATH"
+          npm run verify:vercel-resources -- \
+            --expected-sha "${{ github.sha }}" \
+            --repository "TheBayoumi/ai-learning-platform" \
+            --branch "automation/f04-vercel-deployment-baseline" \
+            --project-id "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN" \
+            --team-id "team_bZWPrEPMa4sBoWU7syo3ZIRZ" \
+            --evidence-output "$RESOURCE_EVIDENCE_PATH"
+
+      - name: Upload sanitized verification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: f04-vercel-deployed-page-verification-${{ github.sha }}
+          path: ${{ runner.temp }}/f04-vercel-deployed-page-verification.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload sanitized resource evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: f04-vercel-resource-measurements-${{ github.sha }}
+          path: ${{ runner.temp }}/f04-vercel-resource-measurements.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish resource measurement status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS_CONTEXT: F04 / Vercel resource measurements
+          STATUS_DESCRIPTION: ${{ job.status == 'success' && 'Exact-SHA resource measurements passed' || 'Exact-SHA resource measurements failed' }}
+          STATUS_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          STATUS_TARGET: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state="$STATUS_STATE"
+          -f context="$STATUS_CONTEXT"
+          -f description="$STATUS_DESCRIPTION"
+          -f target_url="$STATUS_TARGET"
+
+  verify-vercel-build-reproducibility:
+    name: Vercel build reproducibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      statuses: write
+      deployments: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Enforce the trusted exact-SHA boundary
+        env:
+          EXPECTED_REPOSITORY: TheBayoumi/ai-learning-platform
+          EXPECTED_REF: refs/heads/automation/f04-vercel-deployment-baseline
+          EVENT_REPOSITORY: ${{ github.event.repository.full_name }}
+          EVENT_AFTER: ${{ github.event.after }}
+          EXACT_SHA: ${{ github.sha }}
+          EXACT_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_DELETED: ${{ github.event.deleted }}
+          EVENT_ACTOR: ${{ github.actor }}
+        run: |
+          test "$EVENT_NAME" = "push"
+          test "$EVENT_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$EXACT_REF" = "$EXPECTED_REF"
+          test "$EVENT_AFTER" = "$EXACT_SHA"
+          test "$EVENT_DELETED" != "true"
+          test -n "$EVENT_ACTOR"
+          test "$(git rev-parse HEAD)" = "$EXACT_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Pin npm
+        working-directory: .
+        run: npm install --global npm@11.18.0
+
+      - name: Verify committed build toolchain
+        working-directory: apps/web
+        run: npm run verify:build-toolchain
+
+      - name: Verify the exact Vercel build
+        working-directory: apps/web
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          EVIDENCE_PATH: ${{ runner.temp }}/f04-vercel-build-reproducibility.json
+        run: >-
+          npm run verify:vercel-build --
+          --expected-sha "${{ github.sha }}"
+          --repository "TheBayoumi/ai-learning-platform"
+          --branch "automation/f04-vercel-deployment-baseline"
+          --project-id "prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN"
+          --team-id "team_bZWPrEPMa4sBoWU7syo3ZIRZ"
+          --evidence-output "$EVIDENCE_PATH"
+
+      - name: Upload sanitized build evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: f04-vercel-build-reproducibility-${{ github.sha }}
+          path: ${{ runner.temp }}/f04-vercel-build-reproducibility.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish build reproducibility status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS_CONTEXT: F04 / Vercel build reproducibility
+          STATUS_DESCRIPTION: ${{ job.status == 'success' && 'Exact-SHA build reproducibility passed' || 'Exact-SHA build reproducibility failed' }}
+          STATUS_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          STATUS_TARGET: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state="$STATUS_STATE"
+          -f context="$STATUS_CONTEXT"
+          -f description="$STATUS_DESCRIPTION"
+          -f target_url="$STATUS_TARGET"

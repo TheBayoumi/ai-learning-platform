@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "phase": "F04",
+  "blocker_id": "f04.resource_measurements",
+  "result": "PASSED",
+  "verified_at": "2026-07-23T03:49:23.825Z",
+  "expected_git_sha": "3f83e3e74d1fc587d90c30b1756c7f2dec994ba3",
+  "deployment": {
+    "deployment_id": "dpl_8aaJEB62CFUk1TPqpJPxw8sCbCW5",
+    "created_at": "2026-07-23T03:47:12.685Z",
+    "ready_at": "2026-07-23T03:47:58.737Z",
+    "regions": [
+      "iad1"
+    ]
+  },
+  "build": {
+    "duration_ms": 25000,
+    "deployment_elapsed_ms": 46052,
+    "clone_ms": 1902,
+    "install_ms": 14000,
+    "compile_ms": 3600,
+    "typecheck_ms": 4000,
+    "static_generation_ms": 98,
+    "machine_cores": 2,
+    "machine_memory_mb": 8192,
+    "vercel_cli": "56.5.0"
+  },
+  "artifact_footprint": {
+    "browser_build_files": 10,
+    "browser_build_bytes": 629571,
+    "deployed_html_bytes": 8600,
+    "deployed_asset_count": 7,
+    "deployed_asset_bytes": 629464,
+    "deployed_total_bytes": 638064
+  },
+  "cache": {
+    "restored": true,
+    "created_ms": 16000,
+    "uploaded_bytes": 120170000,
+    "upload_ms": 1630,
+    "causal_speedup_claimed": false
+  },
+  "latency": {
+    "classification": "first-after-bounded-quiescence",
+    "quiescence_ms": 60000,
+    "cold": {
+      "ttfb_ms": 300,
+      "total_ms": 301,
+      "status": 200,
+      "body_bytes": 8600,
+      "cache": "MISS",
+      "edge_region": "sfo1"
+    },
+    "warm_samples": [
+      {
+        "ttfb_ms": 250,
+        "total_ms": 251,
+        "status": 200,
+        "body_bytes": 8600,
+        "cache": "MISS",
+        "edge_region": "sfo1"
+      },
+      {
+        "ttfb_ms": 129,
+        "total_ms": 130,
+        "status": 200,
+        "body_bytes": 8600,
+        "cache": "MISS",
+        "edge_region": "sfo1"
+      },
+      {
+        "ttfb_ms": 132,
+        "total_ms": 133,
+        "status": 200,
+        "body_bytes": 8600,
+        "cache": "MISS",
+        "edge_region": "sfo1"
+      },
+      {
+        "ttfb_ms": 133,
+        "total_ms": 134,
+        "status": 200,
+        "body_bytes": 8600,
+        "cache": "MISS",
+        "edge_region": "sfo1"
+      },
+      {
+        "ttfb_ms": 129,
+        "total_ms": 130,
+        "status": 200,
+        "body_bytes": 8600,
+        "cache": "MISS",
+        "edge_region": "sfo1"
+      }
+    ],
+    "warm_ttfb_median_ms": 132,
+    "warm_total_median_ms": 133,
+    "warm_total_p95_ms": 251,
+    "infrastructure_cold_start_claimed": false
+  },
+  "runtime": {
+    "node": "24.15.0",
+    "npm": "11.18.0",
+    "next": "16.2.10"
+  },
+  "cost_observation": {
+    "team_plan": "hobby",
+    "preview_deployments_observed": 1,
+    "measurement_http_requests": 13,
+    "build_duration_ms": 25000,
+    "cache_upload_bytes": 120170000,
+    "dollar_estimate_provided": false,
+    "bounded": true
+  },
+  "assertions": {
+    "exact_deployment_bound": true,
+    "build_measurements_recorded": true,
+    "artifact_footprint_recorded": true,
+    "cache_impact_recorded": true,
+    "latency_samples_bounded": true,
+    "runtime_versions_recorded": true,
+    "cost_observation_bounded": true,
+    "confidential_material_absent": true
+  }
+}

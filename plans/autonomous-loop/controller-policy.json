@@ -8,7 +8,7 @@
     "workflow": ".github/workflows/ci.yml"
   },
   "schemas": {
-    "state": 3,
+    "state": 4,
     "inventory": 2
   },
   "vocabulary": {
@@ -96,14 +96,19 @@
     ]
   },
   "blocker_catalog": {
-    "f03.implementation_checks": "technical",
-    "f03.acceptance_revision": "technical",
+    "controller.implementation_checks": "technical",
+    "controller.acceptance_revision": "technical",
+    "controller.local_validation": "technical",
+    "controller.independent_verification": "technical",
+    "f04.rollback_reversion": "technical",
+    "f04.deployed_page_verification": "technical",
+    "f04.build_reproducibility": "technical",
+    "f04.resource_measurements": "technical",
+    "f04.repository_payload_hygiene": "technical",
     "v00.symmetric_demand": "external",
     "v00.practitioner_confirmations": "external",
     "v00.recruitment_channel": "external",
-    "v00.measured_cost": "external",
-    "f03.local_validation": "technical",
-    "f03.independent_verification": "technical"
+    "v00.measured_cost": "external"
   },
   "claim_rules": {
     "target_selected": [
@@ -133,11 +138,11 @@
     ],
     "exact_head_required": true,
     "implementation_and_acceptance_heads_required": true,
-    "branch": "automation/v00-phase-loop",
+    "branch": "automation/**",
     "implementation_pending_condition": "The exact implementation revision passes all five required GitHub jobs",
     "implementation_transition_blockers": [
-      "f03.implementation_checks",
-      "f03.acceptance_revision"
+      "controller.implementation_checks",
+      "controller.acceptance_revision"
     ],
     "implementation_transition_missing_outputs": [
       "Exact implementation revision must pass all five required GitHub checks",
