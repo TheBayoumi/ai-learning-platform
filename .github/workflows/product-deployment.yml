@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - automation/product-vertical-slice
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,19 +28,12 @@ jobs:
 
       - name: Enforce trusted exact-source boundary
         env:
-          EVENT_REPOSITORY: ${{ github.event.repository.full_name }}
-          EVENT_AFTER: ${{ github.event.after }}
-          EVENT_DELETED: ${{ github.event.deleted }}
+          EVENT_REPOSITORY: ${{ github.repository }}
           EXACT_REF: ${{ github.ref }}
           EXACT_SHA: ${{ github.sha }}
         run: |
           test "$EVENT_REPOSITORY" = "TheBayoumi/ai-learning-platform"
-          test "$EVENT_AFTER" = "$EXACT_SHA"
-          test "$EVENT_DELETED" != "true"
-          case "$EXACT_REF" in
-            refs/heads/main|refs/heads/automation/product-vertical-slice) ;;
-            *) exit 1 ;;
-          esac
+          test "$EXACT_REF" = "refs/heads/main"
           test "$(git rev-parse HEAD)" = "$EXACT_SHA"
 
       - name: Configure backend FastAPI project
