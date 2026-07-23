@@ -128,21 +128,30 @@ jobs:
           npm install --global npm@11.18.0
           npm ci --prefix apps/web
 
-      - name: Verify complete source and runtime contracts
+      - name: Verify API formatting lint and typing
         run: |
           uv run --project apps/api --locked ruff format apps/api scripts
           uv run --project apps/api --locked ruff check --fix apps/api scripts
           uv run --project apps/api --locked ruff format --check apps/api scripts
           uv run --project apps/api --locked ruff check apps/api scripts
           uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
+
+      - name: Verify API tests and coverage
+        run: |
           uv run --project apps/api --locked coverage erase
           uv run --project apps/api --locked coverage run -m pytest
           uv run --project apps/api --locked coverage report --fail-under=95
-          npm run --prefix apps/web lint
-          npm run --prefix apps/web typecheck
-          npm run --prefix apps/web test
-          npm run --prefix apps/web build
-          uv run --project apps/api --locked python scripts/smoke.py
+
+      - name: Verify web source and production build
+        working-directory: apps/web
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Verify real cross-process runtime smoke
+        run: uv run --project apps/api --locked python scripts/smoke.py
 
       - name: Commit verified repair
         run: |
