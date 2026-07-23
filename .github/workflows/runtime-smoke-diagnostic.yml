@@ -137,10 +137,31 @@ jobs:
           uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
 
       - name: Verify API tests and coverage
+        shell: bash
         run: |
+          set +e
+          output="$RUNNER_TEMP/runtime-smoke-repair"
+          mkdir -p "$output"
           uv run --project apps/api --locked coverage erase
-          uv run --project apps/api --locked coverage run -m pytest
-          uv run --project apps/api --locked coverage report --fail-under=95
+          uv run --project apps/api --locked coverage run -m pytest \
+            >"$output/api-tests.txt" 2>&1
+          test_status=$?
+          uv run --project apps/api --locked coverage report --fail-under=95 \
+            >"$output/coverage.txt" 2>&1
+          coverage_status=$?
+          if test "$test_status" -ne 0; then
+            exit "$test_status"
+          fi
+          exit "$coverage_status"
+
+      - name: Upload exact patched API output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: runtime-smoke-repair-${{ github.sha }}
+          path: ${{ runner.temp }}/runtime-smoke-repair
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Verify web source and production build
         working-directory: apps/web
@@ -151,31 +172,7 @@ jobs:
           npm run build
 
       - name: Verify real cross-process runtime smoke
-        shell: bash
-        run: |
-          set +e
-          mkdir -p "$RUNNER_TEMP/runtime-smoke-repair"
-          uv run --project apps/api --locked python scripts/smoke.py \
-            >"$RUNNER_TEMP/runtime-smoke-repair/outer.txt" 2>&1
-          status=$?
-          if test "$status" -ne 0; then
-            set +o pipefail
-            uv run --project apps/api --locked \
-              python -m ai_learning_platform_api.development.smoke 2>&1 \
-              | grep '^\[smoke\]' \
-              | tail -n 1 \
-              >"$RUNNER_TEMP/runtime-smoke-repair/safe-inner.txt"
-          fi
-          exit "$status"
-
-      - name: Upload safe smoke output
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: runtime-smoke-repair-${{ github.sha }}
-          path: ${{ runner.temp }}/runtime-smoke-repair
-          if-no-files-found: error
-          retention-days: 7
+        run: uv run --project apps/api --locked python scripts/smoke.py
 
       - name: Commit verified repair
         run: |
