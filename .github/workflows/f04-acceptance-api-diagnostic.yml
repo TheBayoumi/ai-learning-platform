@@ -38,40 +38,92 @@ jobs:
           from pathlib import Path
 
           path = Path("apps/api/tests/test_phase_gate.py")
-          text = path.read_text(encoding="utf-8")
+          lines = path.read_text(encoding="utf-8").splitlines()
 
-          replacements = [
-              (
-                  'lambda value: cast(dict[str, Any], value["foundation_track"]).update(\n                    gate_decision="Continue"\n                ),\n                "state_inventory_gate_disagreement",',
-                  'lambda value: cast(dict[str, Any], value["foundation_track"]).update(\n                    gate_decision="Revise"\n                ),\n                "state_inventory_gate_disagreement",',
-                  "foundation gate drift fixture",
-              ),
-              (
-                  'lambda value: value.update(gate_decision="Continue"),\n                "state_controller_gate_disagreement",',
-                  'lambda value: value.update(gate_decision="Revise"),\n                "state_controller_gate_disagreement",',
-                  "controller gate drift fixture",
-              ),
-              (
-                  '        foundation.update(\n            active_phase="F05",\n            status="NOT_STARTED",\n            gate_decision=None,\n            next_action="Start the synthetic successor",\n        )\n',
-                  '        foundation.update(\n            active_phase="F05",\n            status="NOT_STARTED",\n            gate_decision=None,\n            next_action="Start the synthetic successor",\n        )\n        future = cast(dict[str, Any], value["future_phase_boundary"])\n        future.update(\n            phase=None,\n            status="LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",\n            next_action="Start or complete F05 before evaluating a successor",\n        )\n',
-                  "synthetic successor future boundary",
-              ),
-              (
-                  '        foundation.update(\n            status="IMPLEMENTED_UNVERIFIED",\n            gate_decision=None,\n            next_action="Repair the failed entry before acceptance",\n        )\n',
-                  '        foundation.update(\n            status="IMPLEMENTED_UNVERIFIED",\n            gate_decision=None,\n            next_action="Repair the failed entry before acceptance",\n        )\n        future = cast(dict[str, Any], value["future_phase_boundary"])\n        future.update(\n            phase=None,\n            status="LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",\n            next_action="Repair and accept F04 before evaluating a successor",\n        )\n',
-                  "failed transition future boundary",
-              ),
-          ]
+          def replace_before(label: str, old: str, new: str, window: int) -> None:
+              label_indexes = [index for index, line in enumerate(lines) if label in line]
+              if len(label_indexes) != 1:
+                  raise RuntimeError(f"{label}: expected one label, found {len(label_indexes)}")
+              label_index = label_indexes[0]
+              matches = [
+                  index
+                  for index in range(max(0, label_index - window), label_index)
+                  if old in lines[index]
+              ]
+              if not matches:
+                  if any(new in lines[index] for index in range(max(0, label_index - window), label_index)):
+                      return
+                  raise RuntimeError(f"{label}: baseline mutation not found")
+              if len(matches) != 1:
+                  raise RuntimeError(f"{label}: ambiguous baseline mutation")
+              lines[matches[0]] = lines[matches[0]].replace(old, new, 1)
 
-          for old, new, label in replacements:
-              if new in text:
-                  continue
-              count = text.count(old)
-              if count != 1:
-                  raise RuntimeError(f"{label}: expected one baseline occurrence, found {count}")
-              text = text.replace(old, new, 1)
+          def insert_in_function(function_name: str, anchor_text: str, insertion: list[str]) -> None:
+              starts = [index for index, line in enumerate(lines) if line.startswith(f"def {function_name}")]
+              if len(starts) != 1:
+                  raise RuntimeError(f"{function_name}: expected one function")
+              start = starts[0]
+              end = next(
+                  (index for index in range(start + 1, len(lines)) if lines[index].startswith("def ")),
+                  len(lines),
+              )
+              marker = insertion[0].strip()
+              if any(marker in line for line in lines[start:end]):
+                  return
+              anchors = [index for index in range(start, end) if anchor_text in lines[index]]
+              if len(anchors) != 1:
+                  raise RuntimeError(f"{function_name}: expected one anchor, found {len(anchors)}")
+              anchor = anchors[0]
+              close = next(
+                  (
+                      index
+                      for index in range(anchor + 1, end)
+                      if lines[index] == "        )"
+                  ),
+                  None,
+              )
+              if close is None:
+                  raise RuntimeError(f"{function_name}: update close not found")
+              lines[close + 1 : close + 1] = insertion
 
-          path.write_text(text, encoding="utf-8", newline="\n")
+          replace_before(
+              '"state_inventory_gate_disagreement"',
+              'gate_decision="Continue"',
+              'gate_decision="Revise"',
+              10,
+          )
+          replace_before(
+              '"state_controller_gate_disagreement"',
+              'value.update(gate_decision="Continue")',
+              'value.update(gate_decision="Revise")',
+              8,
+          )
+          insert_in_function(
+              "test_valid_new_foundation_successor_projects_start_action(controller_root: Path) -> None:",
+              'next_action="Start the synthetic successor"',
+              [
+                  '        future = cast(dict[str, Any], value["future_phase_boundary"])',
+                  "        future.update(",
+                  "            phase=None,",
+                  '            status="LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",',
+                  '            next_action="Start or complete F05 before evaluating a successor",',
+                  "        )",
+              ],
+          )
+          insert_in_function(
+              "test_failed_entry_cannot_advance_implementation_to_acceptance(",
+              'next_action="Repair the failed entry before acceptance"',
+              [
+                  '        future = cast(dict[str, Any], value["future_phase_boundary"])',
+                  "        future.update(",
+                  "            phase=None,",
+                  '            status="LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",',
+                  '            next_action="Repair and accept F04 before evaluating a successor",',
+                  "        )",
+              ],
+          )
+
+          path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
           PY
       - name: Format repaired tests
         working-directory: apps/api
@@ -86,8 +138,9 @@ jobs:
           test_path = Path("apps/api/tests/test_phase_gate.py")
           state_path = Path("plans/autonomous-loop/state.json")
           state = json.loads(state_path.read_text(encoding="utf-8"))
-          canonical = test_path.read_bytes().replace(b"\r\n", b"\n")
-          state["authoritative_file_hashes"][str(test_path)] = hashlib.sha256(canonical).hexdigest()
+          state["authoritative_file_hashes"][str(test_path)] = hashlib.sha256(
+              test_path.read_bytes().replace(b"\r\n", b"\n")
+          ).hexdigest()
           state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8", newline="\n")
           PY
       - name: Check formatting
