@@ -72,15 +72,39 @@ jobs:
           uv sync --project apps/api --locked --all-groups
           npm install --global npm@11.18.0
           npm ci --prefix apps/web
-      - name: Verify API and smoke contracts
+      - name: Capture API and smoke verification
+        shell: bash
         run: |
-          uv run --project apps/api --locked ruff format apps/api scripts
-          uv run --project apps/api --locked ruff check --fix apps/api scripts
-          uv run --project apps/api --locked ruff format --check apps/api scripts
-          uv run --project apps/api --locked ruff check apps/api scripts
-          uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
-          uv run --project apps/api --locked pytest apps/api/tests -q
-          uv run --project apps/api --locked python scripts/smoke.py
+          set +e
+          output="$RUNNER_TEMP/runtime-smoke-repair"
+          mkdir -p "$output"
+          run_check() {
+            local name="$1"
+            shift
+            echo "===== $name =====" >>"$output/verification.txt"
+            "$@" >>"$output/verification.txt" 2>&1
+            local status=$?
+            echo "$name=$status" >>"$output/statuses.txt"
+            return "$status"
+          }
+          overall=0
+          run_check format uv run --project apps/api --locked ruff format apps/api scripts || overall=1
+          run_check lint-fix uv run --project apps/api --locked ruff check --fix apps/api scripts || overall=1
+          run_check format-check uv run --project apps/api --locked ruff format --check apps/api scripts || overall=1
+          run_check lint uv run --project apps/api --locked ruff check apps/api scripts || overall=1
+          run_check mypy uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts || overall=1
+          run_check pytest uv run --project apps/api --locked pytest apps/api/tests -q || overall=1
+          run_check smoke uv run --project apps/api --locked python scripts/smoke.py || overall=1
+          echo "$overall" >"$output/overall.exit"
+          exit "$overall"
+      - name: Upload exact repair output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: runtime-smoke-repair-${{ github.sha }}
+          path: ${{ runner.temp }}/runtime-smoke-repair
+          if-no-files-found: error
+          retention-days: 7
       - name: Commit verified smoke repair
         run: |
           if git diff --quiet; then
