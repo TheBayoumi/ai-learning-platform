@@ -1,0 +1,100 @@
+name: Product integration diagnostic
+
+on:
+  push:
+    branches:
+      - automation/product-vertical-slice
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: product-integration-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Capture diagnostics
+        shell: bash
+        run: |
+          set +e
+          output="$RUNNER_TEMP/product-diagnostic"
+          mkdir -p "$output"
+
+          (
+            cd apps/api
+            uv sync --locked --all-groups
+            echo $? >"$output/api-sync.exit"
+            uv run --locked ruff format --check . ../../scripts
+            echo $? >"$output/api-format.exit"
+            uv run --locked ruff check . ../../scripts
+            echo $? >"$output/api-lint.exit"
+            uv run --locked mypy src tests ../../scripts
+            echo $? >"$output/api-mypy.exit"
+            uv run --locked pytest -q
+            echo $? >"$output/api-pytest.exit"
+          ) >"$output/api.txt" 2>&1
+
+          (
+            npm install --global npm@11.18.0
+            cd apps/web
+            npm ci
+            echo $? >"$output/web-sync.exit"
+            npm run lint
+            echo $? >"$output/web-lint.exit"
+            npm run typecheck
+            echo $? >"$output/web-typecheck.exit"
+            npm test
+            echo $? >"$output/web-test.exit"
+            npm run build
+            echo $? >"$output/web-build.exit"
+          ) >"$output/web.txt" 2>&1
+
+          uv run --project apps/api --locked python scripts/phase_gate.py validate \
+            --expected-sha "$GITHUB_SHA" >"$output/phase.txt" 2>&1
+          echo $? >"$output/phase.exit"
+
+      - name: Upload diagnostic artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: product-integration-diagnostic-${{ github.sha }}
+          path: ${{ runner.temp }}/product-diagnostic
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish diagnostic status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state=success
+          -f context="Product / integration diagnostic"
+          -f description="Exact integration diagnostic artifact published"
+          -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
