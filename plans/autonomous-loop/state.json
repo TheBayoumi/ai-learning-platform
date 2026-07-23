@@ -43,7 +43,7 @@
     "Stage, commit, and push one bounded verified slice without waiting for a user commit or review"
   ],
   "human_decisions_required": [],
-  "last_verified_commit": "f0486d0007b8164d58a6eb680fe0729906bd4093",
+  "last_verified_commit": "cde7940a308ba81324713d1763a56908922b8886",
   "authoritative_file_hashes": {
     "AGENTS.md": "71e31a7955de50367f5bd48408b422aae89b64312c238ee6bfb5bcc1254857a8",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
