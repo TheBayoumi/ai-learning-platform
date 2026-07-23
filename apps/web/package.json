@@ -22,6 +22,7 @@
     "vercel:config:apply": "node scripts/vercel-project-build-config.mjs apply",
     "verify:vercel-build": "node scripts/verify-vercel-build-reproducibility.mjs",
     "verify:vercel-preview": "node scripts/verify-vercel-preview.mjs",
+    "verify:vercel-resources": "node scripts/verify-vercel-resource-measurements.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
