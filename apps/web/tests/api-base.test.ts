@@ -25,6 +25,26 @@ describe("server API base configuration", () => {
     expect(parseApiBaseUrl(input)).toBe(expected);
   });
 
+  it("accepts canonical public HTTPS origins only when explicitly enabled", () => {
+    expect(
+      parseApiBaseUrl("https://api-learning.example.com/", {
+        allowRemoteHttps: true
+      })
+    ).toBe("https://api-learning.example.com");
+
+    for (const input of [
+      "http://api-learning.example.com",
+      "https://api-learning.example.com:8443",
+      "https://localhost",
+      "https://service.local",
+      "https://127.0.0.1"
+    ]) {
+      expect(() =>
+        parseApiBaseUrl(input, { allowRemoteHttps: true })
+      ).toThrow(ApiBaseConfigurationError);
+    }
+  });
+
   it.each([
     "",
     " ",
