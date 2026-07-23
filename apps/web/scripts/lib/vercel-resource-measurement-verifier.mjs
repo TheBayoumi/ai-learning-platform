@@ -270,7 +270,14 @@ function parseBuildMeasurements(logs, deployment, markers) {
           1000
       ),
       deployment_elapsed_ms: readyAt - createdAt,
-      clone_ms: Math.round(parseSingle(logs, /^Cloning completed: ([0-9.]+)s$/, "clone duration") * 1000),
+      clone_ms: Math.round(
+  parseSingle(
+    logs,
+    /^Cloning completed: ([0-9.]+)(ms|s)$/,
+    "clone duration",
+    (match) => Number(match[1]) * (match[2] === "s" ? 1000 : 1)
+  )
+),
       install_ms: Math.round(
         parseSingle(
           logs,

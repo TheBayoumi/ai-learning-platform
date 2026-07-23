@@ -79,11 +79,12 @@ function input() {
 
 function dependencies(
   options: {
-  omitCacheUpload?: boolean;
-  delayCacheUpload?: boolean;
-  duplicateClone?: boolean;
-  conflictingClone?: boolean;
-} = {}
+    omitCacheUpload?: boolean;
+    delayCacheUpload?: boolean;
+    duplicateClone?: boolean;
+    conflictingClone?: boolean;
+    cloneDuration?: string;
+  } = {}
 ) {
   let clock = 0;
   let pageRequests = 0;
@@ -94,7 +95,9 @@ function dependencies(
   );
 
   const cloneLog = buildLogs.find(({ text }) => text.startsWith("Cloning completed:"));
-  if (options.duplicateClone && cloneLog) {
+  if (options.cloneDuration && cloneLog) {
+    cloneLog.text = `Cloning completed: ${options.cloneDuration}`;
+  }  if (options.duplicateClone && cloneLog) {
     buildLogs.push({ ...cloneLog, index: buildLogs.length, serial: buildLogs.length });
   }
   if (options.conflictingClone && cloneLog) {
@@ -217,6 +220,16 @@ describe("exact-SHA Vercel resource measurements", () => {
     ).toBe(true);
   });
 
+  it("normalizes clone durations reported in seconds or milliseconds", async () => {
+  const seconds = await verifyVercelResourceMeasurements(input(), dependencies());
+  const milliseconds = await verifyVercelResourceMeasurements(
+    input(),
+    dependencies({ cloneDuration: "613.000ms" })
+  );
+
+  expect(seconds.build.clone_ms).toBe(1958);
+  expect(milliseconds.build.clone_ms).toBe(613);
+});
   it("accepts identical duplicated provider metrics and rejects conflicts", async () => {
   await expect(
     verifyVercelResourceMeasurements(input(), dependencies({ duplicateClone: true }))
