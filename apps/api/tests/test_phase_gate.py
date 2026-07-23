@@ -528,7 +528,7 @@ def test_dependency_closure_and_lane_effects_fail_closed(controller_root: Path) 
         ),
         (
             lambda value: cast(dict[str, Any], value["foundation_track"]).update(
-                gate_decision="Continue"
+                gate_decision="Revise"
             ),
             "state_inventory_gate_disagreement",
         ),
@@ -959,7 +959,7 @@ def test_claim_prerequisites_are_enforced(controller_root: Path) -> None:
             "state_track_status_invalid",
         ),
         (
-            lambda value: value.update(gate_decision="Continue"),
+            lambda value: value.update(gate_decision="Revise"),
             "state_controller_gate_disagreement",
         ),
         (
@@ -1231,6 +1231,12 @@ def test_valid_new_foundation_successor_projects_start_action(controller_root: P
             gate_decision=None,
             next_action="Start the synthetic successor",
         )
+        future = cast(dict[str, Any], value["future_phase_boundary"])
+        future.update(
+            phase=None,
+            status="LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",
+            next_action="Start or complete F05 before evaluating a successor",
+        )
 
     _mutate_json(controller_root, "plans/autonomous-loop/state.json", retarget_state)
     model = _validate(controller_root)
@@ -1339,6 +1345,12 @@ def test_failed_entry_cannot_advance_implementation_to_acceptance(
             status="IMPLEMENTED_UNVERIFIED",
             gate_decision=None,
             next_action="Repair the failed entry before acceptance",
+        )
+        future = cast(dict[str, Any], value["future_phase_boundary"])
+        future.update(
+            phase=None,
+            status="LOCKED_UNTIL_ACTIVE_PHASE_ACCEPTED",
+            next_action="Repair and accept F04 before evaluating a successor",
         )
 
     _mutate_json(

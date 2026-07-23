@@ -66,7 +66,7 @@
     "plans/autonomous-loop/run-log.md": "486fb49131f471ad49bf10b6bf68bc8adc1ebfe95afb4abbf36c5b8ec32b2cc5",
     "apps/api/src/ai_learning_platform_api/automation/__init__.py": "83192a0bb62273eecdbd9ad33ac8bbe2c13641c38cc68740e6e927d4cbe3025f",
     "apps/api/src/ai_learning_platform_api/automation/phase_gate.py": "e3231936d9409b69cca3ff8e52342281ec4ec8da8187ea3ce02fbdcc5fafa35d",
-    "apps/api/tests/test_phase_gate.py": "f23782c0822e6f685600a8c9144fdaf3f212e3f4626797ed374a1d7a6eb2c3ef",
+    "apps/api/tests/test_phase_gate.py": "b44a5aa295773bbfde2f58058056de2320f45d4f2418f46d98f49d8adcb7a7c7",
     "scripts/phase_gate.py": "6f4b92f92ece4a9c1a93df6e8b07212f7387138f419ef494a166e00c6d3fb709",
     "plans/implementation-inventory.md": "3ffbd5ba7af4a0cd6277247b06607105ab7fada4896127193014d873fcf15dbe",
     "plans/F04-vercel-deployment-baseline.md": "f82b1987656e8caaab06c3d27eafe03716cea3b39b3a402d05d488fbfac19c77",
