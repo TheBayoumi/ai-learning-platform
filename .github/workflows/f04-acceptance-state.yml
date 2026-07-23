@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ !startsWith(github.event.head_commit.message, 'Accept F04 Vercel deployment baseline') }}
+    if: github.event.head_commit.message != 'Accept F04 Vercel deployment baseline'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -41,26 +41,25 @@ jobs:
           from datetime import UTC, datetime
           from pathlib import Path
 
-          implementation_sha = "76a90647f0028c58c3f7955fde575d4d21f2774c"
-          deployment_id = "dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH"
+          sha = "76a90647f0028c58c3f7955fde575d4d21f2774c"
+          deployment = "dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH"
           quality_run = "30001175093"
           vercel_run = "30001172411"
-          timestamp = datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+          now = datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
           inventory_path = Path("plans/implementation-inventory.json")
           inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
-          inventory["generated_at"] = timestamp
-          inventory["repository"]["head"] = implementation_sha
+          inventory["generated_at"] = now
+          inventory["repository"]["head"] = sha
           inventory["repository"]["working_tree"] = (
-              "F04 acceptance-state revision: exact implementation head "
-              f"{implementation_sha} passed Vercel deployment {deployment_id}, all five Quality "
-              f"Gates in run {quality_run}, and both dedicated Vercel evidence jobs in run "
-              f"{vercel_run}; no successor foundation phase is defined"
+              f"F04 acceptance state: implementation {sha} passed READY deployment {deployment}, "
+              f"Quality Gates run {quality_run}, and dedicated Vercel run {vercel_run}; "
+              "no successor foundation phase is defined"
           )
-          for source in (
+          for source in [
               "plans/F04-vercel-resource-measurements-evidence.json",
               "plans/F04-vercel-deployment-baseline.md",
-          ):
+          ]:
               if source not in inventory["repository"]["source_of_truth"]:
                   inventory["repository"]["source_of_truth"].append(source)
           capability = (
@@ -69,40 +68,38 @@ jobs:
           )
           if capability not in inventory["runtime_capabilities"]["implemented"]:
               inventory["runtime_capabilities"]["implemented"].append(capability)
-
-          f04 = next(phase for phase in inventory["phases"] if phase["id"] == "F04")
-          for evidence in (
-              f"Exact implementation revision {implementation_sha} deployed as {deployment_id} in READY preview state and passed Vercel build reproducibility plus protected deployed-page/resource workflow run {vercel_run}",
-              f"Exact Quality Gates run {quality_run} passed API quality, Web quality, Runtime smoke, Phase gate, and Gate projection on implementation revision {implementation_sha}",
-              "Resource verifier regressions accept only identical duplicated provider metrics, reject conflicting values, and normalize bounded clone-duration seconds or milliseconds",
-              "Repository payload gate passed with ai-learning-platform.7z absent and untracked and exactly one /ai-learning-platform.7z root ignore rule",
-          ):
+          f04 = next(item for item in inventory["phases"] if item["id"] == "F04")
+          for evidence in [
+              f"Exact implementation {sha} deployed as {deployment} in READY preview state and passed dedicated Vercel run {vercel_run}",
+              f"Exact Quality Gates run {quality_run} passed API quality, Web quality, Runtime smoke, Phase gate, and Gate projection on {sha}",
+              "Resource parsing accepts only identical duplicated provider metrics, rejects conflicts, and normalizes bounded clone-duration seconds or milliseconds",
+              "Payload hygiene passed with ai-learning-platform.7z absent and untracked and exactly one /ai-learning-platform.7z ignore rule",
+          ]:
               if evidence not in f04["tests"]:
                   f04["tests"].append(evidence)
-          f04["status"] = "PASSED"
-          f04["gate_decision"] = "Continue"
-          f04["missing_outputs"] = []
-          f04["blocker_ids"] = []
-          f04["external_blockers"] = []
-          f04["human_decisions"] = []
-          f04["next_smallest_action"] = (
-              "No further F04 implementation; confirm this separate acceptance-state "
-              "revision on its exact required checks, then stop because no successor "
-              "foundation phase is defined"
+          f04.update(
+              status="PASSED",
+              gate_decision="Continue",
+              missing_outputs=[],
+              blocker_ids=[],
+              external_blockers=[],
+              human_decisions=[],
+              next_smallest_action=(
+                  "No further F04 implementation; confirm this acceptance-state revision's "
+                  "exact checks and stop because no successor foundation phase is defined"
+              ),
           )
           inventory_path.write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8", newline="\n")
 
           plan_path = Path("plans/F04-vercel-deployment-baseline.md")
           plan = plan_path.read_text(encoding="utf-8")
           status = (
-              "**Status:** `PASSED / Continue`. Exact implementation revision "
-              f"`{implementation_sha}` is deployed as `{deployment_id}` (`READY`) and passed "
-              f"all five Quality Gates in run `{quality_run}` plus build reproducibility and "
-              f"protected deployed-page/resource verification in run `{vercel_run}`. The "
-              "oversized archive is absent from the current tree and the exact recurrence "
-              "gate passed. This separate acceptance-state revision records that evidence; "
-              "its own exact checks are the final publication confirmation.\n"
-              "**Decision owner:**"
+              f"**Status:** `PASSED / Continue`. Exact implementation `{sha}` is deployed as "
+              f"`{deployment}` (`READY`) and passed all five Quality Gates in run "
+              f"`{quality_run}` plus build reproducibility and protected deployed-page/resource "
+              f"verification in run `{vercel_run}`. The payload gate passed. This separate "
+              "acceptance-state revision records that evidence; its own exact checks are the "
+              "final publication confirmation.\n**Decision owner:**"
           )
           plan, count = re.subn(
               r"\*\*Status:\*\*.*?\n\*\*Decision owner:\*\*",
@@ -113,94 +110,72 @@ jobs:
           )
           if count != 1:
               raise RuntimeError("F04 status section mismatch")
+          section = f'''## Implementation Publication and Acceptance
 
-          acceptance_section = f'''## Implementation Publication and Acceptance
+Exact implementation revision `{sha}` passed the complete implementation-side F04
+chain: Vercel deployment `{deployment}` reached `READY`; Quality Gates run
+`{quality_run}` passed all five required jobs; dedicated run `{vercel_run}` passed
+build reproducibility and protected deployed-page/resource verification; and the
+repository payload gate passed. The verifier accepts identical duplicated provider
+metrics, rejects conflicting values, and normalizes bounded clone durations reported
+in seconds or milliseconds.
 
-Exact implementation revision `{implementation_sha}` passed every F04 implementation
-publication requirement on the same immutable revision:
-
-- Vercel deployment `{deployment_id}` reached `READY` for the exact branch and SHA;
-- Quality Gates run `{quality_run}` passed API quality, Web quality, Runtime smoke,
-  Phase gate, and Gate projection;
-- dedicated Vercel run `{vercel_run}` passed build reproducibility and protected
-  deployed-page verification with bounded resource measurements;
-- the deployed page retained accessible API-unavailable behavior and browser
-  confidentiality boundaries;
-- identical duplicated provider metrics are normalized while conflicting values
-  fail closed, and clone durations are boundedly normalized from seconds or
-  milliseconds; and
-- the repository payload check passed with the 66,312,302-byte archive absent from
-  the current tree and its exact root ignore rule present once.
-
-This document/state change is the separate F04 acceptance-state revision. It marks
-F04 `PASSED / Continue` without defining F05, promoting production, deploying the
-FastAPI API, satisfying V00, unlocking V01, or making a readiness claim. Its own
-exact Vercel and GitHub checks remain the final publication confirmation.
+This separate state revision marks F04 `PASSED / Continue`. It does not define F05,
+promote production, deploy FastAPI, satisfy V00, unlock V01, or make a readiness
+claim. Its own exact checks remain the final publication confirmation.
 '''
           if "## Implementation Publication and Acceptance" not in plan:
               marker = "\n## Data, Privacy, Security, and Compatibility\n"
               if marker not in plan:
-                  raise RuntimeError("F04 acceptance insertion marker missing")
-              plan = plan.replace(marker, "\n" + acceptance_section + marker, 1)
-
+                  raise RuntimeError("acceptance insertion marker missing")
+              plan = plan.replace(marker, "\n" + section + marker, 1)
           plan = plan.replace(
               "F04 therefore remains `Revise`. The bounded traffic-reversion repair is now\ncomplete",
               "F04's traffic-reversion requirement is satisfied. The bounded proof is\ncomplete",
               1,
           )
-          next_boundary = f'''## Next Boundary
+          boundary = f'''## Next Boundary
 
-F04 is `PASSED / Continue` based on exact implementation revision
-`{implementation_sha}`, deployment `{deployment_id}`, Quality Gates run
-`{quality_run}`, and dedicated Vercel evidence run `{vercel_run}`. Require this
-acceptance-state revision's own exact Vercel deployment, build/resource evidence,
-and five Quality Gates to pass. Once confirmed, update pull request #5 as merge-ready
-and stop. No F05 is defined; do not invent one, merge without explicit instruction,
-close issue #3 prematurely, or alter the V00/V01 validation boundary.
+F04 is `PASSED / Continue` based on implementation `{sha}`, deployment
+`{deployment}`, Quality Gates run `{quality_run}`, and dedicated Vercel run
+`{vercel_run}`. Require this acceptance-state revision's own exact Vercel and five
+GitHub checks. Once confirmed, update pull request #5 as merge-ready and stop. No F05
+is defined; do not invent one or merge without explicit instruction.
 '''
-          plan, count = re.subn(r"## Next Boundary\n\n.*\Z", next_boundary, plan, count=1, flags=re.S)
+          plan, count = re.subn(r"## Next Boundary\n\n.*\Z", boundary, plan, count=1, flags=re.S)
           if count != 1:
-              raise RuntimeError("F04 next-boundary section mismatch")
+              raise RuntimeError("next-boundary section mismatch")
           plan_path.write_text(plan, encoding="utf-8", newline="\n")
 
           checkpoint_path = Path("plans/autonomous-loop/checkpoint.md")
           checkpoint = checkpoint_path.read_text(encoding="utf-8")
           checkpoint_section = f'''## Run 29 F04 acceptance-state publication
 
-F04 implementation revision `{implementation_sha}` passed the complete exact-head
-publication chain. Vercel preview `{deployment_id}` is `READY`; Quality Gates run
-`{quality_run}` passed API quality, Web quality, Runtime smoke, Phase gate, and Gate
-projection; dedicated run `{vercel_run}` passed build reproducibility and protected
-deployed-page/resource verification. The payload gate also passed with the oversized
-archive absent and its narrow recurrence rule intact.
-
-This separate state revision marks F04 `PASSED / Continue`, sets the foundation
-frontier to `PHASE_PASSED`, and records `NO_DEFINED_SUCCESSOR`. V00 remains
-`WAITING_EXTERNAL / Revise`, V01 remains locked, and all readiness claims remain
-false. This acceptance revision must pass its own exact checks before pull request #5
-is described as merge-ready; no merge is performed here.
+Implementation `{sha}` passed READY deployment `{deployment}`, all five Quality Gates
+in run `{quality_run}`, and both dedicated Vercel evidence jobs in run `{vercel_run}`.
+The payload gate passed. This separate revision marks F04 `PASSED / Continue`, sets
+the foundation frontier to `PHASE_PASSED`, and records `NO_DEFINED_SUCCESSOR`.
+V00 remains externally blocked, V01 remains locked, and no merge is performed here.
 
 '''
           if "## Run 29 F04 acceptance-state publication" not in checkpoint:
-              checkpoint = checkpoint.replace("# Autonomous Loop Checkpoint\n\n", "# Autonomous Loop Checkpoint\n\n" + checkpoint_section, 1)
+              checkpoint = checkpoint.replace(
+                  "# Autonomous Loop Checkpoint\n\n",
+                  "# Autonomous Loop Checkpoint\n\n" + checkpoint_section,
+                  1,
+              )
           checkpoint_path.write_text(checkpoint, encoding="utf-8", newline="\n")
 
           run_log_path = Path("plans/autonomous-loop/run-log.md")
           run_log = run_log_path.read_text(encoding="utf-8")
           run_section = f'''\n\n## Run 29 - 2026-07-23 (F04 acceptance-state publication)
 
-Exact implementation revision `{implementation_sha}` passed all implementation-side
-F04 gates. Vercel deployment `{deployment_id}` reached `READY`; Quality Gates run
-`{quality_run}` passed all five required jobs; and dedicated run `{vercel_run}` passed
-build reproducibility plus protected deployed-page and bounded resource verification.
-The repository payload-hygiene step also passed on that exact revision.
-
-This separate acceptance-state revision changes only authoritative documentation and
-controller/inventory state. It sets F04 to `PASSED / Continue`, clears all F04
-blockers and missing outputs, records the implementation SHA as the last verified
-implementation, and projects a null `NO_DEFINED_SUCCESSOR` foundation boundary. Its
-own exact checks remain required. V00 remains externally blocked, V01 remains locked,
-no readiness claim changes, and no merge or F05 definition is performed.
+Implementation `{sha}` passed Vercel deployment `{deployment}`, Quality Gates run
+`{quality_run}`, and dedicated Vercel run `{vercel_run}`. This separate state revision
+sets F04 to `PASSED / Continue`, clears all F04 blockers and missing outputs, records
+the implementation SHA as last verified, and projects `NO_DEFINED_SUCCESSOR`. Its own
+exact checks remain required. V00/V01 boundaries and all false readiness claims are
+unchanged; no merge or F05 definition occurs.
 '''
           if "## Run 29 - 2026-07-23 (F04 acceptance-state publication)" not in run_log:
               run_log += run_section
@@ -209,14 +184,12 @@ no readiness claim changes, and no merge or F05 definition is performed.
           inventory_md_path = Path("plans/implementation-inventory.md")
           inventory_md = inventory_md_path.read_text(encoding="utf-8")
           intro = f'''Current exact implementation head
-`{implementation_sha}` passed Vercel deployment `{deployment_id}`, all five Quality
-Gates in run `{quality_run}`, and build reproducibility plus protected
-page/resource verification in run `{vercel_run}`. The separate acceptance-state
-revision marks F04 `PASSED / Continue`; its own exact checks remain the final
-publication confirmation. F03 remains durably accepted. F03/F04 are technical
-foundation only, not product or validation evidence.
-The machine-readable record is `plans/implementation-inventory.json`; this
-prose is a synchronized human-readable projection.'''
+`{sha}` passed Vercel deployment `{deployment}`, all five Quality Gates in run
+`{quality_run}`, and dedicated build/protected-page/resource run `{vercel_run}`.
+The separate acceptance-state revision marks F04 `PASSED / Continue`; its own exact
+checks remain the final publication confirmation. F03 remains durably accepted.
+The machine-readable record is `plans/implementation-inventory.json`; this prose is
+a synchronized human-readable projection.'''
           inventory_md, count = re.subn(
               r"Current bounded repair records.*?prose is a synchronized human-readable projection\.",
               intro,
@@ -225,88 +198,70 @@ prose is a synchronized human-readable projection.'''
               flags=re.S,
           )
           if count != 1:
-              raise RuntimeError("inventory Markdown introduction mismatch")
-
-          f04_projection = f'''- F04 - Vercel Deployment Baseline is `PASSED / Continue`. The web-only topology
-  decision remains unchanged: Vercel hosts `apps/web`; the FastAPI deployment remains
-  governed by the approved containers-on-managed-PaaS boundary. Exact implementation
-  revision `{implementation_sha}` deployed as `{deployment_id}` (`READY`), passed all
-  five Quality Gates in run `{quality_run}`, and passed build reproducibility plus
+              raise RuntimeError("inventory introduction mismatch")
+          projection = f'''- F04 - Vercel Deployment Baseline is `PASSED / Continue`. Exact
+  implementation `{sha}` deployed as `{deployment}` (`READY`), passed all five
+  Quality Gates in run `{quality_run}`, and passed build reproducibility plus
   protected deployed-page/resource verification in run `{vercel_run}`. Rollback
-  reversion, deployed confidentiality, real resource observations, and payload
-  hygiene are all bound by sanitized evidence. No API deployment, PaaS vendor
-  selection, V00 evidence, V01 unlock, production promotion, or readiness claim is
-  introduced.'''
+  reversion, confidentiality, real resource observations, and payload hygiene are
+  bound by sanitized evidence. No API deployment, V00/V01 effect, production
+  promotion, or readiness claim is introduced.'''
           inventory_md, count = re.subn(
               r"- F04 - Vercel Deployment Baseline is .*?(?=\n- Payload diagnostics)",
-              f04_projection,
+              projection,
               inventory_md,
               count=1,
               flags=re.S,
           )
           if count != 1:
-              raise RuntimeError("inventory Markdown F04 projection mismatch")
+              raise RuntimeError("inventory F04 projection mismatch")
           inventory_md = inventory_md.replace(
               "| F04 | Foundation | `FAILED_RETRYABLE` | Verify payload hygiene, then publish the separate acceptance revision |",
-              "| F04 | Foundation | `PASSED` | Implementation passed exact Vercel and five-gate evidence; acceptance revision exact checks pending |",
+              "| F04 | Foundation | `PASSED` | Exact implementation evidence passed; acceptance revision checks pending |",
               1,
           )
           inventory_md_path.write_text(inventory_md, encoding="utf-8", newline="\n")
 
           state_path = Path("plans/autonomous-loop/state.json")
           state = json.loads(state_path.read_text(encoding="utf-8"))
-          state["status"] = "READY"
-          state["active_phase"] = "F04"
-          state["active_slice"] = "F04-acceptance-state-revision"
-          state["gate_decision"] = "Continue"
-          state["last_completed_action"] = (
-              f"Implementation revision {implementation_sha} passed READY Vercel deployment "
-              f"{deployment_id}, all five Quality Gates in run {quality_run}, and build plus "
-              f"protected-page/resource verification in run {vercel_run}. This separate "
-              "acceptance-state revision marks F04 PASSED / Continue."
-          )
-          state["next_action"] = (
-              "Require this acceptance-state revision's exact Vercel and five GitHub checks "
-              "to pass, then update pull request #5 as merge-ready and stop; do not merge "
-              "without explicit instruction and do not define F05."
-          )
-          state["stop_reason"] = (
-              "F04 is PASSED / Continue pending confirmation of this exact acceptance-state "
-              "revision. No successor foundation phase is defined. V00 remains "
-              "WAITING_EXTERNAL / Revise and V01 remains locked."
+          state.update(
+              status="READY",
+              active_phase="F04",
+              active_slice="F04-acceptance-state-revision",
+              gate_decision="Continue",
+              last_completed_action=(
+                  f"Implementation {sha} passed READY deployment {deployment}, all five "
+                  f"Quality Gates in run {quality_run}, and dedicated Vercel run {vercel_run}. "
+                  "This separate revision marks F04 PASSED / Continue."
+              ),
+              next_action=(
+                  "Require this acceptance revision's exact checks, then update PR #5 as "
+                  "merge-ready and stop; do not merge without explicit instruction or define F05."
+              ),
+              stop_reason=(
+                  "F04 is PASSED / Continue pending this exact acceptance revision. No successor "
+                  "foundation phase is defined; V00 remains external and V01 remains locked."
+              ),
+              last_verified_commit=sha,
+              run_number=29,
+              last_run_started_at=now,
+              last_run_completed_at=now,
           )
           state["foundation_track"] = {
               "active_phase": "F04",
               "status": "PHASE_PASSED",
               "gate_decision": "Continue",
-              "next_action": (
-                  "No further F04 implementation; confirm the acceptance revision and stop "
-                  "because no successor foundation phase is defined."
-              ),
+              "next_action": "Confirm the acceptance revision and stop; no successor is defined.",
           }
-          state["implementation_inventory"]["generated_at"] = timestamp
-          state["last_verified_commit"] = implementation_sha
-          state["run_number"] = 29
-          state["last_run_started_at"] = timestamp
-          state["last_run_completed_at"] = timestamp
+          state["implementation_inventory"]["generated_at"] = now
           state["future_phase_boundary"] = {
               "phase": None,
               "status": "NO_DEFINED_SUCCESSOR",
-              "next_action": (
-                  "No successor foundation phase is defined; stop after confirming F04 "
-                  "acceptance and do not invent F05."
-              ),
+              "next_action": "Stop after confirming F04 acceptance; do not invent F05.",
           }
-
-          for path in (
-              inventory_path,
-              plan_path,
-              checkpoint_path,
-              run_log_path,
-              inventory_md_path,
-          ):
-              canonical = path.read_bytes().replace(b"\r\n", b"\n")
-              state["authoritative_file_hashes"][str(path)] = hashlib.sha256(canonical).hexdigest()
+          for path in [inventory_path, plan_path, checkpoint_path, run_log_path, inventory_md_path]:
+              data = path.read_bytes().replace(b"\r\n", b"\n")
+              state["authoritative_file_hashes"][str(path)] = hashlib.sha256(data).hexdigest()
           state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8", newline="\n")
           PY
 
