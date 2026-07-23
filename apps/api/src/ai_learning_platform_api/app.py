@@ -58,8 +58,6 @@ def create_app(
     )
     app.include_router(create_health_router())
     if include_product_routes:
-        service = LearningPlanService(
-            resolved_settings.learner_state_secret.get_secret_value()
-        )
+        service = LearningPlanService(resolved_settings.learner_state_secret.get_secret_value())
         app.include_router(create_learning_router(service))
     return app

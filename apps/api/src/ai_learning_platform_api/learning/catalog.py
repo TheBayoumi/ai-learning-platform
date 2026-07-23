@@ -219,7 +219,10 @@ PYTHON_BACKEND_ROLE: Final = RoleDefinition(
             "docker",
             "Docker and runtime packaging",
             "delivery",
-            "Package services reproducibly with minimal runtime privileges and clear configuration.",
+            (
+                "Package services reproducibly with minimal runtime privileges "
+                "and clear configuration."
+            ),
             8,
             (
                 _activity(
@@ -274,7 +277,10 @@ PYTHON_BACKEND_ROLE: Final = RoleDefinition(
             (
                 _activity(
                     "Investigate a failing service request",
-                    "Trace one request from symptom to root cause without leaking confidential data.",
+                    (
+                        "Trace one request from symptom to root cause without leaking "
+                        "confidential data."
+                    ),
                     "An incident timeline, evidence table, fix, and regression test.",
                     "Correlation is preserved",
                     "Sensitive values are excluded",
@@ -282,7 +288,10 @@ PYTHON_BACKEND_ROLE: Final = RoleDefinition(
                 ),
                 _activity(
                     "Design bounded diagnostic events",
-                    "Define useful operational events with low cardinality and explicit privacy rules.",
+                    (
+                        "Define useful operational events with low cardinality and explicit "
+                        "privacy rules."
+                    ),
                     "An event schema, examples, and volume budget.",
                     "Fields have stable semantics",
                     "Untrusted text is excluded",
@@ -307,7 +316,10 @@ PYTHON_BACKEND_ROLE: Final = RoleDefinition(
                 ),
                 _activity(
                     "Present a technical incident update",
-                    "Communicate impact, evidence, mitigation, and next action without speculation.",
+                    (
+                        "Communicate impact, evidence, mitigation, and next action without "
+                        "speculation."
+                    ),
                     "A stakeholder update and technical appendix.",
                     "Known facts and hypotheses are separated",
                     "Impact is concrete",

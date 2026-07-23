@@ -86,8 +86,6 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
   }, []);
 
   const loadPlatform = useCallback(async () => {
-    setBusy(true);
-    setError(null);
     try {
       const roleValue = await platformRequest("roles");
       if (!isRoleList(roleValue)) {
@@ -121,7 +119,10 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
   }, [storePlan]);
 
   useEffect(() => {
-    void loadPlatform();
+    const handle = window.setTimeout(() => {
+      void loadPlatform();
+    }, 0);
+    return () => window.clearTimeout(handle);
   }, [loadPlatform]);
 
   const createPlan = async (event: FormEvent<HTMLFormElement>) => {
@@ -240,7 +241,15 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
       {error !== null ? (
         <div className="error-banner" role="alert">
           <p>{error}</p>
-          <button className="text-button" type="button" onClick={() => void loadPlatform()}>
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => {
+              setBusy(true);
+              setError(null);
+              void loadPlatform();
+            }}
+          >
             Retry connection
           </button>
         </div>

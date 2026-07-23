@@ -225,7 +225,10 @@ class LearningPlanService:
         current = next((item for item in state.activities if item.id not in completed), None)
         priorities = sorted(
             role.competencies,
-            key=lambda item: (-(100 - state.mastery.get(item.identifier, 0)) * item.weight, item.identifier),
+            key=lambda item: (
+                -(100 - state.mastery.get(item.identifier, 0)) * item.weight,
+                item.identifier,
+            ),
         )[:4]
         total_weight = sum(item.weight for item in role.competencies)
         weighted_mastery = sum(
@@ -290,7 +293,7 @@ class LearningPlanService:
         selector = int(seed[(position - 1) * 2 : position * 2], 16)
         template = competency.activities[selector % len(competency.activities)]
         fingerprint = hashlib.sha256(
-            f"{seed}|{role.version}|{competency.identifier}|{position}".encode("utf-8")
+            f"{seed}|{role.version}|{competency.identifier}|{position}".encode()
         ).hexdigest()[:12]
         context = experience_summary or "current self-assessment and target role"
         return ActivityView(

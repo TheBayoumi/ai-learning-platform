@@ -22,7 +22,10 @@ COMMITTED_CONTRACT = API_ROOT / "openapi" / "health.openapi.json"
 
 def test_generated_document_is_the_complete_health_only_runtime_contract() -> None:
     document = build_health_openapi_document()
-    runtime_document = create_app(Settings(environment="test", log_level="CRITICAL")).openapi()
+    runtime_document = create_app(
+        Settings(environment="test", log_level="CRITICAL"),
+        include_product_routes=False,
+    ).openapi()
 
     assert document == runtime_document
     assert set(document["paths"]) == HEALTH_PATHS
@@ -89,7 +92,7 @@ def test_scope_guard_rejects_an_unapproved_route(monkeypatch: pytest.MonkeyPatch
     async def not_approved() -> dict[str, str]:
         return {"status": "not-approved"}
 
-    monkeypatch.setattr(health_openapi, "create_app", lambda _settings: app)
+    monkeypatch.setattr(health_openapi, "create_app", lambda _settings, **_kwargs: app)
 
     with pytest.raises(RuntimeError, match="scope changed"):
         build_health_openapi_document()
@@ -103,7 +106,11 @@ def test_scope_guard_rejects_a_document_without_paths(
         def openapi() -> dict[str, object]:
             return {}
 
-    monkeypatch.setattr(health_openapi, "create_app", lambda _settings: AppWithoutPaths())
+    monkeypatch.setattr(
+        health_openapi,
+        "create_app",
+        lambda _settings, **_kwargs: AppWithoutPaths(),
+    )
 
     with pytest.raises(RuntimeError, match="no paths object"):
         build_health_openapi_document()

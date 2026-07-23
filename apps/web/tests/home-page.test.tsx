@@ -12,9 +12,9 @@ vi.mock("../server/health/runtime-health", () => runtime);
 import HomePage, { dynamic } from "../app/page";
 
 const LABELS: ReadonlyArray<readonly [ApiAvailability, string]> = [
-  ["available", "Local API available"],
-  ["unavailable", "Local API unavailable"],
-  ["invalid-response", "Local API response invalid"]
+  ["available", "Learning service online"],
+  ["unavailable", "Learning service unavailable"],
+  ["invalid-response", "Learning service contract mismatch"]
 ];
 
 beforeEach(() => {

@@ -6,7 +6,7 @@ from uuid import UUID
 
 import httpx
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from ai_learning_platform_api.app import create_app
 from ai_learning_platform_api.learning.schemas import PlanRequest
@@ -21,7 +21,7 @@ async def request(method: str, path: str, json: object | None = None) -> httpx.R
         Settings(
             environment="test",
             log_level="CRITICAL",
-            learner_state_secret=TEST_SECRET,
+            learner_state_secret=SecretStr(TEST_SECRET),
         )
     )
     transport = httpx.ASGITransport(app=app)
@@ -110,9 +110,7 @@ def test_create_resume_and_complete_activity_round_trip() -> None:
 
 
 def test_tampered_state_and_duplicate_ratings_fail_closed() -> None:
-    create_response = asyncio.run(
-        request("POST", "/api/v1/plans", {"learner_name": "Ahmed"})
-    )
+    create_response = asyncio.run(request("POST", "/api/v1/plans", {"learner_name": "Ahmed"}))
     token = create_response.json()["state_token"]
     replacement = "A" if token[-1] != "A" else "B"
 
@@ -150,9 +148,7 @@ def test_learner_context_changes_unique_activity_identity() -> None:
         id_factory=lambda: UUID("00000000-0000-0000-0000-000000000001"),
     )
 
-    first = service.create_plan(
-        PlanRequest(learner_name="Mona", experience_summary="QA engineer")
-    )
+    first = service.create_plan(PlanRequest(learner_name="Mona", experience_summary="QA engineer"))
     second = service.create_plan(
         PlanRequest(learner_name="Mona", experience_summary="Data analyst")
     )
