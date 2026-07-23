@@ -153,12 +153,22 @@ jobs:
       - name: Verify real cross-process runtime smoke
         shell: bash
         run: |
-          set -o pipefail
+          set +e
           mkdir -p "$RUNNER_TEMP/runtime-smoke-repair"
           uv run --project apps/api --locked python scripts/smoke.py \
-            2>&1 | tee "$RUNNER_TEMP/runtime-smoke-repair/smoke.txt"
+            >"$RUNNER_TEMP/runtime-smoke-repair/outer.txt" 2>&1
+          status=$?
+          if test "$status" -ne 0; then
+            set +o pipefail
+            uv run --project apps/api --locked \
+              python -m ai_learning_platform_api.development.smoke 2>&1 \
+              | grep '^\[smoke\]' \
+              | tail -n 1 \
+              >"$RUNNER_TEMP/runtime-smoke-repair/safe-inner.txt"
+          fi
+          exit "$status"
 
-      - name: Upload exact smoke output
+      - name: Upload safe smoke output
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
