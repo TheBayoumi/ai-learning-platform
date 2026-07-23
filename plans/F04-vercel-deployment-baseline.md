@@ -2,13 +2,7 @@
 
 **Phase:** `F04 - Vercel Deployment Baseline`
 **Class:** Technical foundation
-**Status:** `FAILED_RETRYABLE / Revise`. Rollback reversion, exact deployed-page
-verification, build reproducibility, and real resource measurements are proven
-by sanitized exact-SHA evidence. This revision removes the unrelated
-66,312,302-byte archive from the current tree without rewriting history and adds
-a root-specific recurrence rule. F04 still requires this implementation head to
-pass its own Vercel and five Quality Gates, followed by a separate acceptance-state
-revision.
+**Status:** `PASSED / Continue`. Exact implementation `76a90647f0028c58c3f7955fde575d4d21f2774c` is deployed as `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH` (`READY`) and passed all five Quality Gates in run `30001175093` plus build reproducibility and protected deployed-page/resource verification in run `30001172411`. The payload gate passed. This separate acceptance-state revision records that evidence; its own exact checks are the final publication confirmation.
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** A pull request on `automation/f04-vercel-deployment-baseline`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -256,6 +250,19 @@ adds exactly `/ai-learning-platform.7z` to `.gitignore`; history is not rewritte
 The Phase gate fails if the path exists, remains tracked, or the rule is absent or
 duplicated. Exact-head checks and a separate acceptance revision remain required.
 
+## Implementation Publication and Acceptance
+
+Exact implementation revision `76a90647f0028c58c3f7955fde575d4d21f2774c` passed the complete implementation-side F04 chain:
+Vercel deployment `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH` reached `READY`; Quality Gates run `30001175093` passed all
+five required jobs; dedicated run `30001172411` passed build reproducibility and protected
+deployed-page/resource verification; and the repository payload gate passed. The verifier
+accepts identical duplicated provider metrics, rejects conflicting values, and normalizes
+bounded clone durations reported in seconds or milliseconds.
+
+This separate state revision marks F04 `PASSED / Continue`. It does not define F05,
+promote production, deploy FastAPI, satisfy V00, unlock V01, or make a readiness claim.
+Its own exact checks remain the final publication confirmation.
+
 ## Data, Privacy, Security, and Compatibility
 
 F04 adds no database, learner data, role data, or persistent backend state.
@@ -282,7 +289,7 @@ independently addressable `READY` preview URLs demonstrate historical revision
 access, not movement of served traffic from a newer revision back to an older
 one.
 
-F04 therefore remains `Revise`. The bounded traffic-reversion repair is now
+F04's traffic-reversion requirement is satisfied. The bounded proof is
 complete using the dedicated non-production verification alias
 `f04-reversion-proof-web.vercel.app` and Vercel's supported
 `POST /v2/deployments/{deployment-id}/aliases` endpoint:
@@ -329,7 +336,8 @@ state.
 
 ## Next Boundary
 
-F04 has not passed. Verify this payload-hygiene implementation on its exact Vercel
-deployment and all five Quality Gates. If green, publish a separate acceptance-state
-revision that binds the payload evidence and marks F04 `PASSED / Continue`. Do not
-merge, define F05, or close issue #3 before that acceptance revision passes.
+F04 is `PASSED / Continue` based on implementation `76a90647f0028c58c3f7955fde575d4d21f2774c`, deployment `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH` ,
+Quality Gates run `30001175093`, and dedicated Vercel run `30001172411`. Require this
+acceptance-state revision's own exact Vercel and five GitHub checks. Once confirmed,
+update pull request #5 as merge-ready and stop. No F05 is defined; do not invent one or
+merge without explicit instruction.

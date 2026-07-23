@@ -1,15 +1,12 @@
 # Implementation Inventory
 
-Current bounded repair records exact implementation head
-`4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c`, which passed Vercel deployment
-status, the dedicated protected-page workflow, and all five exact GitHub quality
-jobs. The dedicated non-production alias proof resolves
-`f04.rollback_reversion`; the committed exact-SHA protected-page proof now also
-resolves only `f04.deployed_page_verification`. F04 remains
-`FAILED_RETRYABLE / Revise` with three blockers. F03 remains durably accepted;
-F03/F04 are technical foundation, not product or validation evidence.
-The machine-readable record is `plans/implementation-inventory.json`; this
-prose is a synchronized human-readable projection.
+Current exact implementation head
+`76a90647f0028c58c3f7955fde575d4d21f2774c` passed Vercel deployment `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH`, all five Quality Gates in run
+`30001175093`, and dedicated build/protected-page/resource run `30001172411`.
+The separate acceptance-state revision marks F04 `PASSED / Continue`; its own exact
+checks remain the final publication confirmation. F03 remains durably accepted.
+The machine-readable record is `plans/implementation-inventory.json`; this prose is
+a synchronized human-readable projection.
 
 ## Current Evidence
 
@@ -115,55 +112,12 @@ prose is a synchronized human-readable projection.
   `29577006084` and `29577007722`, making F03 durably `PASSED / Continue`.
 - GitHub remains the source, CI, exact-revision acceptance, and integration
   control plane.
-- F04 - Vercel Deployment Baseline is `FAILED_RETRYABLE / Revise`. The topology decision
-  required by GitHub issue #3 is recorded: `specs/tech-stack.md` approves
-  "Containers on a managed PaaS" as the backend runtime (binding; only the
-  vendor is Provisional), so F04 selects Option 2 — Vercel hosts only the
-  Next.js web tier; the FastAPI API's deployment remains governed by the
-  existing approved decision, with vendor selection deferred. Direct
-  verification (`gh secret list`, GitHub check-runs, and commit-status
-  queries) confirmed no Vercel secret or connected project existed before
-  this phase began. A real Vercel account, organization, and project
-  (`web`, scoped to `apps/web`) now exist via the Vercel CLI, with
-  `.vercel/` and `.env.local` confirmed git-ignored and untracked. The user
-  authorized a GitHub Login Connection on the Vercel account and ran
-  `vercel git connect`, which succeeded; verified via the Vercel REST API
-  that `link.type=github`, `link.repo=ai-learning-platform`. A real defect
-  was found and fixed: the project's Root Directory was `.` (repo root,
-  which fails Next.js detection); corrected to `apps/web` via
-  `PATCH /v9/projects/{id}`, confirmed via a follow-up `GET`. Vercel's native
-  GitHub App integration needs no repository secret for deployment. The later
-  protected-page verifier uses short-lived `VERCEL_API_TOKEN` and
-  `VERCEL_AUTOMATION_BYPASS_SECRET` Actions secrets under the documented
-  trusted-push boundary; no value is committed or logged.
-  `vercel rollback` returned HTTP 422 for the preview target; this remains
-  rejected-command evidence, not traffic reversion.
-  `f04-reversion-proof-web.vercel.app` subsequently moved B to prior preview A
-  and back to intended final B through Vercel's supported alias API. Each
-  transition verified exclusive alias ownership, exact deployment ID and SHA,
-  `READY` preview state, and protected application HTTP without a redirect or
-  confidential browser content. The Git-managed branch alias and production
-  aliases were unchanged. Sanitized evidence is committed at
-  `plans/F04-vercel-alias-reversion-evidence.json`.
-  Exact deployed-page implementation revision
-  `4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c` passed dedicated workflow run
-  `29865352967` and exact push Quality Gates run `29865352971`. Sanitized
-  artifact `8508962218` binds GitHub deployment `5545146544` to `READY` preview
-  `dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA`, the exact SHA/project/branch, protected
-  HTTP 200 with no redirect, accessible API-unavailable semantics, and seven
-  shared-rule-confidential browser assets. The focused suite passed 40 tests;
-  independent rereview returned `PASS / Continue` after the PowerShell runbook
-  was corrected to use the verified `npm.cmd` entrypoint. First record revision
-  `cde7940a308ba81324713d1763a56908922b8886` then exposed a GitHub
-  deployment-status propagation race in failed run `29866121231`: the exact
-  deployment was visible before its status list. Empty lists now poll under the
-  existing bound while malformed, ambiguous, and terminal statuses fail closed;
-  all 41 focused tests, all 138 web tests, lint, strict typecheck, production
-  build, confidentiality scan, and focused rereview pass. Exact resource revision
-  `3f83e3e74d1fc587d90c30b1756c7f2dec994ba3` and run `29977879812` now
-  commit the real build, footprint, cache, latency, runtime, and bounded cost
-  evidence. No FastAPI deployment, PaaS vendor selection, or V00/V01
-  evidence is introduced.
+- F04 - Vercel Deployment Baseline is `PASSED / Continue`. Exact implementation
+  `76a90647f0028c58c3f7955fde575d4d21f2774c` deployed as `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH` (`READY`), passed all five Quality Gates in
+  run `30001175093`, and passed build reproducibility plus protected deployed-page/resource
+  verification in run `30001172411`. Rollback reversion, confidentiality, real resource
+  observations, and payload hygiene are bound by sanitized evidence. No API deployment,
+  V00/V01 effect, production promotion, or readiness claim is introduced.
 - Payload diagnostics confirmed the unrelated `ai-learning-platform.7z` was
   66,312,302 bytes and 97.6% of tracked blob bytes. This repair removes it from the
   current tree without history rewriting, updates its three references, and adds
@@ -183,7 +137,7 @@ prose is a synchronized human-readable projection.
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
 | F03 | Foundation | `PASSED` | Implementation and acceptance revisions passed their own exact required runs |
-| F04 | Foundation | `FAILED_RETRYABLE` | Verify payload hygiene, then publish the separate acceptance revision |
+| F04 | Foundation | `PASSED` | Exact implementation evidence passed; acceptance revision checks pending |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |

@@ -946,3 +946,12 @@ production build, and confidentiality scan pass; focused independent rereview
 returned `PASS / Continue`. A new bounded repair revision must pass the exact
 Vercel deployment, dedicated verifier, and five quality jobs; the failed
 revision is not accepted.
+
+## Run 29 - 2026-07-23 (F04 acceptance-state publication)
+
+Implementation `76a90647f0028c58c3f7955fde575d4d21f2774c` passed Vercel deployment `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH`, Quality Gates run
+`30001175093`, and dedicated Vercel run `30001172411`. This separate state revision
+sets F04 to `PASSED / Continue`, clears all F04 blockers and missing outputs, records
+the implementation SHA as last verified, and projects `NO_DEFINED_SUCCESSOR`. Its own
+exact checks remain required. V00/V01 boundaries and false readiness claims are
+unchanged; no merge or F05 definition occurs.

@@ -1,5 +1,13 @@
 # Autonomous Loop Checkpoint
 
+## Run 29 F04 acceptance-state publication
+
+Implementation `76a90647f0028c58c3f7955fde575d4d21f2774c` passed READY deployment `dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH`, all five Quality Gates
+in run `30001175093`, and both dedicated Vercel evidence jobs in run `30001172411`.
+The payload gate passed. This separate revision marks F04 `PASSED / Continue`, sets
+the foundation frontier to `PHASE_PASSED`, and records `NO_DEFINED_SUCCESSOR`.
+V00 remains externally blocked, V01 remains locked, and no merge is performed here.
+
 ## Run 27 current phase and gate
 
 F04 remains active and `FAILED_RETRYABLE / Revise`. This bounded repair started
