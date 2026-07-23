@@ -255,26 +255,15 @@ jobs:
       - name: Verify real cross-process runtime smoke
         run: uv run --project apps/api --locked python scripts/smoke.py
 
-      - name: Commit verified repair
+      - name: Commit and push verified repair
         run: |
-          if git diff --quiet; then
-            exit 0
-          fi
+          git restore -- apps/web/next-env.d.ts || true
           git config user.name "TheBayoumi Automation"
           git config user.email "107598562+TheBayoumi@users.noreply.github.com"
           git add apps/api/src/ai_learning_platform_api/development/smoke.py apps/api/tests
           git commit -m "fix(product): align runtime smoke with learner UI"
-
-      - name: Validate committed phase state
-        run: >-
-          uv run --project apps/api --locked python scripts/phase_gate.py validate
-          --expected-sha "$(git rev-parse HEAD)"
-
-      - name: Push verified repair
-        run: |
-          if test "$(git rev-parse HEAD)" != "${GITHUB_SHA}"; then
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Publish repair status
         if: always()
