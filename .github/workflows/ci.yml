@@ -106,7 +106,17 @@ jobs:
       - name: Type check
         run: npm run typecheck
       - name: Unit tests
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/web-unit-tests.log"
+      - name: Upload web unit-test log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: web-unit-tests-${{ env.EXACT_HEAD_SHA }}-${{ github.event_name }}
+          path: ${{ runner.temp }}/web-unit-tests.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Production build
         run: npm run build
 
