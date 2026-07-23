@@ -1,0 +1,188 @@
+name: F04 resource-event dedup repair
+
+on:
+  push:
+    branches:
+      - automation/f04-vercel-deployment-baseline
+
+permissions:
+  contents: write
+
+concurrency:
+  group: f04-resource-event-dedup-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: apps/web/.nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Pin npm
+        run: npm install --global npm@11.18.0
+
+      - name: Apply identical-event normalization and tests
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import re
+          from pathlib import Path
+
+          core_path = Path('apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs')
+          core = core_path.read_text(encoding='utf-8')
+          old_parse = re.compile(
+              r'''function parseSingle\(\n'''
+              r'''  logs,\n'''
+              r'''  pattern,\n'''
+              r'''  label,\n'''
+              r'''  transform = \(match\) => Number\(match\[1\]\),\n'''
+              r'''  pending = false\n'''
+              r'''\) \{\n'''
+              r'''  const matches = logs\n'''
+              r'''    \.map\(\(\{ text \}\) => text\.match\(pattern\)\)\n'''
+              r'''    \.filter\(\(match\) => match !== null\);\n'''
+              r'''  if \(matches\.length !== 1\) \{\n'''
+              r'''    fail\(pending \? "logs_pending" : "logs", `Build logs must contain exactly one \$\{label\} record\.`\);\n'''
+              r'''  \}\n'''
+              r'''  return transform\(matches\[0\]\);\n'''
+              r'''\}'''
+          )
+          replacement = '''function parseSingle(
+            logs,
+            pattern,
+            label,
+            transform = (match) => Number(match[1]),
+            pending = false
+          ) {
+            const matches = logs
+              .map(({ text }) => text.match(pattern))
+              .filter((match) => match !== null);
+            if (matches.length === 0) {
+              fail(pending ? "logs_pending" : "logs", `Build logs must contain a ${label} record.`);
+            }
+            const values = matches.map((match) => transform(match));
+            const canonical = JSON.stringify(values[0]);
+            if (values.some((value) => JSON.stringify(value) !== canonical)) {
+              fail("logs", `Build logs contain conflicting ${label} records.`);
+            }
+            return values[0];
+          }'''
+          replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in replacement.splitlines())
+
+          if 'Build logs must contain exactly one ${label} record.' in core:
+              core, count = old_parse.subn(replacement, core, count=1)
+              if count != 1:
+                  raise SystemExit(f'parseSingle replacement count was {count}')
+              core_path.write_text(core, encoding='utf-8', newline='\n')
+          elif 'Build logs contain conflicting ${label} records.' not in core:
+              raise SystemExit('parseSingle is neither baseline nor repaired')
+
+          test_path = Path('apps/web/tests/vercel-resource-measurement-verifier.test.ts')
+          test = test_path.read_text(encoding='utf-8')
+          baseline_signature = '  options: { omitCacheUpload?: boolean; delayCacheUpload?: boolean } = {}'
+          repaired_signature = '''  options: {
+            omitCacheUpload?: boolean;
+            delayCacheUpload?: boolean;
+            duplicateClone?: boolean;
+            conflictingClone?: boolean;
+          } = {}'''
+          repaired_signature = '\n'.join(line[10:] if line.startswith('          ') else line for line in repaired_signature.splitlines())
+          if baseline_signature in test:
+              test = test.replace(baseline_signature, repaired_signature, 1)
+          elif 'duplicateClone?: boolean;' not in test:
+              raise SystemExit('dependency options are neither baseline nor repaired')
+
+          baseline_logs = '''  const buildLogs = logs().filter(
+            ({ text }) => !options.omitCacheUpload || !text.includes("Uploading build cache")
+          );'''
+          baseline_logs = '\n'.join(line[10:] if line.startswith('          ') else line for line in baseline_logs.splitlines())
+          repaired_logs = '''  const buildLogs = logs().filter(
+            ({ text }) => !options.omitCacheUpload || !text.includes("Uploading build cache")
+          );
+          const cloneLog = buildLogs.find(({ text }) => text.startsWith("Cloning completed:"));
+          if (options.duplicateClone && cloneLog) {
+            buildLogs.push({ ...cloneLog, index: buildLogs.length, serial: buildLogs.length });
+          }
+          if (options.conflictingClone && cloneLog) {
+            buildLogs.push({
+              ...cloneLog,
+              index: buildLogs.length,
+              serial: buildLogs.length,
+              text: "Cloning completed: 9.999s"
+            });
+          }'''
+          repaired_logs = '\n'.join(line[10:] if line.startswith('          ') else line for line in repaired_logs.splitlines())
+          if baseline_logs in test:
+              test = test.replace(baseline_logs, repaired_logs, 1)
+          elif 'options.conflictingClone' not in test:
+              raise SystemExit('build-log fixture is neither baseline nor repaired')
+
+          anchor = '  it("retries boundedly until cache-tail records propagate", async () => {'
+          regression = '''  it("accepts identical duplicated provider metrics and rejects conflicts", async () => {
+            await expect(
+              verifyVercelResourceMeasurements(input(), dependencies({ duplicateClone: true }))
+            ).resolves.toMatchObject({ build: { clone_ms: 1958 } });
+
+            await expect(
+              verifyVercelResourceMeasurements(input(), dependencies({ conflictingClone: true }))
+            ).rejects.toThrow(/conflicting clone duration/);
+          });
+
+          '''
+          regression = '\n'.join(line[10:] if line.startswith('          ') else line for line in regression.splitlines())
+          if 'accepts identical duplicated provider metrics and rejects conflicts' not in test:
+              if test.count(anchor) != 1:
+                  raise SystemExit('regression-test anchor mismatch')
+              test = test.replace(anchor, regression + anchor, 1)
+          test_path.write_text(test, encoding='utf-8', newline='\n')
+
+          state_path = Path('plans/autonomous-loop/state.json')
+          state = json.loads(state_path.read_text(encoding='utf-8'))
+          for path in (core_path, test_path):
+              canonical = path.read_bytes().replace(b'\r\n', b'\n')
+              state['authoritative_file_hashes'][str(path)] = hashlib.sha256(canonical).hexdigest()
+          state_path.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8', newline='\n')
+          PY
+
+      - name: Synchronize dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Lint
+        working-directory: apps/web
+        run: npm run lint
+
+      - name: Type check
+        working-directory: apps/web
+        run: npm run typecheck
+
+      - name: Unit tests
+        working-directory: apps/web
+        run: npm test
+
+      - name: Commit verified repair
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add \
+            apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs \
+            apps/web/tests/vercel-resource-measurement-verifier.test.ts \
+            plans/autonomous-loop/state.json
+          git commit -m "fix(f04): deduplicate identical resource metrics"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
