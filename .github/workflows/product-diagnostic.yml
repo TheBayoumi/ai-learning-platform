@@ -53,16 +53,21 @@ jobs:
                   if new in text:
                       return
                   raise RuntimeError(f"repair anchor missing: {path}: {old[:60]}")
-              updated = text.replace(old, new, count)
-              target.write_text(updated, encoding="utf-8", newline="\n")
+              target.write_text(text.replace(old, new, count), encoding="utf-8", newline="\n")
 
+          web_component = "apps/web/components/learning-platform.tsx"
           replace(
-              "apps/web/components/learning-platform.tsx",
+              web_component,
               "  const loadPlatform = useCallback(async () => {\n    setBusy(true);\n    setError(null);\n    try {",
               "  const loadPlatform = useCallback(async () => {\n    try {",
           )
           replace(
-              "apps/web/components/learning-platform.tsx",
+              web_component,
+              "  useEffect(() => {\n    void loadPlatform();\n  }, [loadPlatform]);",
+              "  useEffect(() => {\n    const handle = window.setTimeout(() => {\n      void loadPlatform();\n    }, 0);\n    return () => window.clearTimeout(handle);\n  }, [loadPlatform]);",
+          )
+          replace(
+              web_component,
               "          <button className=\"text-button\" type=\"button\" onClick={() => void loadPlatform()}>\n            Retry connection\n          </button>",
               "          <button\n            className=\"text-button\"\n            type=\"button\"\n            onClick={() => {\n              setBusy(true);\n              setError(null);\n              void loadPlatform();\n            }}\n          >\n            Retry connection\n          </button>",
           )
