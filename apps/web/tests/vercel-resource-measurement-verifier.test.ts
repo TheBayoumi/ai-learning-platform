@@ -34,7 +34,7 @@ function logs() {
     "Browser confidentiality check passed: 10 files, 629571 bytes.",
     "Build Completed in /vercel/output [26s]",
     "Created build cache: 16s",
-    "Uploading build cache [120.17 MB]",
+    "Preparing upload\nUploading build cache [120.17 MB]\nContinuing upload",
     "Build cache uploaded: 2.334s"
   ];
   return texts.map((text, index) => ({ index, created: index, serial: index, text }));

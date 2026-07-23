@@ -238,7 +238,7 @@ function parseBuildMeasurements(logs, deployment, markers) {
   }
   const cacheUploadMb = parseSingle(
     logs,
-    /^Uploading build cache \[([0-9.]+) MB\]$/,
+    /Uploading build cache \[([0-9.]+) MB\]/,
     "cache upload size"
   );
   const createdAt = Date.parse(deployment.created_at);
