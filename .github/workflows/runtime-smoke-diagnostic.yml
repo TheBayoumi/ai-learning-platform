@@ -34,15 +34,13 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
-      - name: Retarget smoke assertions to the learner UI
+      - name: Retarget smoke assertions and fixtures to the learner UI
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          paths = [
-              Path("apps/api/src/ai_learning_platform_api/development/smoke.py"),
-              *Path("apps/api/tests").rglob("*.py"),
-          ]
+          smoke_path = Path("apps/api/src/ai_learning_platform_api/development/smoke.py")
+          smoke_text = smoke_path.read_text(encoding="utf-8")
           replacements = {
               'data-api-state="available"': "service-state-available",
               'data-api-state="unavailable"': "service-state-unavailable",
@@ -55,56 +53,79 @@ jobs:
               'aria-labelledby="api-status-label"': "Junior Python Backend Engineer",
               "This status reports local process liveness only.": "Rate your current evidence",
           }
-          changed = 0
-          for path in paths:
+          updated_smoke = smoke_text
+          for old, new in replacements.items():
+              updated_smoke = updated_smoke.replace(old, new)
+          if updated_smoke == smoke_text:
+              raise RuntimeError("Smoke verifier contract was not updated")
+          smoke_path.write_text(updated_smoke, encoding="utf-8", newline="\n")
+
+          runtime_test = Path("apps/api/tests/test_runtime_smoke.py")
+          test_text = runtime_test.read_text(encoding="utf-8")
+          old_fixture = '''def _available_html() -> str:
+              return """<!doctype html>
+          <section data-api-state="available" aria-labelledby="api-integration-heading">
+            <p role="status" aria-atomic="true" aria-labelledby="api-status-label">Local API available</p>
+            <p>This status reports local process liveness only.</p>
+          </section>
+          """
+          '''
+          new_fixture = '''def _available_html() -> str:
+              return """<!doctype html>
+          <section class="service-state service-state-available" aria-labelledby="learning-product-heading">
+            <h2 id="learning-product-heading">Build your personal path</h2>
+            <p role="status">Learning service online</p>
+            <p>Junior Python Backend Engineer</p>
+            <p>Rate your current evidence</p>
+          </section>
+          """
+          '''
+          old_fixture = "\n".join(line[10:] if line.startswith("          ") else line for line in old_fixture.splitlines()) + "\n"
+          new_fixture = "\n".join(line[10:] if line.startswith("          ") else line for line in new_fixture.splitlines()) + "\n"
+          if old_fixture not in test_text:
+              raise RuntimeError("Runtime smoke HTML fixture anchor missing")
+          test_text = test_text.replace(old_fixture, new_fixture, 1)
+          old_state = '''            _available_html()
+                      .replace('data-api-state="available"', f'data-api-state="{state}"')
+                      .replace("Local API available", label)
+                  )'''
+          new_state = '''            _available_html()
+                      .replace("service-state-available", f"service-state-{state}")
+                      .replace("Learning service online", label)
+                  )'''
+          old_state = "\n".join(line[10:] if line.startswith("          ") else line for line in old_state.splitlines())
+          new_state = "\n".join(line[10:] if line.startswith("          ") else line for line in new_state.splitlines())
+          if old_state not in test_text:
+              raise RuntimeError("Runtime smoke state fixture anchor missing")
+          test_text = test_text.replace(old_state, new_state, 1)
+          for old, new in replacements.items():
+              test_text = test_text.replace(old, new)
+          runtime_test.write_text(test_text, encoding="utf-8", newline="\n")
+
+          for path in Path("apps/api/tests").rglob("*.py"):
+              if path == runtime_test:
+                  continue
               text = path.read_text(encoding="utf-8")
               updated = text
               for old, new in replacements.items():
                   updated = updated.replace(old, new)
               if updated != text:
                   path.write_text(updated, encoding="utf-8", newline="\n")
-                  changed += 1
-          if changed == 0:
-              raise RuntimeError("No smoke contract fixture was updated")
           PY
       - name: Synchronize dependencies
         run: |
           uv sync --project apps/api --locked --all-groups
           npm install --global npm@11.18.0
           npm ci --prefix apps/web
-      - name: Capture API and smoke verification
-        shell: bash
+      - name: Verify API and smoke contracts
         run: |
-          set +e
-          output="$RUNNER_TEMP/runtime-smoke-repair"
-          mkdir -p "$output"
-          run_check() {
-            local name="$1"
-            shift
-            echo "===== $name =====" >>"$output/verification.txt"
-            "$@" >>"$output/verification.txt" 2>&1
-            local status=$?
-            echo "$name=$status" >>"$output/statuses.txt"
-            return "$status"
-          }
-          overall=0
-          run_check format uv run --project apps/api --locked ruff format apps/api scripts || overall=1
-          run_check lint-fix uv run --project apps/api --locked ruff check --fix apps/api scripts || overall=1
-          run_check format-check uv run --project apps/api --locked ruff format --check apps/api scripts || overall=1
-          run_check lint uv run --project apps/api --locked ruff check apps/api scripts || overall=1
-          run_check mypy uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts || overall=1
-          run_check pytest uv run --project apps/api --locked pytest apps/api/tests -q || overall=1
-          run_check smoke uv run --project apps/api --locked python scripts/smoke.py || overall=1
-          echo "$overall" >"$output/overall.exit"
-          exit "$overall"
-      - name: Upload exact repair output
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: runtime-smoke-repair-${{ github.sha }}
-          path: ${{ runner.temp }}/runtime-smoke-repair
-          if-no-files-found: error
-          retention-days: 7
+          uv run --project apps/api --locked ruff format apps/api scripts
+          uv run --project apps/api --locked ruff check --fix apps/api scripts
+          uv run --project apps/api --locked ruff format --check apps/api scripts
+          uv run --project apps/api --locked ruff check apps/api scripts
+          uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
+          uv run --project apps/api --locked pytest apps/api/tests -q
+          uv run --project apps/api --locked python scripts/smoke.py
       - name: Commit verified smoke repair
         run: |
           if git diff --quiet; then
