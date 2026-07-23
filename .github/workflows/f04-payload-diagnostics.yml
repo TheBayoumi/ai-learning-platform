@@ -1,0 +1,105 @@
+name: F04 repository payload diagnostics
+
+on:
+  push:
+    branches:
+      - automation/f04-vercel-deployment-baseline
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Inventory tracked payloads and references
+        run: |
+          mkdir -p "$RUNNER_TEMP/f04-payload"
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          tracked = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
+          tracked = [path for path in tracked if path]
+          records = []
+          archive_suffixes = {
+              ".7z", ".zip", ".rar", ".tar", ".gz", ".tgz", ".bz2", ".xz",
+              ".iso", ".img", ".dmg", ".exe", ".msi", ".apk", ".jar", ".war"
+          }
+          for raw in tracked:
+              path = Path(raw)
+              try:
+                  size = int(subprocess.check_output(["git", "cat-file", "-s", f":{raw}"]).decode().strip())
+              except subprocess.CalledProcessError:
+                  size = path.stat().st_size if path.exists() else 0
+              records.append({
+                  "path": raw,
+                  "bytes": size,
+                  "archive_extension": path.suffix.lower() in archive_suffixes,
+              })
+
+          candidates = [
+              item for item in records
+              if item["archive_extension"] or item["bytes"] >= 10 * 1024 * 1024
+          ]
+          for item in candidates:
+              path = item["path"]
+              basename = Path(path).name
+              history = subprocess.run(
+                  ["git", "log", "--all", "--format=%H %cs %s", "--", path],
+                  check=False,
+                  text=True,
+                  capture_output=True,
+              ).stdout.splitlines()
+              references = subprocess.run(
+                  ["git", "grep", "-n", "-I", "-F", "--", basename],
+                  check=False,
+                  text=True,
+                  capture_output=True,
+              ).stdout.splitlines()
+              item["history"] = history[:50]
+              item["text_references"] = [line for line in references if not line.startswith(f"{path}:")][:100]
+
+          ignore_text = Path(".gitignore").read_text(encoding="utf-8") if Path(".gitignore").exists() else ""
+          output = {
+              "schema_version": 1,
+              "head_sha": subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip(),
+              "tracked_file_count": len(records),
+              "tracked_blob_bytes": sum(item["bytes"] for item in records),
+              "candidates": sorted(candidates, key=lambda item: (-item["bytes"], item["path"])),
+              "largest_tracked_files": sorted(records, key=lambda item: (-item["bytes"], item["path"]))[:25],
+              "gitignore": ignore_text.splitlines(),
+          }
+          destination = Path(os.environ["RUNNER_TEMP"]) / "f04-payload" / "repository-payload-diagnostics.json"
+          destination.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload sanitized payload diagnostics
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: f04-repository-payload-diagnostics-${{ github.sha }}
+          path: ${{ runner.temp }}/f04-payload/repository-payload-diagnostics.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish diagnostic status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS_TARGET: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state=success
+          -f context="F04 / repository payload diagnostics"
+          -f description="Repository payload diagnostic artifact available"
+          -f target_url="$STATUS_TARGET"
