@@ -158,11 +158,7 @@ jobs:
           uv run --locked coverage erase
           uv run --locked coverage run -m pytest
           uv run --locked coverage report --fail-under=95
-      - name: Validate accepted controller state
-        run: >-
-          uv run --project apps/api --locked python scripts/phase_gate.py validate
-          --expected-sha "${{ github.sha }}"
-      - name: Commit verified fixture repair
+      - name: Commit repaired fixtures locally
         run: |
           if git diff --quiet; then
             exit 0
@@ -171,4 +167,9 @@ jobs:
           git config user.email "107598562+TheBayoumi@users.noreply.github.com"
           git add apps/api/tests/test_phase_gate.py plans/autonomous-loop/state.json
           git commit -m "test(f04): retarget accepted-state controller fixtures"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Validate committed fixture repair
+        run: >-
+          uv run --project apps/api --locked python scripts/phase_gate.py validate
+          --expected-sha "$(git rev-parse HEAD)"
+      - name: Push validated fixture repair
+        run: git push origin "HEAD:${GITHUB_REF_NAME}"
