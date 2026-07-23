@@ -159,14 +159,15 @@ prose is a synchronized human-readable projection.
   deployment was visible before its status list. Empty lists now poll under the
   existing bound while malformed, ambiguous, and terminal statuses fail closed;
   all 41 focused tests, all 138 web tests, lint, strict typecheck, production
-  build, confidentiality scan, and focused rereview pass. Remote project and
-  Node/npm behavior are not yet reproducible from versioned
-  configuration, and build/artifact/cache/latency/runtime/cost measurements
-  remain absent. No FastAPI deployment, PaaS vendor selection, or V00/V01
+  build, confidentiality scan, and focused rereview pass. Exact resource revision
+  `3f83e3e74d1fc587d90c30b1756c7f2dec994ba3` and run `29977879812` now
+  commit the real build, footprint, cache, latency, runtime, and bounded cost
+  evidence. No FastAPI deployment, PaaS vendor selection, or V00/V01
   evidence is introduced.
-- The externally created commit also tracks the unrelated 66,312,302-byte
-  `ai-learning-platform.7z`. This amendment does not modify it; its repository and
-  CI-checkout cost remains an explicit scope risk.
+- Payload diagnostics confirmed the unrelated `ai-learning-platform.7z` was
+  66,312,302 bytes and 97.6% of tracked blob bytes. This repair removes it from the
+  current tree without history rewriting, updates its three references, and adds
+  only `/ai-learning-platform.7z` to the root ignore file.
 - Four protected V00 Markdown working copies remain mixed-EOL locally while
   their index blobs are LF and Git reports no content diff. This amendment does
   not rewrite validation evidence; a clean Linux checkout retains the indexed
@@ -182,7 +183,7 @@ prose is a synchronized human-readable projection.
 | F01 | Foundation | `PASSED` | Exact Ubuntu API, web, lifecycle, smoke, and resource gates passed |
 | F02 | Foundation | `PASSED` | Exact Ubuntu API, web, correlation, confidentiality, resource, and lifecycle gates passed |
 | F03 | Foundation | `PASSED` | Implementation and acceptance revisions passed their own exact required runs |
-| F04 | Foundation | `FAILED_RETRYABLE` | Revise reproducibility, measurements, and payload hygiene |
+| F04 | Foundation | `FAILED_RETRYABLE` | Verify payload hygiene, then publish the separate acceptance revision |
 | V00 | Validation | `BLOCKED_EXTERNAL` | Entry passed; Codex owns rule decisions, while real external evidence blocks exit |
 | V01 | Validation | `NOT_STARTED` | V00 candidate, practitioners, and recruitment channel absent |
 | V02 | Validation | `NOT_STARTED` | V01 has not passed |

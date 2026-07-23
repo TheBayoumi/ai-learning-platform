@@ -545,7 +545,13 @@
         "apps/web/scripts/verify-vercel-preview.mjs",
         "apps/web/tests/vercel-preview-verifier.test.ts",
         "plans/F04-vercel-deployed-page-verifier-operations.md",
-        "plans/F04-vercel-deployed-page-verification-evidence.json"
+        "plans/F04-vercel-deployed-page-verification-evidence.json",
+        ".gitignore",
+        "apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs",
+        "apps/web/scripts/lib/vercel-resource-measurement-verifier.d.mts",
+        "apps/web/scripts/verify-vercel-resource-measurements.mjs",
+        "apps/web/tests/vercel-resource-measurement-verifier.test.ts",
+        "plans/F04-vercel-resource-measurements-evidence.json"
       ],
       "tests": [
         "Starting exact head ca08301b46e49945a805f20a07866a931a8e81e0 passed GitHub Actions run 29616557723: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded; Vercel status was success for deployment dpl_64G3A2Zim5iWcQ2YzrQnW9runPii",
@@ -567,20 +573,19 @@
         "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed Vercel status plus deployed-page workflow run 29865352967/job 88752059522; artifact 8508962218 validated exact READY deployment dpl_6U2FrqVs6paxCpnN7EaCd6dLMDTA, protected HTTP 200 with no redirect, API-unavailable semantics, and seven confidential-marker-free assets",
         "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed push Quality Gates run 29865352971: API quality, Web quality, Runtime smoke, Phase gate, and Gate projection all succeeded",
         "Independent read-only review found one PowerShell npm.ps1 argument-forwarding defect; the runbook now requires the verified npm.cmd entrypoint on PowerShell, 40 focused tests pass, and focused rereview returned PASS / Continue",
-        "First evidence/state revision cde7940a308ba81324713d1763a56908922b8886 deployed successfully but verifier run 29866121231/job 88754662946 exposed an empty GitHub deployment-status propagation race; the bounded-poll repair passes 41 focused tests, all 138 web tests, lint, strict typecheck, production build, confidentiality scan, and focused independent rereview"
+        "First evidence/state revision cde7940a308ba81324713d1763a56908922b8886 deployed successfully but verifier run 29866121231/job 88754662946 exposed an empty GitHub deployment-status propagation race; the bounded-poll repair passes 41 focused tests, all 138 web tests, lint, strict typecheck, production build, confidentiality scan, and focused independent rereview",
+        "Exact resource revision 3f83e3e74d1fc587d90c30b1756c7f2dec994ba3 passed dedicated workflow run 29977879812; artifact 8552120216 records the exact READY preview build, footprint, cache, latency, runtime, and bounded cost evidence",
+        "Payload diagnostic head 3d0b9e8b02eb0a8a149247b6c1a0a25fac5eebcb found only ai-learning-platform.7z: 66,312,302 bytes, introduced by 25994d214ed5b39d4b6c73ba0e075b10ee4a5a66, with three planning-document references",
+        "The payload repair removes the archive from the current tree without rewriting history, updates all references, adds only /ai-learning-platform.7z to .gitignore, and adds a fail-closed Phase gate check"
       ],
       "missing_outputs": [
-        "Vercel project configuration and Node/npm installation must be reproducible from version-controlled, non-secret configuration with compatible locked versions",
-        "Build duration, artifact footprint, cache impact, cold/warm page latency, runtime versions, and bounded cost observations remain unrecorded",
-        "The tracked 66,312,302-byte ai-learning-platform.7z must be confirmed unrelated, removed from the current tree without history rewriting, ignored narrowly, and measured as a separate repository-hygiene repair"
+        "The payload-hygiene implementation must pass its exact-head Vercel and five Quality Gates before the separate acceptance-state revision is eligible"
       ],
       "external_blockers": [],
       "human_decisions": [],
-      "next_smallest_action": "Repair only f04.build_reproducibility without starting resource measurements, repository payload hygiene, F04 acceptance, or F05",
+      "next_smallest_action": "Verify the exact payload-hygiene implementation head, then publish the separate F04 acceptance-state revision; do not merge before it passes",
       "gate_decision": "Revise",
       "blocker_ids": [
-        "f04.build_reproducibility",
-        "f04.resource_measurements",
         "f04.repository_payload_hygiene"
       ],
       "claims": [],

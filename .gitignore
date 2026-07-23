@@ -18,3 +18,6 @@ apps/web/*.tsbuildinfo
 
 .vercel
 .env*
+
+# F04 accidental repository archive payload
+/ai-learning-platform.7z

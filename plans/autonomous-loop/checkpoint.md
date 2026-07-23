@@ -154,8 +154,9 @@ The validation lane remains `V00 - Candidate Role Evidence`,
 - Version-controlled Vercel configuration, compatible Vercel Node/npm install,
   deployed confidentiality proof, and required resource/cost measurements remain
   incomplete.
-- The tracked `ai-learning-platform.7z` is 66,312,302 bytes and remains a separate
-  repository-hygiene repair pending reference and impact verification.
+- The unrelated `ai-learning-platform.7z` was verified at 66,312,302 bytes and
+  removed from the current tree without history rewriting. The exact root ignore
+  rule prevents recurrence; exact-head checks remain the publication gate.
 
 ## Bounded repair in this revision
 

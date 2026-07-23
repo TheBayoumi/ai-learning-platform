@@ -2,17 +2,13 @@
 
 **Phase:** `F04 - Vercel Deployment Baseline`
 **Class:** Technical foundation
-**Status:** `FAILED_RETRYABLE / Revise`. The supported non-production alias proof
-in `plans/F04-vercel-alias-reversion-evidence.json` resolves
-`f04.rollback_reversion`. Exact implementation revision
-`4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c` and its committed sanitized evidence
-in `plans/F04-vercel-deployed-page-verification-evidence.json` now also resolve
-only `f04.deployed_page_verification`: GitHub and Vercel identity were joined to
-one exact `READY` preview deployment before protected HTTP, accessible
-API-unavailable semantics, and shared browser-confidentiality rules were
-accepted. F04 remains `FAILED_RETRYABLE / Revise` because version-controlled
-deployment reproducibility, required measurements, and repository payload
-hygiene remain incomplete.
+**Status:** `FAILED_RETRYABLE / Revise`. Rollback reversion, exact deployed-page
+verification, build reproducibility, and real resource measurements are proven
+by sanitized exact-SHA evidence. This revision removes the unrelated
+66,312,302-byte archive from the current tree without rewriting history and adds
+a root-specific recurrence rule. F04 still requires this implementation head to
+pass its own Vercel and five Quality Gates, followed by a separate acceptance-state
+revision.
 **Decision owner:** Primary agent under the autonomous-decision rule
 **Integration surface:** A pull request on `automation/f04-vercel-deployment-baseline`
 **Validation lane:** `V00` remains `WAITING_EXTERNAL / Revise`; `V01` remains locked.
@@ -176,10 +172,15 @@ and issues; installation, rotation, and revocation are documented in
 
 ## Performance and Resources
 
-The live preview exists, but the required build duration, artifact footprint,
-cache impact, cold/warm page latency, runtime-version, and bounded cost
-observations have not yet been recorded. These remain exit-gate outputs; the
-earlier acceptance did not make the missing measurements optional.
+Exact resource revision `3f83e3e74d1fc587d90c30b1756c7f2dec994ba3` passed
+dedicated workflow run `29977879812`; artifact `8552120216` is committed as
+`plans/F04-vercel-resource-measurements-evidence.json`. The exact preview used a
+25,000 ms build on 2 cores/8,192 MB, produced 638,064 deployed bytes, restored
+its cache and uploaded 120,170,000 bytes, and ran Node 24.15.0, npm 11.18.0, and
+Next.js 16.2.10. After 60,000 ms quiescence, the first request measured 300 ms
+TTFB/301 ms total; five repeated samples measured 132 ms median TTFB, 133 ms
+median total, and 251 ms p95 total. No provider cold-start, cache-causality, SLA,
+or dollar-cost claim is made.
 
 The alias proof used three supported REST assignments and bounded control/data
 plane verification. Assignment calls completed in 1,945-2,209 ms, bounded alias
@@ -244,6 +245,17 @@ build, and confidentiality scan pass; and independent focused rereview returned
 `PASS / Continue`. The repair revision must pass its own exact Vercel and GitHub
 checks before publication is complete.
 
+## Repository Payload Hygiene
+
+Diagnostic head `3d0b9e8b02eb0a8a149247b6c1a0a25fac5eebcb` found one
+archive/oversized candidate: root `ai-learning-platform.7z`, 66,312,302 bytes,
+introduced by `25994d214ed5b39d4b6c73ba0e075b10ee4a5a66`. It represented
+97.6% of 67,954,124 tracked blob bytes and had only three planning references.
+This revision removes it with ordinary `git rm`, updates those references, and
+adds exactly `/ai-learning-platform.7z` to `.gitignore`; history is not rewritten.
+The Phase gate fails if the path exists, remains tracked, or the rule is absent or
+duplicated. Exact-head checks and a separate acceptance revision remain required.
+
 ## Data, Privacy, Security, and Compatibility
 
 F04 adds no database, learner data, role data, or persistent backend state.
@@ -255,8 +267,9 @@ Two superseded automation-bypass values were exposed only in ephemeral local
 inspection output during setup. Both were treated as compromised and revoked
 immediately; neither entered Git, GitHub Actions logs, artifacts, pull requests,
 or issues. The final bypass remains unexposed. A rejected personal-scope Vercel
-token was also revoked; the dedicated verifier token is short-lived and expires
-2026-07-22. The evidence schema stores hashes and bounded metadata only, never
+token was also revoked. An HTTP 403 later exposed an expired or unauthorized
+repository secret; the user rotated `VERCEL_API_TOKEN`, and only sanitized
+failure/pass evidence is recorded. The evidence schema stores hashes and bounded metadata only, never
 credentials, cookies, authorization headers, raw HTML, or temporary share URLs.
 
 ## Rollback
@@ -316,7 +329,7 @@ state.
 
 ## Next Boundary
 
-F04 has not passed. Stop after publishing and verifying this bounded
-deployed-page verification repair. The only next eligible action is
-`f04.build_reproducibility`. Do not begin that repair, measurements, archive
-hygiene, F04 acceptance, F05, merge, or issue closure in this invocation.
+F04 has not passed. Verify this payload-hygiene implementation on its exact Vercel
+deployment and all five Quality Gates. If green, publish a separate acceptance-state
+revision that binds the payload evidence and marks F04 `PASSED / Continue`. Do not
+merge, define F05, or close issue #3 before that acceptance revision passes.
