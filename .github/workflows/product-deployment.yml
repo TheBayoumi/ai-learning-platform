@@ -43,6 +43,20 @@ jobs:
           esac
           test "$(git rev-parse HEAD)" = "$EXACT_SHA"
 
+      - name: Configure backend FastAPI project
+        env:
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          TEAM_ID: team_bZWPrEPMa4sBoWU7syo3ZIRZ
+          BACKEND_PROJECT_NAME: ai-learning-platform-api
+        run: |
+          test -n "$VERCEL_API_TOKEN"
+          curl -fsS -X PATCH \
+            "https://api.vercel.com/v9/projects/$BACKEND_PROJECT_NAME?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data '{"framework":"fastapi","serverlessFunctionRegion":"fra1"}' \
+            | jq -e '.framework == "fastapi"' >/dev/null
+
       - name: Deploy and verify connected product
         env:
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
@@ -58,7 +72,10 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: product-deployment-evidence-${{ github.sha }}
-          path: ${{ runner.temp }}/product-deployment-evidence.json
+          path: |
+            ${{ runner.temp }}/product-deployment-evidence.json
+            ${{ runner.temp }}/backend-deploy.txt
+            ${{ runner.temp }}/frontend-deploy.txt
           if-no-files-found: error
           retention-days: 30
 
