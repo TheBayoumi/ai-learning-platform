@@ -27,8 +27,11 @@ class OpenAPIContractDriftError(RuntimeError):
 
 
 def build_health_openapi_document() -> dict[str, Any]:
-    """Return the complete generated document after enforcing F01 health scope."""
-    app = create_app(Settings(environment="test", log_level="CRITICAL"))
+    """Return the health-only generated document used by the compatibility gate."""
+    app = create_app(
+        Settings(environment="test", log_level="CRITICAL"),
+        include_product_routes=False,
+    )
     document = app.openapi()
     paths = document.get("paths")
     if not isinstance(paths, dict):
@@ -37,7 +40,7 @@ def build_health_openapi_document() -> dict[str, Any]:
     actual_paths = frozenset(str(path) for path in paths)
     if actual_paths != HEALTH_PATHS:
         raise RuntimeError(
-            "F01 health OpenAPI scope changed: "
+            "Health OpenAPI scope changed: "
             f"expected {sorted(HEALTH_PATHS)}, generated {sorted(actual_paths)}"
         )
     return document
