@@ -3,7 +3,7 @@
   "framework": "fastapi",
   "regions": ["fra1"],
   "functions": {
-    "app.py": {
+    "app/main.py": {
       "maxDuration": 30
     }
   }
