@@ -23,18 +23,21 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: true
+
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.11.18"
           python-version: "3.13.13"
           enable-cache: true
           working-directory: apps/api
+
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
-      - name: Retarget smoke assertions and fixtures to the learner UI
+
+      - name: Retarget smoke verifier and fixtures
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -57,47 +60,53 @@ jobs:
           for old, new in replacements.items():
               updated_smoke = updated_smoke.replace(old, new)
           if updated_smoke == smoke_text:
-              raise RuntimeError("Smoke verifier contract was not updated")
+              raise RuntimeError("smoke verifier contract did not change")
           smoke_path.write_text(updated_smoke, encoding="utf-8", newline="\n")
 
           runtime_test = Path("apps/api/tests/test_runtime_smoke.py")
           test_text = runtime_test.read_text(encoding="utf-8")
-          old_fixture = '''def _available_html() -> str:
-              return """<!doctype html>
-          <section data-api-state="available" aria-labelledby="api-integration-heading">
-            <p role="status" aria-atomic="true" aria-labelledby="api-status-label">Local API available</p>
-            <p>This status reports local process liveness only.</p>
-          </section>
-          """
-          '''
-          new_fixture = '''def _available_html() -> str:
-              return """<!doctype html>
-          <section class="service-state service-state-available" aria-labelledby="learning-product-heading">
-            <h2 id="learning-product-heading">Build your personal path</h2>
-            <p role="status">Learning service online</p>
-            <p>Junior Python Backend Engineer</p>
-            <p>Rate your current evidence</p>
-          </section>
-          """
-          '''
-          old_fixture = "\n".join(line[10:] if line.startswith("          ") else line for line in old_fixture.splitlines()) + "\n"
-          new_fixture = "\n".join(line[10:] if line.startswith("          ") else line for line in new_fixture.splitlines()) + "\n"
-          if old_fixture not in test_text:
-              raise RuntimeError("Runtime smoke HTML fixture anchor missing")
+          old_fixture = (
+              'def _available_html() -> str:\n'
+              '    return """<!doctype html>\n'
+              '<section data-api-state="available" aria-labelledby="api-integration-heading">\n'
+              '  <p role="status" aria-atomic="true" aria-labelledby="api-status-label">Local API available</p>\n'
+              '  <p>This status reports local process liveness only.</p>\n'
+              '</section>\n'
+              '"""\n'
+          )
+          new_fixture = (
+              'def _available_html() -> str:\n'
+              '    return """<!doctype html>\n'
+              '<section class="service-state service-state-available" aria-labelledby="learning-product-heading">\n'
+              '  <h2 id="learning-product-heading">Build your personal path</h2>\n'
+              '  <p role="status">Learning service online</p>\n'
+              '  <p>Junior Python Backend Engineer</p>\n'
+              '  <p>Rate your current evidence</p>\n'
+              '</section>\n'
+              '"""\n'
+          )
+          if test_text.count(old_fixture) != 1:
+              raise RuntimeError("runtime smoke HTML fixture must match exactly once")
           test_text = test_text.replace(old_fixture, new_fixture, 1)
-          old_state = '''            _available_html()
-                      .replace('data-api-state="available"', f'data-api-state="{state}"')
-                      .replace("Local API available", label)
-                  )'''
-          new_state = '''            _available_html()
-                      .replace("service-state-available", f"service-state-{state}")
-                      .replace("Learning service online", label)
-                  )'''
-          old_state = "\n".join(line[10:] if line.startswith("          ") else line for line in old_state.splitlines())
-          new_state = "\n".join(line[10:] if line.startswith("          ") else line for line in new_state.splitlines())
-          if old_state not in test_text:
-              raise RuntimeError("Runtime smoke state fixture anchor missing")
+
+          old_state = (
+              '        html = (\n'
+              '            _available_html()\n'
+              '            .replace(\'data-api-state="available"\', f\'data-api-state="{state}"\')\n'
+              '            .replace("Local API available", label)\n'
+              '        )\n'
+          )
+          new_state = (
+              '        html = (\n'
+              '            _available_html()\n'
+              '            .replace("service-state-available", f"service-state-{state}")\n'
+              '            .replace("Learning service online", label)\n'
+              '        )\n'
+          )
+          if test_text.count(old_state) != 1:
+              raise RuntimeError("runtime smoke state fixture must match exactly once")
           test_text = test_text.replace(old_state, new_state, 1)
+
           for old, new in replacements.items():
               test_text = test_text.replace(old, new)
           runtime_test.write_text(test_text, encoding="utf-8", newline="\n")
@@ -112,21 +121,30 @@ jobs:
               if updated != text:
                   path.write_text(updated, encoding="utf-8", newline="\n")
           PY
+
       - name: Synchronize dependencies
         run: |
           uv sync --project apps/api --locked --all-groups
           npm install --global npm@11.18.0
           npm ci --prefix apps/web
-      - name: Verify API and smoke contracts
+
+      - name: Verify complete source and runtime contracts
         run: |
           uv run --project apps/api --locked ruff format apps/api scripts
           uv run --project apps/api --locked ruff check --fix apps/api scripts
           uv run --project apps/api --locked ruff format --check apps/api scripts
           uv run --project apps/api --locked ruff check apps/api scripts
           uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
-          uv run --project apps/api --locked pytest apps/api/tests -q
+          uv run --project apps/api --locked coverage erase
+          uv run --project apps/api --locked coverage run -m pytest
+          uv run --project apps/api --locked coverage report --fail-under=95
+          npm run --prefix apps/web lint
+          npm run --prefix apps/web typecheck
+          npm run --prefix apps/web test
+          npm run --prefix apps/web build
           uv run --project apps/api --locked python scripts/smoke.py
-      - name: Commit verified smoke repair
+
+      - name: Commit verified repair
         run: |
           if git diff --quiet; then
             exit 0
@@ -134,16 +152,19 @@ jobs:
           git config user.name "TheBayoumi Automation"
           git config user.email "107598562+TheBayoumi@users.noreply.github.com"
           git add apps/api/src/ai_learning_platform_api/development/smoke.py apps/api/tests
-          git commit -m "fix(product): update runtime smoke for learner UI"
+          git commit -m "fix(product): align runtime smoke with learner UI"
+
       - name: Validate committed phase state
         run: >-
           uv run --project apps/api --locked python scripts/phase_gate.py validate
           --expected-sha "$(git rev-parse HEAD)"
-      - name: Push verified smoke repair
+
+      - name: Push verified repair
         run: |
           if test "$(git rev-parse HEAD)" != "${GITHUB_SHA}"; then
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
+
       - name: Publish repair status
         if: always()
         env:
