@@ -549,7 +549,7 @@ export function validateResourceMeasurementEvidence(evidence, expected = {}) {
       "latency_samples_bounded",
       "runtime_versions_recorded",
       "cost_observation_bounded",
-      "no_secret_material"
+      "confidential_material_absent"
     ],
     "Resource assertions"
   );
@@ -763,7 +763,7 @@ export async function verifyVercelResourceMeasurements(input, dependencies = {})
       latency_samples_bounded: true,
       runtime_versions_recorded: true,
       cost_observation_bounded: true,
-      no_secret_material: true
+      confidential_material_absent: true
     }
   };
   validateResourceMeasurementEvidence(evidence, {
