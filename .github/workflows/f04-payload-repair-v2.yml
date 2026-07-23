@@ -1,0 +1,188 @@
+name: F04 repository payload repair v2
+
+on:
+  push:
+    branches:
+      - automation/f04-vercel-deployment-baseline
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply schema-driven payload repair
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import re
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          def replace_once(text, pattern, replacement, label, flags=0):
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one replacement, found {count}')
+              return updated
+
+          archive = Path('ai-learning-platform.7z')
+          if not archive.is_file() or archive.stat().st_size != 66_312_302:
+              raise SystemExit('archive identity or size changed')
+
+          resource = json.loads(r'''{
+            "schema_version": 1,
+            "phase": "F04",
+            "blocker_id": "f04.resource_measurements",
+            "result": "PASSED",
+            "verified_at": "2026-07-23T03:49:23.825Z",
+            "expected_git_sha": "3f83e3e74d1fc587d90c30b1756c7f2dec994ba3",
+            "deployment": {"deployment_id": "dpl_8aaJEB62CFUk1TPqpJPxw8sCbCW5", "created_at": "2026-07-23T03:47:12.685Z", "ready_at": "2026-07-23T03:47:58.737Z", "regions": ["iad1"]},
+            "build": {"duration_ms": 25000, "deployment_elapsed_ms": 46052, "clone_ms": 1902, "install_ms": 14000, "compile_ms": 3600, "typecheck_ms": 4000, "static_generation_ms": 98, "machine_cores": 2, "machine_memory_mb": 8192, "vercel_cli": "56.5.0"},
+            "artifact_footprint": {"browser_build_files": 10, "browser_build_bytes": 629571, "deployed_html_bytes": 8600, "deployed_asset_count": 7, "deployed_asset_bytes": 629464, "deployed_total_bytes": 638064},
+            "cache": {"restored": true, "created_ms": 16000, "uploaded_bytes": 120170000, "upload_ms": 1630, "causal_speedup_claimed": false},
+            "latency": {"classification": "first-after-bounded-quiescence", "quiescence_ms": 60000, "cold": {"ttfb_ms": 300, "total_ms": 301, "status": 200, "body_bytes": 8600, "cache": "MISS", "edge_region": "sfo1"}, "warm_samples": [{"ttfb_ms": 250, "total_ms": 251, "status": 200, "body_bytes": 8600, "cache": "MISS", "edge_region": "sfo1"}, {"ttfb_ms": 129, "total_ms": 130, "status": 200, "body_bytes": 8600, "cache": "MISS", "edge_region": "sfo1"}, {"ttfb_ms": 132, "total_ms": 133, "status": 200, "body_bytes": 8600, "cache": "MISS", "edge_region": "sfo1"}, {"ttfb_ms": 133, "total_ms": 134, "status": 200, "body_bytes": 8600, "cache": "MISS", "edge_region": "sfo1"}, {"ttfb_ms": 129, "total_ms": 130, "status": 200, "body_bytes": 8600, "cache": "MISS", "edge_region": "sfo1"}], "warm_ttfb_median_ms": 132, "warm_total_median_ms": 133, "warm_total_p95_ms": 251, "infrastructure_cold_start_claimed": false},
+            "runtime": {"node": "24.15.0", "npm": "11.18.0", "next": "16.2.10"},
+            "cost_observation": {"team_plan": "hobby", "preview_deployments_observed": 1, "measurement_http_requests": 13, "build_duration_ms": 25000, "cache_upload_bytes": 120170000, "dollar_estimate_provided": false, "bounded": true},
+            "assertions": {"exact_deployment_bound": true, "build_measurements_recorded": true, "artifact_footprint_recorded": true, "cache_impact_recorded": true, "latency_samples_bounded": true, "runtime_versions_recorded": true, "cost_observation_bounded": true, "confidential_material_absent": true}
+          }''')
+          resource_path = Path('plans/F04-vercel-resource-measurements-evidence.json')
+          resource_path.write_text(json.dumps(resource, indent=2) + '\n', encoding='utf-8', newline='\n')
+
+          ignore_path = Path('.gitignore')
+          ignore_lines = ignore_path.read_text(encoding='utf-8').splitlines()
+          rule = '/ai-learning-platform.7z'
+          if rule not in ignore_lines:
+              ignore_lines += ['', '# F04 accidental repository archive payload', rule]
+          if ignore_lines.count(rule) != 1:
+              raise SystemExit('narrow ignore rule must occur exactly once')
+          ignore_path.write_text('\n'.join(ignore_lines) + '\n', encoding='utf-8', newline='\n')
+
+          checkpoint_path = Path('plans/autonomous-loop/checkpoint.md')
+          checkpoint = checkpoint_path.read_text(encoding='utf-8')
+          checkpoint = replace_once(
+              checkpoint,
+              r'- The tracked `ai-learning-platform\.7z` is 66,312,302 bytes and remains a separate\n  repository-hygiene repair pending reference and impact verification\.',
+              '- The unrelated `ai-learning-platform.7z` was verified at 66,312,302 bytes and\n  removed from the current tree without history rewriting. The exact root ignore\n  rule prevents recurrence; exact-head checks remain the publication gate.',
+              'checkpoint archive record',
+          )
+          checkpoint_path.write_text(checkpoint, encoding='utf-8', newline='\n')
+
+          inventory_path = Path('plans/implementation-inventory.json')
+          inventory = json.loads(inventory_path.read_text(encoding='utf-8'))
+          f04 = next(item for item in inventory['phases'] if item['id'] == 'F04')
+          for path in [
+              '.gitignore',
+              'apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs',
+              'apps/web/scripts/lib/vercel-resource-measurement-verifier.d.mts',
+              'apps/web/scripts/verify-vercel-resource-measurements.mjs',
+              'apps/web/tests/vercel-resource-measurement-verifier.test.ts',
+              'plans/F04-vercel-resource-measurements-evidence.json',
+          ]:
+              if path not in f04['implemented_files']:
+                  f04['implemented_files'].append(path)
+          new_tests = [
+              'Exact resource revision 3f83e3e74d1fc587d90c30b1756c7f2dec994ba3 passed dedicated workflow run 29977879812; artifact 8552120216 records the exact READY preview build, footprint, cache, latency, runtime, and bounded cost evidence',
+              'Payload diagnostic head 3d0b9e8b02eb0a8a149247b6c1a0a25fac5eebcb found only ai-learning-platform.7z: 66,312,302 bytes, introduced by 25994d214ed5b39d4b6c73ba0e075b10ee4a5a66, with three planning-document references',
+              'The payload repair removes the archive from the current tree without rewriting history, updates all three references, adds only /ai-learning-platform.7z to .gitignore, and adds a fail-closed Phase gate check',
+          ]
+          for item in new_tests:
+              if item not in f04['tests']:
+                  f04['tests'].append(item)
+          f04['missing_outputs'] = ['The payload-hygiene implementation must pass its exact-head Vercel and five Quality Gates before the separate acceptance-state revision is eligible']
+          f04['next_smallest_action'] = 'Verify the exact payload-hygiene implementation head, then publish the separate F04 acceptance-state revision; do not merge before it passes'
+          f04['gate_decision'] = 'Revise'
+          f04['blocker_ids'] = ['f04.repository_payload_hygiene']
+          inventory_path.write_text(json.dumps(inventory, indent=2) + '\n', encoding='utf-8', newline='\n')
+
+          inventory_md_path = Path('plans/implementation-inventory.md')
+          inventory_md = inventory_md_path.read_text(encoding='utf-8')
+          inventory_md = replace_once(
+              inventory_md,
+              r'- The externally created commit also tracks the unrelated 66,312,302-byte\n  `ai-learning-platform\.7z`\. This amendment does not modify it; its repository and\n  CI-checkout cost remains an explicit scope risk\.',
+              '- Payload diagnostics confirmed the unrelated `ai-learning-platform.7z` was\n  66,312,302 bytes and 97.6% of tracked blob bytes. This repair removes it from the\n  current tree without history rewriting, updates its three references, and adds\n  only `/ai-learning-platform.7z` to the root ignore file.',
+              'inventory archive bullet',
+          )
+          inventory_md = replace_once(
+              inventory_md,
+              r'  build, confidentiality scan, and focused rereview pass\. Remote project and\n  Node/npm behavior are not yet reproducible from versioned\n  configuration, and build/artifact/cache/latency/runtime/cost measurements\n  remain absent\.',
+              '  build, confidentiality scan, and focused rereview pass. Exact resource revision\n  `3f83e3e74d1fc587d90c30b1756c7f2dec994ba3` and run `29977879812` now\n  commit the real build, footprint, cache, latency, runtime, and bounded cost\n  evidence.',
+              'inventory resource paragraph',
+          )
+          inventory_md = inventory_md.replace(
+              '| F04 | Foundation | `FAILED_RETRYABLE` | Revise reproducibility, measurements, and payload hygiene |',
+              '| F04 | Foundation | `FAILED_RETRYABLE` | Verify payload hygiene, then publish the separate acceptance revision |',
+          )
+          inventory_md_path.write_text(inventory_md, encoding='utf-8', newline='\n')
+
+          plan_path = Path('plans/F04-vercel-deployment-baseline.md')
+          plan = plan_path.read_text(encoding='utf-8')
+          status = '''**Status:** `FAILED_RETRYABLE / Revise`. Rollback reversion, exact deployed-page\nverification, build reproducibility, and real resource measurements are proven\nby sanitized exact-SHA evidence. This revision removes the unrelated\n66,312,302-byte archive from the current tree without rewriting history and adds\na root-specific recurrence rule. F04 still requires this implementation head to\npass its own Vercel and five Quality Gates, followed by a separate acceptance-state\nrevision.\n**Decision owner:**'''
+          plan = replace_once(plan, r'\*\*Status:\*\*.*?\n\*\*Decision owner:\*\*', status, 'plan status', re.S)
+          performance = '''## Performance and Resources\n\nExact resource revision `3f83e3e74d1fc587d90c30b1756c7f2dec994ba3` passed\ndedicated workflow run `29977879812`; artifact `8552120216` is committed as\n`plans/F04-vercel-resource-measurements-evidence.json`. The exact preview used a\n25,000 ms build on 2 cores/8,192 MB, produced 638,064 deployed bytes, restored\nits cache and uploaded 120,170,000 bytes, and ran Node 24.15.0, npm 11.18.0, and\nNext.js 16.2.10. After 60,000 ms quiescence, the first request measured 300 ms\nTTFB/301 ms total; five repeated samples measured 132 ms median TTFB, 133 ms\nmedian total, and 251 ms p95 total. No provider cold-start, cache-causality, SLA,\nor dollar-cost claim is made.\n\nThe alias proof used'''
+          plan = replace_once(plan, r'## Performance and Resources\n\n.*?\n\nThe alias proof used', performance, 'plan performance', re.S)
+          if '## Repository Payload Hygiene' not in plan:
+              payload_section = '''\n## Repository Payload Hygiene\n\nDiagnostic head `3d0b9e8b02eb0a8a149247b6c1a0a25fac5eebcb` found one\narchive/oversized candidate: root `ai-learning-platform.7z`, 66,312,302 bytes,\nintroduced by `25994d214ed5b39d4b6c73ba0e075b10ee4a5a66`. It represented\n97.6% of 67,954,124 tracked blob bytes and had only three planning references.\nThis revision removes it with ordinary `git rm`, updates those references, and\nadds exactly `/ai-learning-platform.7z` to `.gitignore`; history is not rewritten.\nThe Phase gate fails if the path exists, remains tracked, or the rule is absent or\nduplicated. Exact-head checks and a separate acceptance revision remain required.\n'''
+              plan = plan.replace('\n## Data, Privacy, Security, and Compatibility\n', payload_section + '\n## Data, Privacy, Security, and Compatibility\n', 1)
+          plan = re.sub(
+              r'A rejected personal-scope Vercel\ntoken was also revoked; the dedicated verifier token is short-lived and expires\n2026-07-22\.',
+              'A rejected personal-scope Vercel\ntoken was also revoked. An HTTP 403 later exposed an expired or unauthorized\nrepository secret; the user rotated `VERCEL_API_TOKEN`, and only sanitized\nfailure/pass evidence is recorded.',
+              plan,
+              count=1,
+          )
+          boundary = '''## Next Boundary\n\nF04 has not passed. Verify this payload-hygiene implementation on its exact Vercel\ndeployment and all five Quality Gates. If green, publish a separate acceptance-state\nrevision that binds the payload evidence and marks F04 `PASSED / Continue`. Do not\nmerge, define F05, or close issue #3 before that acceptance revision passes.\n'''
+          plan = replace_once(plan, r'## Next Boundary\n\n.*\Z', boundary, 'plan next boundary', re.S)
+          plan_path.write_text(plan, encoding='utf-8', newline='\n')
+
+          ci_path = Path('.github/workflows/ci.yml')
+          ci = ci_path.read_text(encoding='utf-8')
+          if 'name: Verify repository payload hygiene' not in ci:
+              before, rest = ci.split('  phase-gate:\n', 1)
+              phase, after = rest.split('\n  gate-projection:', 1)
+              anchor = '      - name: Install uv\n'
+              if phase.count(anchor) != 1:
+                  raise SystemExit('phase-gate anchor mismatch')
+              step = '''      - name: Verify repository payload hygiene\n        run: |\n          test ! -e ai-learning-platform.7z\n          if git ls-files --error-unmatch ai-learning-platform.7z >/dev/null 2>&1; then\n            exit 1\n          fi\n          test "$(grep -Fxc '/ai-learning-platform.7z' .gitignore)" -eq 1\n'''
+              phase = phase.replace(anchor, step + anchor, 1)
+              ci = before + '  phase-gate:\n' + phase + '\n  gate-projection:' + after
+          ci_path.write_text(ci, encoding='utf-8', newline='\n')
+
+          state_path = Path('plans/autonomous-loop/state.json')
+          state = json.loads(state_path.read_text(encoding='utf-8'))
+          now = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+          state['active_slice'] = 'F04-repository-payload-hygiene'
+          state['last_completed_action'] = 'Exact resource revision 3f83e3e74d1fc587d90c30b1756c7f2dec994ba3 passed dedicated workflow run 29977879812 and artifact 8552120216. This revision removes the only oversized archive and adds the exact recurrence check.'
+          state['next_action'] = 'Verify this exact payload-hygiene implementation head; if green, publish the separate F04 acceptance-state revision and stop before merge.'
+          state['stop_reason'] = 'Payload hygiene is the final implementation publication gate. F04 acceptance requires a separate exact revision; F05, merge, and issue closure remain ineligible. V00 remains WAITING_EXTERNAL / Revise and V01 remains locked.'
+          state['foundation_track']['next_action'] = 'Verify f04.repository_payload_hygiene on the exact head, then publish the separate F04 acceptance-state revision.'
+          state['run_number'] = max(int(state.get('run_number', 0)), 28)
+          state['last_run_started_at'] = now
+          state['last_run_completed_at'] = now
+          changed = ['.gitignore', '.github/workflows/ci.yml', 'plans/F04-vercel-deployment-baseline.md', 'plans/F04-vercel-resource-measurements-evidence.json', 'plans/autonomous-loop/checkpoint.md', 'plans/implementation-inventory.json', 'plans/implementation-inventory.md']
+          for raw in changed:
+              data = Path(raw).read_bytes().replace(b'\r\n', b'\n')
+              state['authoritative_file_hashes'][raw] = hashlib.sha256(data).hexdigest()
+          state['authoritative_file_hashes'].pop('ai-learning-platform.7z', None)
+          state_path.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8', newline='\n')
+          PY
+
+          git rm ai-learning-platform.7z
+          for path in \
+            .github/workflows/f04-payload-diagnostics.yml \
+            .github/workflows/f04-payload-repair.yml \
+            .github/workflows/f04-payload-repair-v2.yml; do
+            if test -e "$path"; then git rm "$path"; fi
+          done
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(f04): remove oversized repository archive"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
