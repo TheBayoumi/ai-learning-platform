@@ -12,10 +12,30 @@ set -euo pipefail
 : "${EVIDENCE_PATH:?EVIDENCE_PATH is required}"
 
 mkdir -p "$(dirname "$EVIDENCE_PATH")"
+phase="initialization"
+write_failure_evidence() {
+  local exit_code=$?
+  jq -n \
+    --arg commit_sha "$GITHUB_SHA" \
+    --arg phase "$phase" \
+    --argjson exit_code "$exit_code" \
+    '{
+      schema_version:1,
+      result:"FAILED",
+      commit_sha:$commit_sha,
+      phase:$phase,
+      exit_code:$exit_code,
+      message:"Deployment did not reach completed verification"
+    }' >"$EVIDENCE_PATH"
+  exit "$exit_code"
+}
+trap write_failure_evidence ERR
+
 jq -n --arg commit_sha "$GITHUB_SHA" '{
   schema_version:1,
   result:"FAILED",
   commit_sha:$commit_sha,
+  phase:"initialization",
   message:"Deployment did not reach completed verification"
 }' >"$EVIDENCE_PATH"
 
@@ -23,6 +43,7 @@ vc() {
   npx --yes vercel@56.5.0 "$@"
 }
 
+phase="toolchain"
 node --version
 npm --version
 vc --version
@@ -32,6 +53,7 @@ auth=(
   -H "Content-Type: application/json"
 )
 
+phase="project-provisioning"
 project_response="$RUNNER_TEMP/backend-project.json"
 status=$(curl -sS -o "$project_response" -w '%{http_code}' \
   "https://api.vercel.com/v9/projects/$BACKEND_PROJECT_NAME?teamId=$TEAM_ID" \
@@ -91,16 +113,15 @@ curl -fsS -X POST \
     "target":["preview","production"]
   }]' >/dev/null
 
-backend_args=(deploy --cwd apps/api --yes --archive=tgz --token "$VERCEL_API_TOKEN")
-if test "$GITHUB_REF" = "refs/heads/main"; then
-  backend_args+=(--prod)
-fi
+phase="backend-deployment"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
-  vc "${backend_args[@]}" 2>&1 | tee "$RUNNER_TEMP/backend-deploy.txt"
+  vc deploy --cwd apps/api --yes --archive=tgz --prod \
+    --token "$VERCEL_API_TOKEN" 2>&1 | tee "$RUNNER_TEMP/backend-deploy.txt"
 backend_url=$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' \
   "$RUNNER_TEMP/backend-deploy.txt" | tail -n 1)
 test -n "$backend_url"
 
+phase="frontend-connection"
 if test "$GITHUB_REF" = "refs/heads/main"; then
   frontend_env=$(jq -n --arg value "$backend_url" '[{
     key:"AI_PLATFORM_API_BASE_URL",
@@ -110,12 +131,11 @@ if test "$GITHUB_REF" = "refs/heads/main"; then
   }]')
   environment=production
 else
-  frontend_env=$(jq -n --arg value "$backend_url" --arg branch "$GITHUB_REF_NAME" '[{
+  frontend_env=$(jq -n --arg value "$backend_url" '[{
     key:"AI_PLATFORM_API_BASE_URL",
     value:$value,
     type:"plain",
-    target:["preview"],
-    gitBranch:$branch
+    target:["preview"]
   }]')
   environment=preview
 fi
@@ -123,6 +143,7 @@ curl -fsS -X POST \
   "https://api.vercel.com/v10/projects/$FRONTEND_PROJECT_ID/env?upsert=true&teamId=$TEAM_ID" \
   "${auth[@]}" --data "$frontend_env" >/dev/null
 
+phase="frontend-deployment"
 frontend_args=(deploy --yes --archive=tgz --token "$VERCEL_API_TOKEN")
 if test "$GITHUB_REF" = "refs/heads/main"; then
   frontend_args+=(--prod)
@@ -133,6 +154,7 @@ frontend_url=$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' \
   "$RUNNER_TEMP/frontend-deploy.txt" | tail -n 1)
 test -n "$frontend_url"
 
+phase="deployed-verification"
 bypass=()
 if test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"; then
   bypass=( -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" )
@@ -183,6 +205,8 @@ curl -fsS "${bypass[@]}" \
   --data-binary "@$progress_payload" >"$progress"
 jq -e '.sequence == 1 and .completed_count == 1' "$progress" >/dev/null
 
+phase="evidence-publication"
+trap - ERR
 jq -n \
   --arg commit_sha "$GITHUB_SHA" \
   --arg environment "$environment" \
