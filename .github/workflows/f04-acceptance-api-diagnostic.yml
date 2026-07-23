@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   diagnose:
@@ -45,3 +46,15 @@ jobs:
           path: ${{ runner.temp }}/f04-acceptance-api
           if-no-files-found: error
           retention-days: 7
+      - name: Publish diagnostic run
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state=success
+          -f context="F04 / acceptance API diagnostic"
+          -f description="Controller failure artifact available"
+          -f target_url="$TARGET"
