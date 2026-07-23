@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: read
-  statuses: read
+  statuses: write
   deployments: read
 
 concurrency:
@@ -152,3 +152,19 @@ jobs:
           path: ${{ runner.temp }}/f04-vercel-build-reproducibility.json
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish build reproducibility status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS_CONTEXT: F04 / Vercel build reproducibility
+          STATUS_DESCRIPTION: ${{ job.status == 'success' && 'Exact-SHA build reproducibility passed' || 'Exact-SHA build reproducibility failed' }}
+          STATUS_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          STATUS_TARGET: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state="$STATUS_STATE"
+          -f context="$STATUS_CONTEXT"
+          -f description="$STATUS_DESCRIPTION"
+          -f target_url="$STATUS_TARGET"
