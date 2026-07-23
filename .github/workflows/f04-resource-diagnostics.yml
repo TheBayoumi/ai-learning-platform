@@ -1,0 +1,78 @@
+name: F04 resource diagnostics
+
+on:
+  push:
+    branches:
+      - automation/f04-vercel-deployment-baseline
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Pin npm and install web dependencies
+        run: |
+          npm install --global npm@11.18.0
+          npm ci --prefix apps/web
+
+      - name: Install uv and API dependencies
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+
+      - name: Capture exact diagnostics
+        run: |
+          mkdir -p "$RUNNER_TEMP/f04-diagnostics"
+          set +e
+          (cd apps/web && npm run lint) >"$RUNNER_TEMP/f04-diagnostics/web-lint.txt" 2>&1
+          echo "$?" >"$RUNNER_TEMP/f04-diagnostics/web-lint.exit"
+          (cd apps/web && npm run typecheck) >"$RUNNER_TEMP/f04-diagnostics/web-typecheck.txt" 2>&1
+          echo "$?" >"$RUNNER_TEMP/f04-diagnostics/web-typecheck.exit"
+          (cd apps/web && npm test -- --run tests/vercel-resource-measurement-verifier.test.ts) >"$RUNNER_TEMP/f04-diagnostics/web-resource-tests.txt" 2>&1
+          echo "$?" >"$RUNNER_TEMP/f04-diagnostics/web-resource-tests.exit"
+          (cd apps/api && uv sync --locked --all-groups && uv run --locked pytest tests/test_phase_gate.py -q) >"$RUNNER_TEMP/f04-diagnostics/api-phase-tests.txt" 2>&1
+          echo "$?" >"$RUNNER_TEMP/f04-diagnostics/api-phase-tests.exit"
+          uv run --project apps/api --locked python scripts/phase_gate.py validate --expected-sha "${{ github.sha }}" >"$RUNNER_TEMP/f04-diagnostics/phase-gate.txt" 2>&1
+          echo "$?" >"$RUNNER_TEMP/f04-diagnostics/phase-gate.exit"
+          python - <<'PY' >"$RUNNER_TEMP/f04-diagnostics/canonical-hashes.txt"
+          import hashlib
+          from pathlib import Path
+          paths = [
+              '.github/workflows/vercel-preview-verification.yml',
+              'apps/web/package.json',
+              'apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs',
+              'apps/web/scripts/lib/vercel-resource-measurement-verifier.d.mts',
+              'apps/web/scripts/verify-vercel-resource-measurements.mjs',
+              'apps/web/tests/vercel-resource-measurement-verifier.test.ts',
+          ]
+          for raw in paths:
+              data = Path(raw).read_bytes().replace(b'\r\n', b'\n')
+              print(f'{hashlib.sha256(data).hexdigest()}  {raw}')
+          PY
+
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: f04-resource-diagnostics-${{ github.sha }}
+          path: ${{ runner.temp }}/f04-diagnostics
+          if-no-files-found: error
+          retention-days: 7
