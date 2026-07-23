@@ -1,0 +1,118 @@
+name: F04 resource tail polling repair
+
+on:
+  push:
+    branches:
+      - automation/f04-vercel-deployment-baseline
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply bounded cache-tail polling repair
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          core_path = Path('apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs')
+          core = core_path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  'function parseSingle(logs, pattern, label, transform = (match) => Number(match[1])) {',
+                  'function parseSingle(\n  logs,\n  pattern,\n  label,\n  transform = (match) => Number(match[1]),\n  pending = false\n) {'
+              ),
+              (
+                  '    fail("logs", `Build logs must contain exactly one ${label} record.`);',
+                  '    fail(pending ? "logs_pending" : "logs", `Build logs must contain exactly one ${label} record.`);'
+              ),
+              (
+                  '    "cache upload size"\n  );',
+                  '    "cache upload size",\n    undefined,\n    true\n  );'
+              ),
+              (
+                  'parseSingle(logs, /^Created build cache: ([0-9.]+)s$/, "cache creation duration") * 1000',
+                  'parseSingle(\n          logs,\n          /^Created build cache: ([0-9.]+)s$/,\n          "cache creation duration",\n          undefined,\n          true\n        ) * 1000'
+              ),
+              (
+                  'parseSingle(logs, /^Build cache uploaded: ([0-9.]+)s$/, "cache upload duration") * 1000',
+                  'parseSingle(\n          logs,\n          /^Build cache uploaded: ([0-9.]+)s$/,\n          "cache upload duration",\n          undefined,\n          true\n        ) * 1000'
+              ),
+          ]
+          for old, new in replacements:
+              if core.count(old) != 1:
+                  raise SystemExit(f'unexpected core replacement count for: {old[:60]}')
+              core = core.replace(old, new)
+
+          anchor = '''async function readBoundedBody(response, maximumBytes, label) {'''
+          helper = '''async function collectResourceBuildMeasurements(\n  collect,\n  fetchImpl,\n  token,\n  deployment,\n  teamId,\n  runtime,\n  expectedLockHash\n) {\n  let pending = null;\n  for (let attempt = 1; attempt <= MAX_BUILD_LOG_ATTEMPTS; attempt += 1) {\n    const buildLogs = await collect(\n      fetchImpl,\n      token,\n      deployment.deployment_id,\n      teamId,\n      runtime,\n      expectedLockHash\n    );\n    try {\n      return {\n        buildLogs,\n        parsed: parseBuildMeasurements(buildLogs.logs, deployment, buildLogs.markers)\n      };\n    } catch (error) {\n      if (!(error instanceof VercelResourceMeasurementError) || error.code !== "logs_pending") {\n        throw error;\n      }\n      pending = error;\n      if (attempt < MAX_BUILD_LOG_ATTEMPTS) {\n        await runtime.sleep(BUILD_LOG_RETRY_MS);\n      }\n    }\n  }\n  fail(\n    "logs",\n    `Vercel resource build logs did not become complete: ${pending?.message ?? "pending"}.`\n  );\n}\n\n'''
+          if core.count(anchor) != 1:
+              raise SystemExit('unexpected helper anchor count')
+          core = core.replace(anchor, helper + anchor)
+
+          old_collect = '''  const buildLogs = await collect(\n    fetchImpl,\n    input.vercelApiToken,\n    exactDeployment.deployment.deployment_id,\n    input.teamId,\n    exactDeployment.runtime,\n    input.packageLockSha256\n  );\n  const parsed = parseBuildMeasurements(\n    buildLogs.logs,\n    exactDeployment.deployment,\n    buildLogs.markers\n  );'''
+          new_collect = '''  const { parsed } = await collectResourceBuildMeasurements(\n    collect,\n    fetchImpl,\n    input.vercelApiToken,\n    exactDeployment.deployment,\n    input.teamId,\n    exactDeployment.runtime,\n    input.packageLockSha256\n  );'''
+          if core.count(old_collect) != 1:
+              raise SystemExit('unexpected verification collection block count')
+          core = core.replace(old_collect, new_collect)
+          core_path.write_text(core, encoding='utf-8', newline='\n')
+
+          test_path = Path('apps/web/tests/vercel-resource-measurement-verifier.test.ts')
+          test = test_path.read_text(encoding='utf-8')
+          test_replacements = [
+              (
+                  'function dependencies(options: { omitCacheUpload?: boolean } = {}) {',
+                  'function dependencies(\n  options: { omitCacheUpload?: boolean; delayCacheUpload?: boolean } = {}\n) {'
+              ),
+              (
+                  '  let pageRequests = 0;\n  const sleeps: number[] = [];',
+                  '  let pageRequests = 0;\n  let collectionCalls = 0;\n  const sleeps: number[] = [];'
+              ),
+              (
+                  '!text.startsWith("Uploading build cache")',
+                  '!text.includes("Uploading build cache")'
+              ),
+              (
+                  '    collectBuildLogs: async () => ({\n      logs: buildLogs,\n      markers: [{ node: "24.15.0", npm: "11.18.0", next_version: "16.2.10" }],\n      attempts: 1\n    }),',
+                  '    collectBuildLogs: async () => {\n      collectionCalls += 1;\n      const selectedLogs =\n        options.delayCacheUpload && collectionCalls === 1\n          ? buildLogs.filter(({ text }) => !text.includes("Uploading build cache"))\n          : buildLogs;\n      return {\n        logs: selectedLogs,\n        markers: [{ node: "24.15.0", npm: "11.18.0", next_version: "16.2.10" }],\n        attempts: 1\n      };\n    },'
+              ),
+          ]
+          for old, new in test_replacements:
+              if test.count(old) != 1:
+                  raise SystemExit(f'unexpected test replacement count for: {old[:60]}')
+              test = test.replace(old, new)
+
+          test_anchor = '''  it("fails closed when cache-impact evidence is incomplete", async () => {'''
+          delayed_test = '''  it("retries boundedly until cache-tail records propagate", async () => {\n    const runtime = dependencies({ delayCacheUpload: true });\n    const evidence = await verifyVercelResourceMeasurements(input(), runtime);\n\n    expect(evidence.cache.uploaded_bytes).toBe(120_170_000);\n    expect(runtime.sleeps).toContain(5_000);\n  });\n\n'''
+          if test.count(test_anchor) != 1:
+              raise SystemExit('unexpected delayed-test anchor count')
+          test = test.replace(test_anchor, delayed_test + test_anchor)
+          test_path.write_text(test, encoding='utf-8', newline='\n')
+
+          state_path = Path('plans/autonomous-loop/state.json')
+          state = json.loads(state_path.read_text(encoding='utf-8'))
+          for raw in [str(core_path), str(test_path)]:
+              data = Path(raw).read_bytes().replace(b'\r\n', b'\n')
+              state['authoritative_file_hashes'][raw] = hashlib.sha256(data).hexdigest()
+          state_path.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8', newline='\n')
+          PY
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs apps/web/tests/vercel-resource-measurement-verifier.test.ts plans/autonomous-loop/state.json
+          git commit -m "fix(f04): await cache-tail measurements"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
