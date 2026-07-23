@@ -1,0 +1,176 @@
+name: F04 clone-unit normalization
+
+on:
+  push:
+    branches:
+      - automation/f04-vercel-deployment-baseline
+
+permissions:
+  contents: write
+
+concurrency:
+  group: f04-clone-unit-normalization
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Pin npm
+        run: npm install --global npm@11.18.0
+
+      - name: Normalize clone-duration units and tests
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          core_path = Path('apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs')
+          core = core_path.read_text(encoding='utf-8')
+          baseline = '      clone_ms: Math.round(parseSingle(logs, /^Cloning completed: ([0-9.]+)s$/, "clone duration") * 1000),'
+          repaired = '''      clone_ms: Math.round(
+            parseSingle(
+              logs,
+              /^Cloning completed: ([0-9.]+)(ms|s)$/,
+              "clone duration",
+              (match) => Number(match[1]) * (match[2] === "s" ? 1000 : 1)
+            )
+          ),'''
+          repaired = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in repaired.splitlines()
+          )
+          if baseline in core:
+              core = core.replace(baseline, repaired, 1)
+              core_path.write_text(core, encoding='utf-8', newline='\n')
+          elif '(ms|s)' not in core:
+              raise RuntimeError('clone-duration parser contract changed')
+
+          test_path = Path('apps/web/tests/vercel-resource-measurement-verifier.test.ts')
+          test = test_path.read_text(encoding='utf-8')
+
+          options_start = test.index('function dependencies(\n')
+          options_end = test.index('\n) {', options_start)
+          options_block = '''function dependencies(
+            options: {
+              omitCacheUpload?: boolean;
+              delayCacheUpload?: boolean;
+              duplicateClone?: boolean;
+              conflictingClone?: boolean;
+              cloneDuration?: string;
+            } = {}
+          '''
+          options_block = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in options_block.splitlines()
+          )
+          test = test[:options_start] + options_block + test[options_end:]
+
+          clone_anchor = '  const cloneLog = buildLogs.find(({ text }) => text.startsWith("Cloning completed:"));\n'
+          clone_override = '''  const cloneLog = buildLogs.find(({ text }) => text.startsWith("Cloning completed:"));
+            if (options.cloneDuration && cloneLog) {
+              cloneLog.text = `Cloning completed: ${options.cloneDuration}`;
+            }
+          '''
+          clone_override = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in clone_override.splitlines()
+          )
+          if 'options.cloneDuration && cloneLog' not in test:
+              if test.count(clone_anchor) != 1:
+                  raise RuntimeError('clone fixture anchor changed')
+              test = test.replace(clone_anchor, clone_override, 1)
+
+          malformed_regression = '''  it("accepts identical duplicated provider metrics and rejects conflicts", async () => {
+            await expect(
+              verifyVercelResourceMeasurements(input(), dependencies({ duplicateClone: true }))
+            ).resolves.toMatchObject({ build: { clone_ms: 1958 } });
+
+            await expect(
+              verifyVercelResourceMeasurements(input(), dependencies({ conflictingClone: true }))
+            ).rejects.toThrow(/conflicting clone duration/);
+          });'''
+          malformed_regression = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in malformed_regression.splitlines()
+          )
+          start = test.index('  it("accepts identical duplicated provider metrics and rejects conflicts"')
+          end = test.index('\n  it("retries boundedly until cache-tail records propagate"', start)
+          test = test[:start] + malformed_regression + test[end:]
+
+          unit_test = '''  it("normalizes clone durations reported in seconds or milliseconds", async () => {
+            const seconds = await verifyVercelResourceMeasurements(input(), dependencies());
+            const milliseconds = await verifyVercelResourceMeasurements(
+              input(),
+              dependencies({ cloneDuration: "613.000ms" })
+            );
+
+            expect(seconds.build.clone_ms).toBe(1958);
+            expect(milliseconds.build.clone_ms).toBe(613);
+          });
+
+          '''
+          unit_test = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in unit_test.splitlines()
+          )
+          unit_anchor = '  it("accepts identical duplicated provider metrics and rejects conflicts", async () => {'
+          if 'normalizes clone durations reported in seconds or milliseconds' not in test:
+              if test.count(unit_anchor) != 1:
+                  raise RuntimeError('unit-test insertion anchor changed')
+              test = test.replace(unit_anchor, unit_test + unit_anchor, 1)
+
+          test_path.write_text(test, encoding='utf-8', newline='\n')
+
+          state_path = Path('plans/autonomous-loop/state.json')
+          state = json.loads(state_path.read_text(encoding='utf-8'))
+          for path in (core_path, test_path):
+              canonical = path.read_bytes().replace(b'\r\n', b'\n')
+              state['authoritative_file_hashes'][str(path)] = hashlib.sha256(canonical).hexdigest()
+          state_path.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8', newline='\n')
+          PY
+
+      - name: Synchronize dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Lint
+        working-directory: apps/web
+        run: npm run lint
+
+      - name: Type check
+        working-directory: apps/web
+        run: npm run typecheck
+
+      - name: Unit tests
+        working-directory: apps/web
+        run: npm test
+
+      - name: Commit verified repair
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add \
+            apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs \
+            apps/web/tests/vercel-resource-measurement-verifier.test.ts \
+            plans/autonomous-loop/state.json
+          git commit -m "fix(f04): normalize clone duration units"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
