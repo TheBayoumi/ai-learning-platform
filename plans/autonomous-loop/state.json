@@ -81,10 +81,10 @@
     "apps/web/scripts/lib/vercel-preview-verifier.d.mts": "f6458b242a72c7b9ad29195633301d86d344bc9fa34ed50f529928ff64da4984",
     "apps/web/scripts/verify-vercel-preview.mjs": "59806a73eb03a59e7359eac978c55f0ba97be9b660586457e52bee149a0a36f6",
     "apps/web/tests/vercel-preview-verifier.test.ts": "f81f9b4f149a31ef3470fcd1f477ca5319cde948b3a86f83229e62528b138512",
-    "apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs": "6c9cb6d6791770697d17ce2905d76716a017dbe754f51086100631e46b61f293",
+    "apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs": "e23c51eaea10829f9a678d529b1b89b0aa50c7e80409c43a5d9265acb0556f98",
     "apps/web/scripts/lib/vercel-resource-measurement-verifier.d.mts": "b01d5c46a751ce4e77f6aef0aab055cea5292e27f1d82600db4dfd26ff22f260",
     "apps/web/scripts/verify-vercel-resource-measurements.mjs": "172f050f54cdddb44595382d917f06c1f825757cf1386ab24d1d7789c18e6ce2",
-    "apps/web/tests/vercel-resource-measurement-verifier.test.ts": "d29a13caea18093f82927285a564f08c2719ba7e68185053bf70ff43fa48800a"
+    "apps/web/tests/vercel-resource-measurement-verifier.test.ts": "ec908eda67a5309b7d6830e21c3e6d174e4fb1a30145af46d60ee676961798a8"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "run_number": 27,

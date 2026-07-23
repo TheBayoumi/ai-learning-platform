@@ -207,12 +207,18 @@ async function collectVercelBuildLogs(
   fail("logs", `Vercel build logs did not become complete: ${pending?.message ?? "pending"}.`);
 }
 
-function parseSingle(logs, pattern, label, transform = (match) => Number(match[1])) {
+function parseSingle(
+  logs,
+  pattern,
+  label,
+  transform = (match) => Number(match[1]),
+  pending = false
+) {
   const matches = logs
     .map(({ text }) => text.match(pattern))
     .filter((match) => match !== null);
   if (matches.length !== 1) {
-    fail("logs", `Build logs must contain exactly one ${label} record.`);
+    fail(pending ? "logs_pending" : "logs", `Build logs must contain exactly one ${label} record.`);
   }
   return transform(matches[0]);
 }
@@ -239,7 +245,9 @@ function parseBuildMeasurements(logs, deployment, markers) {
   const cacheUploadMb = parseSingle(
     logs,
     /Uploading build cache \[([0-9.]+) MB\]/,
-    "cache upload size"
+    "cache upload size",
+    undefined,
+    true
   );
   const createdAt = Date.parse(deployment.created_at);
   const readyAt = Date.parse(deployment.ready_at);
@@ -291,11 +299,23 @@ function parseBuildMeasurements(logs, deployment, markers) {
     cache: {
       restored: cacheRestored.length === 1,
       created_ms: Math.round(
-        parseSingle(logs, /^Created build cache: ([0-9.]+)s$/, "cache creation duration") * 1000
+        parseSingle(
+          logs,
+          /^Created build cache: ([0-9.]+)s$/,
+          "cache creation duration",
+          undefined,
+          true
+        ) * 1000
       ),
       uploaded_bytes: Math.round(cacheUploadMb * 1_000_000),
       upload_ms: Math.round(
-        parseSingle(logs, /^Build cache uploaded: ([0-9.]+)s$/, "cache upload duration") * 1000
+        parseSingle(
+          logs,
+          /^Build cache uploaded: ([0-9.]+)s$/,
+          "cache upload duration",
+          undefined,
+          true
+        ) * 1000
       ),
       causal_speedup_claimed: false
     },
@@ -305,6 +325,46 @@ function parseBuildMeasurements(logs, deployment, markers) {
       next: finalMarker.next_version
     }
   };
+}
+
+async function collectResourceBuildMeasurements(
+  collect,
+  fetchImpl,
+  token,
+  deployment,
+  teamId,
+  runtime,
+  expectedLockHash
+) {
+  let pending = null;
+  for (let attempt = 1; attempt <= MAX_BUILD_LOG_ATTEMPTS; attempt += 1) {
+    const buildLogs = await collect(
+      fetchImpl,
+      token,
+      deployment.deployment_id,
+      teamId,
+      runtime,
+      expectedLockHash
+    );
+    try {
+      return {
+        buildLogs,
+        parsed: parseBuildMeasurements(buildLogs.logs, deployment, buildLogs.markers)
+      };
+    } catch (error) {
+      if (!(error instanceof VercelResourceMeasurementError) || error.code !== "logs_pending") {
+        throw error;
+      }
+      pending = error;
+      if (attempt < MAX_BUILD_LOG_ATTEMPTS) {
+        await runtime.sleep(BUILD_LOG_RETRY_MS);
+      }
+    }
+  }
+  fail(
+    "logs",
+    `Vercel resource build logs did not become complete: ${pending?.message ?? "pending"}.`
+  );
 }
 
 async function readBoundedBody(response, maximumBytes, label) {
@@ -663,18 +723,14 @@ export async function verifyVercelResourceMeasurements(input, dependencies = {})
     },
     dependencies
   );
-  const buildLogs = await collect(
+  const { parsed } = await collectResourceBuildMeasurements(
+    collect,
     fetchImpl,
     input.vercelApiToken,
-    exactDeployment.deployment.deployment_id,
+    exactDeployment.deployment,
     input.teamId,
     exactDeployment.runtime,
     input.packageLockSha256
-  );
-  const parsed = parseBuildMeasurements(
-    buildLogs.logs,
-    exactDeployment.deployment,
-    buildLogs.markers
   );
   const teamPlan = await observeTeamPlan(fetchImpl, input.vercelApiToken, input.teamId);
 

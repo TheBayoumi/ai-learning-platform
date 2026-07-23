@@ -77,12 +77,15 @@ function input() {
   };
 }
 
-function dependencies(options: { omitCacheUpload?: boolean } = {}) {
+function dependencies(
+  options: { omitCacheUpload?: boolean; delayCacheUpload?: boolean } = {}
+) {
   let clock = 0;
   let pageRequests = 0;
+  let collectionCalls = 0;
   const sleeps: number[] = [];
   const buildLogs = logs().filter(
-    ({ text }) => !options.omitCacheUpload || !text.startsWith("Uploading build cache")
+    ({ text }) => !options.omitCacheUpload || !text.includes("Uploading build cache")
   );
   const fetchImpl = async (resource: string | URL | Request) => {
     const url = String(resource);
@@ -127,11 +130,18 @@ function dependencies(options: { omitCacheUpload?: boolean } = {}) {
       return clock;
     },
     discoverDeployment: async () => exactDeployment(),
-    collectBuildLogs: async () => ({
-      logs: buildLogs,
-      markers: [{ node: "24.15.0", npm: "11.18.0", next_version: "16.2.10" }],
-      attempts: 1
-    }),
+    collectBuildLogs: async () => {
+      collectionCalls += 1;
+      const selectedLogs =
+        options.delayCacheUpload && collectionCalls === 1
+          ? buildLogs.filter(({ text }) => !text.includes("Uploading build cache"))
+          : buildLogs;
+      return {
+        logs: selectedLogs,
+        markers: [{ node: "24.15.0", npm: "11.18.0", next_version: "16.2.10" }],
+        attempts: 1
+      };
+    },
     sleeps
   };
 }
@@ -184,6 +194,14 @@ describe("exact-SHA Vercel resource measurements", () => {
         deploymentId: DEPLOYMENT_ID
       })
     ).toBe(true);
+  });
+
+  it("retries boundedly until cache-tail records propagate", async () => {
+    const runtime = dependencies({ delayCacheUpload: true });
+    const evidence = await verifyVercelResourceMeasurements(input(), runtime);
+
+    expect(evidence.cache.uploaded_bytes).toBe(120_170_000);
+    expect(runtime.sleeps).toContain(5_000);
   });
 
   it("fails closed when cache-impact evidence is incomplete", async () => {
