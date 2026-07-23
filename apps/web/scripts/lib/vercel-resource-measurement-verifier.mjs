@@ -217,10 +217,15 @@ function parseSingle(
   const matches = logs
     .map(({ text }) => text.match(pattern))
     .filter((match) => match !== null);
-  if (matches.length !== 1) {
-    fail(pending ? "logs_pending" : "logs", `Build logs must contain exactly one ${label} record.`);
+  if (matches.length === 0) {
+    fail(pending ? "logs_pending" : "logs", `Build logs must contain a ${label} record.`);
   }
-  return transform(matches[0]);
+  const values = matches.map((match) => transform(match));
+  const canonical = JSON.stringify(values[0]);
+  if (values.some((value) => JSON.stringify(value) !== canonical)) {
+    fail("logs", `Build logs contain conflicting ${label} records.`);
+  }
+  return values[0];
 }
 
 function parseBuildMeasurements(logs, deployment, markers) {

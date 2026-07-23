@@ -78,7 +78,12 @@ function input() {
 }
 
 function dependencies(
-  options: { omitCacheUpload?: boolean; delayCacheUpload?: boolean } = {}
+  options: {
+  omitCacheUpload?: boolean;
+  delayCacheUpload?: boolean;
+  duplicateClone?: boolean;
+  conflictingClone?: boolean;
+} = {}
 ) {
   let clock = 0;
   let pageRequests = 0;
@@ -87,6 +92,19 @@ function dependencies(
   const buildLogs = logs().filter(
     ({ text }) => !options.omitCacheUpload || !text.includes("Uploading build cache")
   );
+
+  const cloneLog = buildLogs.find(({ text }) => text.startsWith("Cloning completed:"));
+  if (options.duplicateClone && cloneLog) {
+    buildLogs.push({ ...cloneLog, index: buildLogs.length, serial: buildLogs.length });
+  }
+  if (options.conflictingClone && cloneLog) {
+    buildLogs.push({
+      ...cloneLog,
+      index: buildLogs.length,
+      serial: buildLogs.length,
+      text: "Cloning completed: 9.999s"
+    });
+  }
   const fetchImpl = async (resource: string | URL | Request) => {
     const url = String(resource);
     if (url.includes("api.vercel.com/v2/teams/")) {
@@ -199,6 +217,15 @@ describe("exact-SHA Vercel resource measurements", () => {
     ).toBe(true);
   });
 
+  it("accepts identical duplicated provider metrics and rejects conflicts", async () => {
+  await expect(
+    verifyVercelResourceMeasurements(input(), dependencies({ duplicateClone: true }))
+  ).resolves.toMatchObject({ build: { clone_ms: 1958 } });
+
+  await expect(
+    verifyVercelResourceMeasurements(input(), dependencies({ conflictingClone: true }))
+  ).rejects.toThrow(/conflicting clone duration/);
+});
   it("retries boundedly until cache-tail records propagate", async () => {
     const runtime = dependencies({ delayCacheUpload: true });
     const evidence = await verifyVercelResourceMeasurements(input(), runtime);
