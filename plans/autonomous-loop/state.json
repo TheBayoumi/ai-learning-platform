@@ -84,7 +84,7 @@
     "apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs": "e23c51eaea10829f9a678d529b1b89b0aa50c7e80409c43a5d9265acb0556f98",
     "apps/web/scripts/lib/vercel-resource-measurement-verifier.d.mts": "b01d5c46a751ce4e77f6aef0aab055cea5292e27f1d82600db4dfd26ff22f260",
     "apps/web/scripts/verify-vercel-resource-measurements.mjs": "172f050f54cdddb44595382d917f06c1f825757cf1386ab24d1d7789c18e6ce2",
-    "apps/web/tests/vercel-resource-measurement-verifier.test.ts": "ec908eda67a5309b7d6830e21c3e6d174e4fb1a30145af46d60ee676961798a8"
+    "apps/web/tests/vercel-resource-measurement-verifier.test.ts": "6c43a0911434d6f21f0a3249010a8280c6938f631c851b5b205de81cf0d13ac9"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "run_number": 27,

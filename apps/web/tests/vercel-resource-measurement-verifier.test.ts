@@ -40,7 +40,7 @@ function logs() {
   return texts.map((text, index) => ({ index, created: index, serial: index, text }));
 }
 
-function exactDeployment() {
+function exactDeployment(sleep: (milliseconds: number) => Promise<void> = async () => undefined) {
   return {
     deployment: {
       deployment_id: DEPLOYMENT_ID,
@@ -58,7 +58,7 @@ function exactDeployment() {
     },
     runtime: {
       now: () => Date.parse("2026-07-23T03:00:00.000Z"),
-      sleep: async () => undefined
+      sleep
     }
   };
 }
@@ -129,7 +129,10 @@ function dependencies(
       clock += 10;
       return clock;
     },
-    discoverDeployment: async () => exactDeployment(),
+    discoverDeployment: async () =>
+      exactDeployment(async (milliseconds: number) => {
+        sleeps.push(milliseconds);
+      }),
     collectBuildLogs: async () => {
       collectionCalls += 1;
       const selectedLogs =
