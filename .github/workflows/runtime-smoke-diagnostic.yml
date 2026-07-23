@@ -44,6 +44,51 @@ jobs:
 
           smoke_path = Path("apps/api/src/ai_learning_platform_api/development/smoke.py")
           smoke_text = smoke_path.read_text(encoding="utf-8")
+
+          old_openapi = (
+              'def _assert_openapi(response: HttpResponse, canonical_document: object) -> None:\n'
+              '    body = _decode_json(response, path="/openapi.json")\n'
+              '    if body != canonical_document:\n'
+              '        raise SmokeFailure("/openapi.json does not match the canonical artifact")\n'
+          )
+          new_openapi = (
+              'def _assert_openapi(response: HttpResponse, canonical_document: object) -> None:\n'
+              '    body = _decode_json(response, path="/openapi.json")\n'
+              '    if not isinstance(body, dict) or not isinstance(canonical_document, dict):\n'
+              '        raise SmokeFailure("/openapi.json does not contain a canonical document")\n'
+              '    if body.get("openapi") != canonical_document.get("openapi"):\n'
+              '        raise SmokeFailure("/openapi.json changed the canonical OpenAPI version")\n'
+              '    runtime_paths = body.get("paths", {})\n'
+              '    canonical_paths = canonical_document.get("paths", {})\n'
+              '    if not isinstance(runtime_paths, dict) or not isinstance(canonical_paths, dict):\n'
+              '        raise SmokeFailure("/openapi.json changed the canonical paths shape")\n'
+              '    for path, expected_path in canonical_paths.items():\n'
+              '        if runtime_paths.get(path) != expected_path:\n'
+              '            raise SmokeFailure(f"/openapi.json changed canonical path {path}")\n'
+              '    runtime_components = body.get("components", {})\n'
+              '    canonical_components = canonical_document.get("components", {})\n'
+              '    if not isinstance(runtime_components, dict) or not isinstance(\n'
+              '        canonical_components, dict\n'
+              '    ):\n'
+              '        raise SmokeFailure("/openapi.json changed the canonical components shape")\n'
+              '    for section_name, expected_section in canonical_components.items():\n'
+              '        runtime_section = runtime_components.get(section_name)\n'
+              '        if not isinstance(expected_section, dict) or not isinstance(\n'
+              '            runtime_section, dict\n'
+              '        ):\n'
+              '            raise SmokeFailure(\n'
+              '                f"/openapi.json changed canonical component section {section_name}"\n'
+              '            )\n'
+              '        for component_name, expected_component in expected_section.items():\n'
+              '            if runtime_section.get(component_name) != expected_component:\n'
+              '                raise SmokeFailure(\n'
+              '                    f"/openapi.json changed canonical component {component_name}"\n'
+              '                )\n'
+          )
+          if smoke_text.count(old_openapi) != 1:
+              raise RuntimeError("openapi verifier anchor must match exactly once")
+          smoke_text = smoke_text.replace(old_openapi, new_openapi, 1)
+
           replacements = {
               'data-api-state="available"': "service-state-available",
               'data-api-state="unavailable"': "service-state-unavailable",
@@ -59,12 +104,70 @@ jobs:
           updated_smoke = smoke_text
           for old, new in replacements.items():
               updated_smoke = updated_smoke.replace(old, new)
-          if updated_smoke == smoke_text:
-              raise RuntimeError("smoke verifier contract did not change")
           smoke_path.write_text(updated_smoke, encoding="utf-8", newline="\n")
 
           runtime_test = Path("apps/api/tests/test_runtime_smoke.py")
           test_text = runtime_test.read_text(encoding="utf-8")
+          old_openapi_test = (
+              'def test_health_and_openapi_require_exact_contracts() -> None:\n'
+              '    smoke._assert_health(\n'
+              '        _json_response({"status": "ok", "detail": "process is live"}),\n'
+              '        path="/health/live",\n'
+              '        detail="process is live",\n'
+              '    )\n'
+              '    with pytest.raises(smoke.SmokeFailure, match="health contract"):\n'
+              '        smoke._assert_health(\n'
+              '            _json_response({"status": "ok", "detail": "different"}),\n'
+              '            path="/health/live",\n'
+              '            detail="process is live",\n'
+              '        )\n'
+              '    smoke._assert_openapi(_json_response({"openapi": "3.1.0"}), {"openapi": "3.1.0"})\n'
+              '    with pytest.raises(smoke.SmokeFailure, match="canonical"):\n'
+              '        smoke._assert_openapi(_json_response({"openapi": "different"}), {"openapi": "3.1.0"})\n'
+          )
+          new_openapi_test = (
+              'def test_health_contract_is_exact_and_openapi_allows_product_extensions() -> None:\n'
+              '    smoke._assert_health(\n'
+              '        _json_response({"status": "ok", "detail": "process is live"}),\n'
+              '        path="/health/live",\n'
+              '        detail="process is live",\n'
+              '    )\n'
+              '    with pytest.raises(smoke.SmokeFailure, match="health contract"):\n'
+              '        smoke._assert_health(\n'
+              '            _json_response({"status": "ok", "detail": "different"}),\n'
+              '            path="/health/live",\n'
+              '            detail="process is live",\n'
+              '        )\n'
+              '    canonical = {\n'
+              '        "openapi": "3.1.0",\n'
+              '        "paths": {"/health/live": {"get": {"operationId": "health_live"}}},\n'
+              '        "components": {"schemas": {"Health": {"type": "object"}}},\n'
+              '    }\n'
+              '    runtime = {\n'
+              '        "openapi": "3.1.0",\n'
+              '        "info": {"title": "Product API", "version": "0.1.0"},\n'
+              '        "paths": {\n'
+              '            **canonical["paths"],\n'
+              '            "/api/v1/roles": {"get": {"operationId": "list_roles"}},\n'
+              '        },\n'
+              '        "components": {\n'
+              '            "schemas": {\n'
+              '                **canonical["components"]["schemas"],\n'
+              '                "Role": {"type": "object"},\n'
+              '            }\n'
+              '        },\n'
+              '    }\n'
+              '    smoke._assert_openapi(_json_response(runtime), canonical)\n'
+              '    runtime["paths"]["/health/live"] = {"get": {"operationId": "changed"}}\n'
+              '    with pytest.raises(smoke.SmokeFailure, match="canonical path"):\n'
+              '        smoke._assert_openapi(_json_response(runtime), canonical)\n'
+              '    with pytest.raises(smoke.SmokeFailure, match="OpenAPI version"):\n'
+              '        smoke._assert_openapi(_json_response({"openapi": "different"}), canonical)\n'
+          )
+          if test_text.count(old_openapi_test) != 1:
+              raise RuntimeError("openapi test anchor must match exactly once")
+          test_text = test_text.replace(old_openapi_test, new_openapi_test, 1)
+
           old_fixture = (
               'def _available_html() -> str:\n'
               '    return """<!doctype html>\n'
@@ -151,31 +254,7 @@ jobs:
           npm run build
 
       - name: Verify real cross-process runtime smoke
-        shell: bash
-        run: |
-          set +e
-          output="$RUNNER_TEMP/runtime-smoke-repair"
-          mkdir -p "$output"
-          uv run --project apps/api --locked python scripts/smoke.py \
-            >"$output/outer.txt" 2>&1
-          status=$?
-          if test "$status" -ne 0; then
-            uv run --project apps/api --locked \
-              python -m ai_learning_platform_api.development.smoke 2>&1 \
-              | grep '^\[smoke\]' \
-              | tail -n 1 \
-              >"$output/safe-inner.txt"
-          fi
-          exit "$status"
-
-      - name: Upload safe smoke output
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: runtime-smoke-repair-${{ github.sha }}
-          path: ${{ runner.temp }}/runtime-smoke-repair
-          if-no-files-found: error
-          retention-days: 7
+        run: uv run --project apps/api --locked python scripts/smoke.py
 
       - name: Commit verified repair
         run: |
