@@ -1,6 +1,6 @@
 [project]
 name = "ai-learning-platform-api"
-version = "0.1.0"
+version = "0.0.0"
 description = "FastAPI learner diagnosis and adaptive planning service"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
