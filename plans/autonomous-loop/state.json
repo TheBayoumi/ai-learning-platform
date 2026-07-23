@@ -2,11 +2,11 @@
   "schema_version": 4,
   "status": "FAILED_RETRYABLE",
   "active_phase": "F04",
-  "active_slice": "F04-exact-sha-deployed-page-verification",
+  "active_slice": "F04-resource-measurements",
   "gate_decision": "Revise",
-  "last_completed_action": "Exact implementation revision 4e6770a1e1dcf2938f224c93c0701bae0e8e5f4c passed Vercel status, dedicated workflow run 29865352967/job 88752059522, and push Quality Gates run 29865352971; sanitized artifact 8508962218 resolves only f04.deployed_page_verification. Failed record revision cde7940a308ba81324713d1763a56908922b8886 then exposed an empty GitHub deployment-status propagation race in run 29866121231. Bounded retry handling passes 41 focused tests and independent rereview; its exact remote checks remain the publication gate.",
-  "next_action": "Repair only f04.build_reproducibility without starting resource measurements, repository payload hygiene, F04 acceptance, or F05.",
-  "stop_reason": "The bounded deployed-page verification repair stops after its evidence/state revision passes exact-head publication checks and immutable evidence is recorded in pull request #5 and issue #3. Build reproducibility, resource measurements, repository payload hygiene, F04 acceptance, F05, merge, and issue closure remain outside this invocation. V00 remains WAITING_EXTERNAL / Revise; V01 remains locked.",
+  "last_completed_action": "Exact head f0486d0007b8164d58a6eb680fe0729906bd4093 passed Vercel deployment, exact-SHA deployed-page verification, exact-SHA build reproducibility, and all five Quality Gates. Sanitized artifacts 8551207077 and 8551213751 resolve f04.deployed_page_verification and f04.build_reproducibility. The bounded resource-measurement verifier is implemented and awaits exact-head publication evidence.",
+  "next_action": "Publish and verify f04.resource_measurements on the exact PR head; begin only f04.repository_payload_hygiene if the sanitized resource evidence passes.",
+  "stop_reason": "The resource-measurement slice stops after exact-head publication checks and sanitized evidence. Repository payload hygiene, F04 acceptance, F05, merge, and issue closure remain pending. V00 remains WAITING_EXTERNAL / Revise; V01 remains locked.",
   "validation_track": {
     "active_phase": "V00",
     "status": "WAITING_EXTERNAL",
@@ -23,7 +23,7 @@
     "active_phase": "F04",
     "status": "FAILED_RETRYABLE",
     "gate_decision": "Revise",
-    "next_action": "Repair only f04.build_reproducibility; rollback reversion and exact-SHA deployed-page verification are proven while resource measurements and repository payload hygiene remain unresolved."
+    "next_action": "Verify f04.resource_measurements; rollback reversion, deployed-page verification, and build reproducibility are proven while repository payload hygiene remains unresolved."
   },
   "implementation_inventory": {
     "path": "plans/implementation-inventory.json",
@@ -43,7 +43,7 @@
     "Stage, commit, and push one bounded verified slice without waiting for a user commit or review"
   ],
   "human_decisions_required": [],
-  "last_verified_commit": "cde7940a308ba81324713d1763a56908922b8886",
+  "last_verified_commit": "f0486d0007b8164d58a6eb680fe0729906bd4093",
   "authoritative_file_hashes": {
     "AGENTS.md": "71e31a7955de50367f5bd48408b422aae89b64312c238ee6bfb5bcc1254857a8",
     "docs/strategy/ai-learning-platform-strategy.md": "a62ad7bf8c2391bffc747416ce045148a79945c369a499cf73e3057c02c822f9",
@@ -71,16 +71,20 @@
     "plans/implementation-inventory.md": "b5b16516c6ebcc658d99a101fd98b3cf3d8e0fa3efccada3c872d9556efc8ac0",
     "plans/F04-vercel-deployment-baseline.md": "db1a4b5e03cfd9d9c6d5cf23d3b06ba06957b99482d8f9e30233788f9b8bfcbb",
     "plans/F04-vercel-alias-reversion-evidence.json": "03a0d9f16bb012f97c04656546c01a875a583e5b608ea7b389b091f10269a67d",
-    ".github/workflows/vercel-preview-verification.yml": "8221504620d25c91601533fbea836249c17487f427dad8eebc7b22a48f87273b",
+    ".github/workflows/vercel-preview-verification.yml": "cfbcedf9e0c62a07eb3d5e33d1da77597879d3cfdf09bfceb166c01acb6179b1",
     "plans/F04-vercel-deployed-page-verifier-operations.md": "d5698a545b3b9eb14a2d23b4f417749e351babc931934df42e9d081b15ac3c45",
     "plans/F04-vercel-deployed-page-verification-evidence.json": "53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b",
-    "apps/web/package.json": "808b16c4aba8a61a05c6072bb203ab8e7266d7c09c84f8028154c6a715801bbd",
+    "apps/web/package.json": "314e1086e5fe2753aae98a570ae9ef1cf68fa8bb06097f9d7633685d93e7366c",
     "apps/web/scripts/check-browser-confidentiality.mjs": "c4753f35e8e2ad97167df63bd3fd0179b4ecccb0d86a1ac057c92e97fe523b25",
     "apps/web/scripts/lib/browser-confidentiality.mjs": "49bd8db64cb21d2c937e158d43119b7d8d051ca726de48e17fa6cc2089d4d343",
     "apps/web/scripts/lib/vercel-preview-verifier.mjs": "64e884b906c264967a72a9428e219a9f51650b340891d376c86d5fd3dd4d1473",
     "apps/web/scripts/lib/vercel-preview-verifier.d.mts": "f6458b242a72c7b9ad29195633301d86d344bc9fa34ed50f529928ff64da4984",
     "apps/web/scripts/verify-vercel-preview.mjs": "59806a73eb03a59e7359eac978c55f0ba97be9b660586457e52bee149a0a36f6",
-    "apps/web/tests/vercel-preview-verifier.test.ts": "f81f9b4f149a31ef3470fcd1f477ca5319cde948b3a86f83229e62528b138512"
+    "apps/web/tests/vercel-preview-verifier.test.ts": "f81f9b4f149a31ef3470fcd1f477ca5319cde948b3a86f83229e62528b138512",
+    "apps/web/scripts/lib/vercel-resource-measurement-verifier.mjs": "13f442c34a479a461d43eb6f39853da2dd30b9869920f86668df2aa96addac14",
+    "apps/web/scripts/lib/vercel-resource-measurement-verifier.d.mts": "358dbc1c959fead8b5742c8395aad3647ec79a8eff13b3255b96fd3521308d31",
+    "apps/web/scripts/verify-vercel-resource-measurements.mjs": "172f050f54cdddb44595382d917f06c1f825757cf1386ab24d1d7789c18e6ce2",
+    "apps/web/tests/vercel-resource-measurement-verifier.test.ts": "ec1576d18c048ecd05c2cc4ba98e7c7e5d55e2b27bc5e140f15da9ef76bec173"
   },
   "evidence_fingerprint": "sha256:empty-directory:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "run_number": 27,
