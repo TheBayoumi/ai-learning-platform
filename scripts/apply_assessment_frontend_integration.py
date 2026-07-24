@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +33,15 @@ def main() -> None:
         'import { LEARNING_SESSION_STORAGE_KEY } from "../lib/learning-session";\n',
         "learning event imports",
     )
-    text = text.replace("SESSION_STORAGE_KEY", "LEARNING_SESSION_STORAGE_KEY")
+    text, reference_count = re.subn(
+        r"\bSESSION_STORAGE_KEY\b",
+        "LEARNING_SESSION_STORAGE_KEY",
+        text,
+    )
+    if reference_count != 3:
+        raise RuntimeError(
+            f"session storage reference count was {reference_count}, expected 3"
+        )
     text = replace_once(
         text,
         "    window.localStorage.setItem(LEARNING_SESSION_STORAGE_KEY, nextPlan.state_token);\n",
