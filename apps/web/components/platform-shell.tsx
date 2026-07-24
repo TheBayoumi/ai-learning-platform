@@ -1,5 +1,6 @@
 import "server-only";
 
+import { AssessmentCalibration } from "./assessment-calibration";
 import { LearningPlatform } from "./learning-platform";
 import type { ApiAvailability } from "../server/health/runtime-health";
 
@@ -27,12 +28,13 @@ export function PlatformShell({ apiAvailability }: PlatformShellProps) {
           <h1 id="hero-heading">Your target role becomes a living training system.</h1>
           <p className="hero-lede">
             Diagnose your current evidence, receive a learner-unique sequence of practical
-            missions, and update your readiness as you complete defensible work.
+            missions, and calibrate planning signals without confusing a short assessment with
+            employment certification.
           </p>
           <div className="hero-signals" aria-label="Platform capabilities">
             <span>Dynamic competency priorities</span>
             <span>Unique practical missions</span>
-            <span>Evidence-based progress</span>
+            <span>Evidence plus calibration</span>
           </div>
         </div>
         <aside className="hero-card" aria-label="Current launch track">
@@ -48,20 +50,21 @@ export function PlatformShell({ apiAvailability }: PlatformShellProps) {
               <dd>Adaptive</dd>
             </div>
             <div>
-              <dt>Region</dt>
-              <dd>Egypt / MENA + remote</dd>
+              <dt>Signals</dt>
+              <dd>Evidence + calibration</dd>
             </div>
           </dl>
         </aside>
       </section>
 
       <LearningPlatform apiAvailability={apiAvailability} />
+      <AssessmentCalibration />
 
       <footer className="site-footer">
         <p>
-          This first deployed slice provides diagnosis, personalized planning, and signed
-          browser-resumable progress. Account persistence and AI tutoring are not represented
-          as complete yet.
+          This development slice provides diagnosis, adaptive planning, learner-attested
+          evidence, and bounded knowledge calibration. Account persistence, automated artifact
+          validation, and AI tutoring are not represented as complete yet.
         </p>
       </footer>
     </main>
