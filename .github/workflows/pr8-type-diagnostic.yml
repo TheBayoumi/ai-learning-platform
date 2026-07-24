@@ -6,7 +6,7 @@ on:
       - automation/assessment-calibration
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   diagnose:
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: ${{ github.sha }}
-          persist-credentials: false
+          persist-credentials: true
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.11.18"
@@ -26,16 +26,19 @@ jobs:
         shell: bash
         run: |
           set +e
-          mkdir -p "$RUNNER_TEMP/pr8-type"
-          uv sync --project apps/api --locked --all-groups >"$RUNNER_TEMP/pr8-type/setup.txt" 2>&1
+          mkdir -p .diagnostics
+          uv sync --project apps/api --locked --all-groups >/dev/null 2>&1
           uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts \
-            >"$RUNNER_TEMP/pr8-type/mypy.txt" 2>&1
-          echo "$?" >"$RUNNER_TEMP/pr8-type/mypy.exit"
+            >.diagnostics/pr8-mypy.txt 2>&1
+          echo "exit_code=$?" >>.diagnostics/pr8-mypy.txt
           exit 0
-      - name: Upload report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: pr8-type-${{ github.sha }}
-          path: ${{ runner.temp }}/pr8-type
-          if-no-files-found: error
-          retention-days: 3
+      - name: Commit report once
+        run: |
+          if git diff --quiet -- .diagnostics/pr8-mypy.txt; then
+            exit 0
+          fi
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add .diagnostics/pr8-mypy.txt
+          git commit -m "chore(assessment): publish mypy diagnostic"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
