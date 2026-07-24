@@ -37,6 +37,7 @@ from ai_learning_platform_api.persistence.schemas import (
     PersistentAssessmentSubmitRequest,
     PersistentPlanCreateRequest,
     PersistentPlanImportRequest,
+    PersistentPlanView,
     PersistentProgressRequest,
     PersistentReplanRequest,
 )
@@ -183,7 +184,12 @@ class PersistentCompatibilityService:
         )
         return result.submission
 
-    async def _current(self, *, account_id: str, state_token: str):
+    async def _current(
+        self,
+        *,
+        account_id: str,
+        state_token: str,
+    ) -> PersistentPlanView:
         supplied_state = self._codec.decode(state_token)
         current = await self._persistent.resume_plan(
             account_id=account_id,
@@ -296,7 +302,10 @@ async def _run(operation: Callable[[], Awaitable[T]]) -> T:
     except LearnerStateNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "LEARNER_STATE_NOT_FOUND", "message": "The learning plan was not found."},
+            detail={
+                "code": "LEARNER_STATE_NOT_FOUND",
+                "message": "The learning plan was not found.",
+            },
         ) from error
     except (LearnerStateConflictError, IdempotencyConflictError) as error:
         raise HTTPException(
@@ -327,5 +336,8 @@ def _uuid(value: str) -> str:
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "INVALID_REQUEST_CONTEXT", "message": "The request context is invalid."},
+            detail={
+                "code": "INVALID_REQUEST_CONTEXT",
+                "message": "The request context is invalid.",
+            },
         ) from error
