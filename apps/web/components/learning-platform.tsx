@@ -15,8 +15,12 @@ import {
   type PlanView,
   type RoleView
 } from "../lib/learning-contract";
-
-const SESSION_STORAGE_KEY = "ai-career-learning-plan-v1";
+import {
+  PLAN_UPDATED_EVENT,
+  publishPlanSaved,
+  type PlanUpdatedDetail
+} from "../lib/learning-events";
+import { LEARNING_SESSION_STORAGE_KEY } from "../lib/learning-session";
 
 type ApiAvailability = "available" | "unavailable" | "invalid-response";
 
@@ -112,7 +116,8 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
     setReplanHours(nextPlan.weekly_hours);
     setFocusCompetencyIds([...nextPlan.focus_competency_ids]);
     resetEvidenceForm();
-    window.localStorage.setItem(SESSION_STORAGE_KEY, nextPlan.state_token);
+    window.localStorage.setItem(LEARNING_SESSION_STORAGE_KEY, nextPlan.state_token);
+    publishPlanSaved();
   },
   [resetEvidenceForm]
 );
@@ -128,7 +133,7 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
         Object.keys(current).length === 0 ? initialRatings(roleValue[0]) : current
       );
 
-      const token = window.localStorage.getItem(SESSION_STORAGE_KEY);
+      const token = window.localStorage.getItem(LEARNING_SESSION_STORAGE_KEY);
       if (token !== null) {
         const planValue = await platformRequest("plans/resume", {
           method: "POST",
@@ -156,6 +161,21 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
     }, 0);
     return () => window.clearTimeout(handle);
   }, [loadPlatform]);
+
+  useEffect(() => {
+    const handlePlanUpdated = (event: Event) => {
+      if (!(event instanceof CustomEvent)) {
+        return;
+      }
+      const detail = event.detail as PlanUpdatedDetail | undefined;
+      if (detail !== undefined && isPlanView(detail.plan)) {
+        storePlan(detail.plan);
+      }
+    };
+    window.addEventListener(PLAN_UPDATED_EVENT, handlePlanUpdated);
+    return () => window.removeEventListener(PLAN_UPDATED_EVENT, handlePlanUpdated);
+  }, [storePlan]);
+
 
 
   const createPlan = async (event: FormEvent<HTMLFormElement>) => {
@@ -264,7 +284,7 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
   };
 
   const resetPlan = () => {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    window.localStorage.removeItem(LEARNING_SESSION_STORAGE_KEY);
     setPlan(null);
     resetEvidenceForm();
     setError(null);
