@@ -1,4 +1,4 @@
-"""Strict request and response contracts for adaptive learner evidence cycles."""
+"""Strict contracts for adaptive learning evidence and assessment calibration."""
 
 from __future__ import annotations
 
@@ -53,6 +53,26 @@ class ReplanRequest(ResumeRequest):
     focus_competency_ids: Annotated[list[str], Field(max_length=4)] = Field(default_factory=list)
 
 
+class AssessmentStartRequest(ResumeRequest):
+    """Start a signed, expiring calibration attempt for current priority gaps."""
+
+    question_count: Annotated[int, Field(ge=2, le=4)] = 4
+
+
+class AssessmentAnswer(StrictModel):
+    """One selected option for one assessment question."""
+
+    question_id: Annotated[str, Field(min_length=1, max_length=120)]
+    option_id: Annotated[str, Field(min_length=1, max_length=16)]
+
+
+class AssessmentSubmitRequest(ResumeRequest):
+    """Score an expiring signed attempt and replan from the calibration signal."""
+
+    attempt_token: Annotated[str, Field(min_length=20, max_length=16_384)]
+    answers: Annotated[list[AssessmentAnswer], Field(min_length=1, max_length=4)]
+
+
 class CompetencyView(StrictModel):
     """Public competency metadata."""
 
@@ -74,12 +94,14 @@ class RoleView(StrictModel):
 
 
 class PriorityCompetencyView(StrictModel):
-    """A competency prioritized from the learner's current evidence."""
+    """A competency prioritized from evidence and optional assessment calibration."""
 
     id: str
     name: str
     category: str
     mastery_percent: int
+    effective_percent: int
+    assessment_percent: int | None = None
     gap_percent: int
     focused: bool = False
 
@@ -117,10 +139,58 @@ class EvidenceRecordView(StrictModel):
     next_review_at: str
 
 
+class AssessmentOptionView(StrictModel):
+    """One public option; it intentionally contains no correctness marker."""
+
+    id: str
+    text: str
+
+
+class AssessmentQuestionView(StrictModel):
+    """One public single-choice calibration question."""
+
+    id: str
+    competency_id: str
+    competency_name: str
+    prompt: str
+    options: list[AssessmentOptionView]
+
+
+class AssessmentAttemptView(StrictModel):
+    """An expiring assessment attempt with signed server-verifiable identity."""
+
+    attempt_token: str
+    bank_version: str
+    issued_at: str
+    expires_at: str
+    questions: list[AssessmentQuestionView]
+
+
+class AssessmentFeedbackView(StrictModel):
+    """Question feedback returned only after submission."""
+
+    question_id: str
+    competency_id: str
+    correct: bool
+    explanation: str
+
+
+class AssessmentRecordView(StrictModel):
+    """A bounded calibration result retained in signed learner state."""
+
+    attempt_id: str
+    bank_version: str
+    submitted_at: str
+    score_percent: int
+    correct_count: int
+    total_count: int
+    competency_scores: dict[str, int]
+
+
 class LearnerState(StrictModel):
     """Signed stateless learner state carried by the browser."""
 
-    schema_version: Literal[1, 2] = 2
+    schema_version: Literal[1, 2, 3] = 3
     learner_id: str
     learner_name: str
     target_role: Literal["junior-python-backend-engineer"]
@@ -134,6 +204,8 @@ class LearnerState(StrictModel):
     plan_revision: int = 0
     focus_competency_ids: list[str] = Field(default_factory=list)
     evidence_history: list[EvidenceRecordView] = Field(default_factory=list)
+    assessment_scores: dict[str, int] = Field(default_factory=dict)
+    assessment_history: list[AssessmentRecordView] = Field(default_factory=list)
 
 
 class PlanView(StrictModel):
@@ -144,6 +216,8 @@ class PlanView(StrictModel):
     learner_name: str
     role: RoleView
     readiness_percent: int
+    evidence_readiness_percent: int
+    assessment_coverage_percent: int
     priority_competencies: list[PriorityCompetencyView]
     current_activity: ActivityView | None
     completed_count: int
@@ -153,7 +227,18 @@ class PlanView(StrictModel):
     plan_revision: int
     focus_competency_ids: list[str]
     evidence_history: list[EvidenceRecordView]
+    assessment_history: list[AssessmentRecordView]
     next_review_at: str | None
+
+
+class AssessmentSubmissionView(StrictModel):
+    """Post-assessment feedback plus the recalibrated learner plan."""
+
+    score_percent: int
+    correct_count: int
+    total_count: int
+    feedback: list[AssessmentFeedbackView]
+    plan: PlanView
 
 
 class ApiError(StrictModel):
