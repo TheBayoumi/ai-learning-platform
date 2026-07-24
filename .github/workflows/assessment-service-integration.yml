@@ -1,0 +1,343 @@
+name: Assessment service integration
+
+on:
+  push:
+    branches:
+      - automation/assessment-calibration
+
+permissions:
+  contents: write
+  statuses: write
+
+concurrency:
+  group: assessment-service-integration
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply assessment orchestration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("apps/api/src/ai_learning_platform_api/learning/service.py")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f"{label} count was {count}, expected 1")
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "from pydantic import ValidationError\n\n",
+              "from pydantic import ValidationError\n\n"
+              "from ai_learning_platform_api.learning.assessment import (\n"
+              "    AssessmentCalibrationEngine,\n"
+              ")\n",
+              "assessment import",
+          )
+          replace_once(
+              "    ActivityView,\n",
+              "    ActivityView,\n"
+              "    AssessmentAttemptView,\n"
+              "    AssessmentStartRequest,\n"
+              "    AssessmentSubmissionView,\n"
+              "    AssessmentSubmitRequest,\n",
+              "assessment schema imports",
+          )
+          replace_once(
+              "_MAX_EVIDENCE_HISTORY = 24\n",
+              "_MAX_EVIDENCE_HISTORY = 24\n_MAX_ASSESSMENT_HISTORY = 12\n",
+              "assessment history limit",
+          )
+          replace_once(
+              "        self._id_factory = id_factory if id_factory is not None else uuid4\n",
+              "        self._id_factory = id_factory if id_factory is not None else uuid4\n"
+              "        self._assessment = AssessmentCalibrationEngine(\n"
+              "            secret, clock=self._clock, id_factory=self._id_factory\n"
+              "        )\n",
+              "assessment engine construction",
+          )
+          replace_once(
+              "            schema_version=2,\n",
+              "            schema_version=3,\n",
+              "new state schema version",
+          )
+
+          resume_anchor = (
+              "    def resume(self, state_token: str) -> PlanView:\n"
+              "        \"\"\"Verify and project a previously issued learner state.\"\"\"\n"
+              "        state = self._codec.decode(state_token)\n"
+              "        role = ROLE_CATALOG.get(state.target_role)\n"
+              "        if role is None:\n"
+              "            raise InvalidStateTokenError\n"
+              "        return self._project(state, role)\n\n"
+          )
+          assessment_methods = '''    def start_assessment(
+              self, request: AssessmentStartRequest
+          ) -> AssessmentAttemptView:
+              """Issue an expiring calibration attempt for current priority gaps."""
+              state = self._codec.decode(request.state_token)
+              role = ROLE_CATALOG.get(state.target_role)
+              if role is None:
+                  raise InvalidStateTokenError
+              effective_mastery = self._effective_mastery_values(
+                  role, state.mastery, state.assessment_scores
+              )
+              priorities = self._rank_competencies(
+                  role,
+                  effective_mastery,
+                  state.focus_competency_ids,
+              )[: request.question_count]
+              return self._assessment.start(
+                  state=state,
+                  role=role,
+                  competency_ids=[item.identifier for item in priorities],
+              )
+
+          def submit_assessment(
+              self, request: AssessmentSubmitRequest
+          ) -> AssessmentSubmissionView:
+              """Score a calibration attempt and regenerate assessment-informed work."""
+              state = self._codec.decode(request.state_token)
+              role = ROLE_CATALOG.get(state.target_role)
+              if role is None:
+                  raise InvalidStateTokenError
+              outcome = self._assessment.score(state=state, role=role, request=request)
+              assessment_scores = dict(state.assessment_scores)
+              assessment_scores.update(outcome.competency_scores)
+              effective_mastery = self._effective_mastery_values(
+                  role, state.mastery, assessment_scores
+              )
+              revision = state.plan_revision + 1
+              pending_reviews = [
+                  activity
+                  for activity in state.activities
+                  if activity.kind == "review"
+                  and activity.id not in state.completed_activity_ids
+              ]
+              build_activities = self._generate_build_activities(
+                  role=role,
+                  mastery=effective_mastery,
+                  weekly_hours=state.weekly_hours,
+                  focus_competency_ids=state.focus_competency_ids,
+                  learner_name=state.learner_name,
+                  experience_summary=state.experience_summary,
+                  seed=self._learner_seed(
+                      state.learner_name,
+                      state.target_role,
+                      f"{state.experience_summary}|assessment:{outcome.record.attempt_id}",
+                  ),
+                  generation=revision,
+              )
+              updated = state.model_copy(
+                  update={
+                      "schema_version": 3,
+                      "sequence": state.sequence + 1,
+                      "plan_revision": revision,
+                      "assessment_scores": assessment_scores,
+                      "assessment_history": [*state.assessment_history, outcome.record][
+                          -_MAX_ASSESSMENT_HISTORY:
+                      ],
+                      "activities": [*pending_reviews, *build_activities],
+                  }
+              )
+              plan = self._project(updated, role)
+              return AssessmentSubmissionView(
+                  score_percent=outcome.record.score_percent,
+                  correct_count=outcome.record.correct_count,
+                  total_count=outcome.record.total_count,
+                  feedback=list(outcome.feedback),
+                  plan=plan,
+              )
+
+          '''
+          replace_once(
+              resume_anchor,
+              resume_anchor + assessment_methods,
+              "assessment methods insertion",
+          )
+          text = text.replace('"schema_version": 2,', '"schema_version": 3,')
+          replace_once(
+              "            mastery=state.mastery,\n",
+              "            mastery=self._effective_mastery_values(\n"
+              "                role, state.mastery, state.assessment_scores\n"
+              "            ),\n",
+              "assessment-informed manual replan",
+          )
+          replace_once(
+              "        priorities = self._rank_competencies(\n"
+              "            role,\n"
+              "            state.mastery,\n"
+              "            state.focus_competency_ids,\n"
+              "        )[:4]\n",
+              "        effective_mastery = self._effective_mastery_values(\n"
+              "            role, state.mastery, state.assessment_scores\n"
+              "        )\n"
+              "        priorities = self._rank_competencies(\n"
+              "            role,\n"
+              "            effective_mastery,\n"
+              "            state.focus_competency_ids,\n"
+              "        )[:4]\n",
+              "effective priority projection",
+          )
+          replace_once(
+              "        weighted_mastery = sum(\n"
+              "            state.mastery.get(item.identifier, 0) * item.weight\n"
+              "            for item in role.competencies\n"
+              "        )\n"
+              "        readiness = round(weighted_mastery / total_weight)\n",
+              "        weighted_evidence_mastery = sum(\n"
+              "            state.mastery.get(item.identifier, 0) * item.weight\n"
+              "            for item in role.competencies\n"
+              "        )\n"
+              "        weighted_effective_mastery = sum(\n"
+              "            effective_mastery.get(item.identifier, 0) * item.weight\n"
+              "            for item in role.competencies\n"
+              "        )\n"
+              "        evidence_readiness = round(weighted_evidence_mastery / total_weight)\n"
+              "        readiness = round(weighted_effective_mastery / total_weight)\n"
+              "        assessment_coverage = round(\n"
+              "            (len(state.assessment_scores) / len(role.competencies)) * 100\n"
+              "        )\n",
+              "readiness calculation",
+          )
+          replace_once(
+              "            readiness_percent=readiness,\n",
+              "            readiness_percent=readiness,\n"
+              "            evidence_readiness_percent=evidence_readiness,\n"
+              "            assessment_coverage_percent=assessment_coverage,\n",
+              "readiness projection fields",
+          )
+          replace_once(
+              "                    mastery_percent=state.mastery.get(item.identifier, 0),\n"
+              "                    gap_percent=100 - state.mastery.get(item.identifier, 0),\n",
+              "                    mastery_percent=state.mastery.get(item.identifier, 0),\n"
+              "                    effective_percent=effective_mastery.get(item.identifier, 0),\n"
+              "                    assessment_percent=state.assessment_scores.get(item.identifier),\n"
+              "                    gap_percent=100\n"
+              "                    - effective_mastery.get(item.identifier, 0),\n",
+              "priority calibration fields",
+          )
+          replace_once(
+              "            evidence_history=list(state.evidence_history[-12:]),\n",
+              "            evidence_history=list(state.evidence_history[-12:]),\n"
+              "            assessment_history=list(state.assessment_history[-8:]),\n",
+              "assessment history projection",
+          )
+
+          helper_anchor = "    def _generate_build_activities(\n"
+          helper = '''    @staticmethod
+          def _effective_mastery_values(
+              role: RoleDefinition,
+              mastery: dict[str, int],
+              assessment_scores: dict[str, int],
+          ) -> dict[str, int]:
+              """Blend evidence and objective calibration without overstating either."""
+              return {
+                  competency.identifier: (
+                      round(
+                          (mastery.get(competency.identifier, 0) * 0.7)
+                          + (assessment_scores[competency.identifier] * 0.3)
+                      )
+                      if competency.identifier in assessment_scores
+                      else mastery.get(competency.identifier, 0)
+                  )
+                  for competency in role.competencies
+              }
+
+          '''
+          replace_once(helper_anchor, helper + helper_anchor, "effective mastery helper")
+          path.write_text(text, encoding="utf-8", newline="\n")
+
+          test_path = Path("apps/api/tests/test_assessment_api.py")
+          test_text = test_path.read_text(encoding="utf-8")
+          test_text = test_text.replace(
+              "    PlanRequest,\n",
+              "    PlanRequest,\n    ReplanRequest,\n",
+              1,
+          )
+          old_dynamic = '''    replanned = service.replan(
+              __import__(
+                  "ai_learning_platform_api.learning.schemas",
+                  fromlist=["ReplanRequest"],
+              ).ReplanRequest(
+                  state_token=plan.state_token,
+                  weekly_hours=8,
+                  focus_competency_ids=[],
+              )
+          )'''
+          new_direct = '''    replanned = service.replan(
+              ReplanRequest(
+                  state_token=plan.state_token,
+                  weekly_hours=8,
+                  focus_competency_ids=[],
+              )
+          )'''
+          if old_dynamic not in test_text:
+              raise RuntimeError("dynamic ReplanRequest test anchor missing")
+          test_path.write_text(
+              test_text.replace(old_dynamic, new_direct, 1),
+              encoding="utf-8",
+              newline="\n",
+          )
+          PY
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+
+      - name: Synchronize dependencies
+        run: uv sync --project apps/api --locked --all-groups
+
+      - name: Verify assessment service
+        run: |
+          uv run --project apps/api --locked ruff format apps/api scripts
+          uv run --project apps/api --locked ruff check --fix apps/api scripts
+          uv run --project apps/api --locked ruff format --check apps/api scripts
+          uv run --project apps/api --locked ruff check apps/api scripts
+          uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
+          cd apps/api
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
+
+      - name: Commit verified service integration
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add apps/api
+          git commit -m "feat(assessment): integrate calibration into learner planning"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Publish integration status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          STATUS_DESCRIPTION: ${{ job.status == 'success' && 'Assessment service verified' || 'Assessment service integration failed' }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state="$STATUS_STATE"
+          -f context="Product / assessment service integration"
+          -f description="$STATUS_DESCRIPTION"
+          -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
