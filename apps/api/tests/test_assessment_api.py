@@ -4,9 +4,11 @@ import asyncio
 import base64
 import json
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 import httpx
+from pydantic import SecretStr
 
 from ai_learning_platform_api.app import create_app
 from ai_learning_platform_api.learning.assessment import InvalidAssessmentAttemptError
@@ -15,6 +17,7 @@ from ai_learning_platform_api.learning.schemas import (
     AssessmentStartRequest,
     AssessmentSubmitRequest,
     PlanRequest,
+    ReplanRequest,
 )
 from ai_learning_platform_api.learning.service import LearningPlanService
 from ai_learning_platform_api.settings import Settings
@@ -39,7 +42,7 @@ async def request(method: str, path: str, json_body: object | None = None) -> ht
         Settings(
             environment="test",
             log_level="CRITICAL",
-            learner_state_secret=TEST_SECRET,
+            learner_state_secret=SecretStr(TEST_SECRET),
         )
     )
     transport = httpx.ASGITransport(app=app)
@@ -47,7 +50,7 @@ async def request(method: str, path: str, json_body: object | None = None) -> ht
         return await client.request(method, path, json=json_body)
 
 
-def _create_plan() -> dict[str, object]:
+def _create_plan() -> dict[str, Any]:
     response = asyncio.run(
         request(
             "POST",
@@ -63,7 +66,7 @@ def _create_plan() -> dict[str, object]:
     return response.json()
 
 
-def _start(plan: dict[str, object], count: int = 4) -> dict[str, object]:
+def _start(plan: dict[str, Any], count: int = 4) -> dict[str, Any]:
     response = asyncio.run(
         request(
             "POST",
@@ -75,7 +78,7 @@ def _start(plan: dict[str, object], count: int = 4) -> dict[str, object]:
     return response.json()
 
 
-def _answers(attempt: dict[str, object], *, correct: bool) -> list[dict[str, str]]:
+def _answers(attempt: dict[str, Any], *, correct: bool) -> list[dict[str, str]]:
     questions = attempt["questions"]
     assert isinstance(questions, list)
     result: list[dict[str, str]] = []
@@ -96,8 +99,10 @@ def test_start_hides_answers_and_selects_priority_competencies() -> None:
     attempt = _start(plan)
 
     assert attempt["bank_version"] == "2026.07-calibration-1"
-    assert len(attempt["questions"]) == 4
-    competency_ids = [question["competency_id"] for question in attempt["questions"]]
+    questions = attempt["questions"]
+    assert isinstance(questions, list)
+    assert len(questions) == 4
+    competency_ids = [question["competency_id"] for question in questions]
     assert competency_ids == ["python", "fastapi", "postgresql", "testing"]
 
     rendered = json.dumps(attempt, sort_keys=True)
@@ -274,10 +279,7 @@ def test_attempt_expires_and_is_bound_to_state_sequence() -> None:
 
     now[0] -= timedelta(minutes=31)
     replanned = service.replan(
-        __import__(
-            "ai_learning_platform_api.learning.schemas",
-            fromlist=["ReplanRequest"],
-        ).ReplanRequest(
+        ReplanRequest(
             state_token=plan.state_token,
             weekly_hours=8,
             focus_competency_ids=[],
