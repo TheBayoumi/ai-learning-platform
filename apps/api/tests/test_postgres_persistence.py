@@ -1,4 +1,4 @@
-"""Real PostgreSQL tests for snapshots, events, idempotency, and outbox atomicity."""
+"""Real PostgreSQL tests for snapshots, events, idempotency, replay, and outbox atomicity."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from uuid import UUID
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from ai_learning_platform_api.learning.schemas import LearnerState, PlanRequest
 from ai_learning_platform_api.learning.service import LearningPlanService, SignedStateCodec
@@ -20,6 +20,7 @@ from ai_learning_platform_api.persistence.contracts import (
     IdempotencyConflictError,
     LearnerStateCommit,
     LearnerStateConflictError,
+    ReplayDivergenceError,
 )
 from ai_learning_platform_api.persistence.database import DatabaseRuntime
 from ai_learning_platform_api.persistence.models import learner_events, outbox_records
@@ -42,7 +43,7 @@ def migrated_database() -> Iterator[None]:
         yield
         return
     root = Path(__file__).resolve().parents[1]
-    configuration = Config(root / "alembic.ini")
+    configuration = Config(str(root / "alembic.ini"))
     command.downgrade(configuration, "base")
     command.upgrade(configuration, "head")
     try:
@@ -57,7 +58,7 @@ def _state(name: str = "Mahmoud") -> LearnerState:
     return SignedStateCodec(_SIGNING_KEY).decode(plan.state_token)
 
 
-def test_atomic_commit_load_idempotency_and_outbox() -> None:
+def test_atomic_commit_load_idempotency_replay_and_outbox() -> None:
     assert _DATABASE_URL is not None
     runtime = DatabaseRuntime.create(_DATABASE_URL)
     repository = PostgresLearnerStateRepository(runtime.engine)
@@ -76,8 +77,9 @@ def test_atomic_commit_load_idempotency_and_outbox() -> None:
     first = asyncio.run(repository.commit(request))
     second = asyncio.run(repository.commit(request))
     loaded = asyncio.run(repository.load(account_id=_ACCOUNT_ID, learner_id=learner_id))
+    replayed = asyncio.run(repository.replay(account_id=_ACCOUNT_ID, learner_id=learner_id))
 
-    assert first == second == loaded
+    assert first == second == loaded == replayed
     assert first.version == 0
 
     async def counts() -> tuple[int, int]:
@@ -87,6 +89,15 @@ def test_atomic_commit_load_idempotency_and_outbox() -> None:
         return int(event_count or 0), int(outbox_count or 0)
 
     assert asyncio.run(counts()) == (1, 1)
+    assert (
+        asyncio.run(
+            repository.replay(
+                account_id="44444444-4444-4444-8444-444444444444",
+                learner_id=learner_id,
+            )
+        )
+        is None
+    )
     asyncio.run(runtime.shutdown())
 
 
@@ -151,4 +162,55 @@ def test_conflicts_fail_closed_without_partial_records() -> None:
         )
         is None
     )
+    asyncio.run(runtime.shutdown())
+
+
+def test_replay_reconstructs_latest_state_and_rejects_version_gaps() -> None:
+    assert _DATABASE_URL is not None
+    runtime = DatabaseRuntime.create(_DATABASE_URL)
+    repository = PostgresLearnerStateRepository(runtime.engine)
+    state = _state("Replay Learner")
+    learner_id = UUID(state.learner_id)
+    asyncio.run(
+        repository.commit(
+            LearnerStateCommit(
+                account_id=_ACCOUNT_ID,
+                learner_id=learner_id,
+                expected_version=None,
+                idempotency_key="postgres-replay-create-command",
+                event_type="learner.plan.created",
+                state=state,
+                occurred_at=_NOW,
+            )
+        )
+    )
+    changed_state = state.model_copy(update={"sequence": 1})
+    committed = asyncio.run(
+        repository.commit(
+            LearnerStateCommit(
+                account_id=_ACCOUNT_ID,
+                learner_id=learner_id,
+                expected_version=0,
+                idempotency_key="postgres-replay-update-command",
+                event_type="learner.plan.replanned",
+                state=changed_state,
+                occurred_at=_NOW,
+            )
+        )
+    )
+
+    assert asyncio.run(repository.replay(account_id=_ACCOUNT_ID, learner_id=learner_id)) == committed
+
+    async def remove_initial_event() -> None:
+        async with runtime.engine.begin() as connection:
+            await connection.execute(
+                delete(learner_events).where(
+                    learner_events.c.learner_id == learner_id,
+                    learner_events.c.aggregate_version == 0,
+                )
+            )
+
+    asyncio.run(remove_initial_event())
+    with pytest.raises(ReplayDivergenceError):
+        asyncio.run(repository.replay(account_id=_ACCOUNT_ID, learner_id=learner_id))
     asyncio.run(runtime.shutdown())
