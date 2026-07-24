@@ -89,17 +89,48 @@ jobs:
           npm install --global npm@11.18.0
           npm ci --prefix apps/web
 
-      - name: Format and verify API
+      - name: Format API
         run: |
           uv run --project apps/api --locked ruff format apps/api scripts
           uv run --project apps/api --locked ruff check --fix apps/api scripts
-          uv run --project apps/api --locked ruff format --check apps/api scripts
-          uv run --project apps/api --locked ruff check apps/api scripts
-          uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
-          cd apps/api
-          uv run --locked coverage erase
-          uv run --locked coverage run -m pytest
-          uv run --locked coverage report --fail-under=95
+
+      - name: Capture API static and test verification
+        shell: bash
+        run: |
+          set +e
+          output="$RUNNER_TEMP/adaptive-api-verification"
+          mkdir -p "$output"
+          overall=0
+
+          run_check() {
+            local name="$1"
+            shift
+            echo "===== $name =====" >>"$output/output.txt"
+            "$@" >>"$output/output.txt" 2>&1
+            local status=$?
+            echo "$name=$status" >>"$output/statuses.txt"
+            if test "$status" -ne 0; then
+              overall=1
+            fi
+          }
+
+          run_check format-check uv run --project apps/api --locked ruff format --check apps/api scripts
+          run_check lint uv run --project apps/api --locked ruff check apps/api scripts
+          run_check mypy uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
+          run_check pytest uv run --project apps/api --locked coverage run -m pytest -c apps/api/pyproject.toml apps/api/tests
+          run_check coverage uv run --project apps/api --locked coverage report --data-file=apps/api/.coverage --fail-under=95
+
+          echo "$overall" >"$output/overall.exit"
+          exit "$overall"
+
+      - name: Upload API verification output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: adaptive-api-verification-${{ github.sha }}
+          path: ${{ runner.temp }}/adaptive-api-verification
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Verify web
         working-directory: apps/web
