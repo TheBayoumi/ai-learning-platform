@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import (
+    Column,
     DateTime,
     ForeignKey,
     Integer,
@@ -27,60 +28,53 @@ metadata = MetaData(naming_convention=NAMING_CONVENTION)
 accounts = Table(
     "accounts",
     metadata,
-    String(160),
-)
-
-# Define columns after construction so Ruff and SQLAlchemy typing remain explicit.
-accounts.append_column(__import__("sqlalchemy").Column("id", String(160), primary_key=True))
-accounts.append_column(
-    __import__("sqlalchemy").Column("created_at", DateTime(timezone=True), nullable=False)
-)
-accounts.append_column(
-    __import__("sqlalchemy").Column("updated_at", DateTime(timezone=True), nullable=False)
+    Column("id", String(160), primary_key=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
 )
 
 learner_states = Table(
     "learner_states",
     metadata,
-    __import__("sqlalchemy").Column("learner_id", UUID(as_uuid=True), primary_key=True),
-    __import__("sqlalchemy").Column(
+    Column("learner_id", UUID(as_uuid=True), primary_key=True),
+    Column(
         "account_id",
         String(160),
         ForeignKey("accounts.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     ),
-    __import__("sqlalchemy").Column("version", Integer, nullable=False),
-    __import__("sqlalchemy").Column("state", JSONB, nullable=False),
-    __import__("sqlalchemy").Column("created_at", DateTime(timezone=True), nullable=False),
-    __import__("sqlalchemy").Column("updated_at", DateTime(timezone=True), nullable=False),
+    Column("version", Integer, nullable=False),
+    Column("state", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
     UniqueConstraint("account_id", "learner_id", name="uq_learner_states_account_learner"),
 )
 
 learner_events = Table(
     "learner_events",
     metadata,
-    __import__("sqlalchemy").Column("id", UUID(as_uuid=True), primary_key=True),
-    __import__("sqlalchemy").Column(
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    Column(
         "account_id",
         String(160),
         ForeignKey("accounts.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     ),
-    __import__("sqlalchemy").Column(
+    Column(
         "learner_id",
         UUID(as_uuid=True),
         ForeignKey("learner_states.learner_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     ),
-    __import__("sqlalchemy").Column("aggregate_version", Integer, nullable=False),
-    __import__("sqlalchemy").Column("event_type", String(120), nullable=False),
-    __import__("sqlalchemy").Column("idempotency_key", String(160), nullable=False),
-    __import__("sqlalchemy").Column("command_hash", String(64), nullable=False),
-    __import__("sqlalchemy").Column("state", JSONB, nullable=False),
-    __import__("sqlalchemy").Column("occurred_at", DateTime(timezone=True), nullable=False),
+    Column("aggregate_version", Integer, nullable=False),
+    Column("event_type", String(120), nullable=False),
+    Column("idempotency_key", String(160), nullable=False),
+    Column("command_hash", String(64), nullable=False),
+    Column("state", JSONB, nullable=False),
+    Column("occurred_at", DateTime(timezone=True), nullable=False),
     UniqueConstraint(
         "account_id",
         "idempotency_key",
@@ -96,19 +90,19 @@ learner_events = Table(
 outbox_records = Table(
     "outbox_records",
     metadata,
-    __import__("sqlalchemy").Column("id", UUID(as_uuid=True), primary_key=True),
-    __import__("sqlalchemy").Column(
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    Column(
         "event_id",
         UUID(as_uuid=True),
         ForeignKey("learner_events.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
     ),
-    __import__("sqlalchemy").Column("topic", String(120), nullable=False),
-    __import__("sqlalchemy").Column("payload", JSONB, nullable=False),
-    __import__("sqlalchemy").Column("created_at", DateTime(timezone=True), nullable=False),
-    __import__("sqlalchemy").Column("available_at", DateTime(timezone=True), nullable=False),
-    __import__("sqlalchemy").Column("published_at", DateTime(timezone=True), nullable=True),
-    __import__("sqlalchemy").Column("attempts", Integer, nullable=False, default=0),
-    __import__("sqlalchemy").Column("last_error_code", Text, nullable=True),
+    Column("topic", String(120), nullable=False),
+    Column("payload", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("available_at", DateTime(timezone=True), nullable=False),
+    Column("published_at", DateTime(timezone=True), nullable=True),
+    Column("attempts", Integer, nullable=False, default=0),
+    Column("last_error_code", Text, nullable=True),
 )
