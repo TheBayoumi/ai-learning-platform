@@ -6,13 +6,13 @@ import hashlib
 import json
 from collections.abc import Mapping
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from pydantic import ValidationError
 from sqlalchemy import insert, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from ai_learning_platform_api.learning.schemas import LearnerState
 from ai_learning_platform_api.persistence.contracts import (
@@ -37,7 +37,12 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
     def __init__(self, engine: AsyncEngine) -> None:
         self._engine = engine
 
-    async def load(self, *, account_id: str, learner_id: Any) -> StoredLearnerState | None:
+    async def load(
+        self,
+        *,
+        account_id: str,
+        learner_id: UUID,
+    ) -> StoredLearnerState | None:
         """Load only an aggregate owned by the supplied account identifier."""
         try:
             async with self._engine.connect() as connection:
