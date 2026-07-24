@@ -58,13 +58,21 @@ jobs:
           uv run --locked coverage run -m pytest
           uv run --locked coverage report --fail-under=95
 
-      - name: Verify web
+      - name: Lint web
         working-directory: apps/web
-        run: |
-          npm run lint
-          npm run typecheck
-          npm test
-          npm run build
+        run: npm run lint
+
+      - name: Type check web
+        working-directory: apps/web
+        run: npm run typecheck
+
+      - name: Test web
+        working-directory: apps/web
+        run: npm test
+
+      - name: Build web
+        working-directory: apps/web
+        run: npm run build
 
       - name: Verify real runtime integration
         run: uv run --project apps/api --locked python scripts/smoke.py
