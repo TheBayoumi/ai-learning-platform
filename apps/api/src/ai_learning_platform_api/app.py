@@ -23,6 +23,10 @@ from ai_learning_platform_api.transport.http.persistence import (
     create_persistent_learning_router,
     create_runtime_router,
 )
+from ai_learning_platform_api.transport.http.persistent_compatibility import (
+    PersistentCompatibilityService,
+    create_persistent_compatibility_router,
+)
 
 
 def create_app(
@@ -80,9 +84,17 @@ def create_app(
     )
     app.include_router(create_health_router())
     if include_product_routes:
-        core_service = LearningPlanService(secret)
         app.include_router(create_runtime_router(resolved_settings.persistence_mode))
-        app.include_router(create_learning_router(core_service))
-        if persistent_service is not None:
+        if persistent_service is None:
+            app.include_router(create_learning_router(LearningPlanService(secret)))
+        else:
+            app.include_router(
+                create_persistent_compatibility_router(
+                    PersistentCompatibilityService(
+                        secret=secret,
+                        persistent=persistent_service,
+                    )
+                )
+            )
             app.include_router(create_persistent_learning_router(persistent_service))
     return app
