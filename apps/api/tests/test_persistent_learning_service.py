@@ -8,6 +8,7 @@ from uuid import UUID
 
 import pytest
 
+from ai_learning_platform_api.learning.schemas import AssessmentAnswer
 from ai_learning_platform_api.persistence.contracts import (
     LearnerStateCommit,
     LearnerStateConflictError,
@@ -142,7 +143,7 @@ def test_full_durable_learning_cycle() -> None:
         )
     )
     answers = [
-        {"question_id": question.id, "option_id": question.options[0].id}
+        AssessmentAnswer(question_id=question.id, option_id=question.options[0].id)
         for question in attempt_view.attempt.questions
     ]
     submitted = asyncio.run(
