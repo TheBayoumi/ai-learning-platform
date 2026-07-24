@@ -5,10 +5,13 @@ description = "FastAPI learner diagnosis and adaptive planning service"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+  "alembic==1.18.5",
   "fastapi==0.139.0",
   "opentelemetry-api==1.43.0",
   "opentelemetry-sdk==1.43.0",
+  "psycopg[binary]==3.3.4",
   "pydantic-settings==2.14.2",
+  "sqlalchemy==2.0.51",
   "uvicorn[standard]>=0.35,<0.36",
 ]
 
