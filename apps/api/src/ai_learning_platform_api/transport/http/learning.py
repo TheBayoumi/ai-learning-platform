@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TypeVar
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -22,8 +21,6 @@ from ai_learning_platform_api.learning.schemas import (
     RoleView,
 )
 from ai_learning_platform_api.learning.service import LearningPlanError, LearningPlanService
-
-T = TypeVar("T")
 
 
 def create_learning_router(service: LearningPlanService) -> APIRouter:
@@ -92,7 +89,7 @@ def create_learning_router(service: LearningPlanService) -> APIRouter:
     return router
 
 
-def _run(operation: Callable[[], T]) -> T:
+def _run[T](operation: Callable[[], T]) -> T:
     try:
         return operation()
     except (LearningPlanError, AssessmentError) as error:
