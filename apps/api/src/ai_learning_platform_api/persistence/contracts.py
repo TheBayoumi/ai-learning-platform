@@ -34,6 +34,10 @@ class IdempotencyConflictError(PersistenceError):
     """An idempotency key was reused for a different command payload."""
 
 
+class ReplayDivergenceError(PersistenceError):
+    """The append-only event sequence cannot reproduce one contiguous aggregate."""
+
+
 @dataclass(frozen=True, slots=True)
 class StoredLearnerState:
     """One owned learner aggregate snapshot loaded from durable storage."""
@@ -93,6 +97,17 @@ class LearnerStateRepository(Protocol):
     ) -> StoredLearnerState | None: ...
 
     async def commit(self, request: LearnerStateCommit) -> StoredLearnerState: ...
+
+
+class LearnerStateReplayRepository(Protocol):
+    """Audit boundary for reconstructing an aggregate from append-only events."""
+
+    async def replay(
+        self,
+        *,
+        account_id: str,
+        learner_id: UUID,
+    ) -> StoredLearnerState | None: ...
 
 
 def _validate_account_id(account_id: str) -> None:
