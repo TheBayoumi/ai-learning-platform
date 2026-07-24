@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { readApiBaseUrl } from "../../../../server/config/api-base";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +8,9 @@ export const runtime = "nodejs";
 const UPSTREAM_TIMEOUT_MS = 8_000;
 const MAX_REQUEST_BYTES = 96 * 1024;
 const MAX_RESPONSE_BYTES = 768 * 1024;
-const ACCOUNT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ACCOUNT_COOKIE = "ai_platform_account";
+const ACCOUNT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_PATHS = new Set([
   "runtime",
   "roles",
@@ -61,19 +65,7 @@ async function proxyRequest(
     return errorResponse(405, "PLATFORM_METHOD_NOT_ALLOWED", "The request method is not allowed.");
   }
 
-  let accountId: string | undefined;
-  if (relativePath.startsWith("persistent/")) {
-    const candidate = request.headers.get("x-platform-account-id") ?? "";
-    if (!ACCOUNT_ID_PATTERN.test(candidate)) {
-      return errorResponse(
-        400,
-        "INVALID_ACCOUNT_CONTEXT",
-        "The anonymous account context is invalid."
-      );
-    }
-    accountId = candidate.toLowerCase();
-  }
-
+  const accountContext = method === "POST" ? resolveAccountContext(request) : null;
   let body: string | undefined;
   if (method === "POST") {
     body = await request.text();
@@ -91,7 +83,12 @@ async function proxyRequest(
       headers: {
         accept: "application/json",
         ...(body === undefined ? {} : { "content-type": "application/json" }),
-        ...(accountId === undefined ? {} : { "x-platform-account-id": accountId })
+        ...(accountContext === null
+          ? {}
+          : {
+              "x-platform-account-id": accountContext.accountId,
+              "x-platform-command-id": randomUUID()
+            })
       },
       body,
       cache: "no-store",
@@ -115,13 +112,17 @@ async function proxyRequest(
         "The learning service response exceeded the safety limit."
       );
     }
+    const headers = new Headers({
+      "cache-control": "no-store",
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff"
+    });
+    if (accountContext?.created === true) {
+      headers.set("set-cookie", accountCookie(accountContext.accountId, request.url));
+    }
     return new Response(responseBody, {
       status: upstream.status,
-      headers: {
-        "cache-control": "no-store",
-        "content-type": "application/json; charset=utf-8",
-        "x-content-type-options": "nosniff"
-      }
+      headers
     });
   } catch {
     return errorResponse(
@@ -132,6 +133,39 @@ async function proxyRequest(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function resolveAccountContext(request: Request): Readonly<{
+  accountId: string;
+  created: boolean;
+}> {
+  const cookies = parseCookies(request.headers.get("cookie") ?? "");
+  const existing = cookies.get(ACCOUNT_COOKIE);
+  if (existing !== undefined && ACCOUNT_ID_PATTERN.test(existing)) {
+    return { accountId: existing.toLowerCase(), created: false };
+  }
+  return { accountId: randomUUID().toLowerCase(), created: true };
+}
+
+function parseCookies(value: string): ReadonlyMap<string, string> {
+  const parsed = new Map<string, string>();
+  for (const entry of value.split(";")) {
+    const separator = entry.indexOf("=");
+    if (separator <= 0) {
+      continue;
+    }
+    const name = entry.slice(0, separator).trim();
+    const cookieValue = entry.slice(separator + 1).trim();
+    if (name !== "" && cookieValue !== "") {
+      parsed.set(name, cookieValue);
+    }
+  }
+  return parsed;
+}
+
+function accountCookie(accountId: string, requestUrl: string): string {
+  const secure = new URL(requestUrl).protocol === "https:" ? "; Secure" : "";
+  return `${ACCOUNT_COOKIE}=${accountId}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax${secure}`;
 }
 
 function errorResponse(status: number, code: string, message: string): Response {
