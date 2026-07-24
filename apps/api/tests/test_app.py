@@ -4,7 +4,7 @@ import logging
 
 import httpx
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from ai_learning_platform_api.app import create_app
 from ai_learning_platform_api.logging import configure_logging
@@ -45,6 +45,47 @@ def test_invalid_environment_fails_settings_validation(monkeypatch: pytest.Monke
 
     with pytest.raises(ValidationError, match="environment"):
         Settings()
+
+
+def test_signed_state_mode_does_not_require_database_url() -> None:
+    settings = Settings(environment="test", persistence_mode="signed_state")
+
+    assert settings.persistence_mode == "signed_state"
+    assert settings.database_url is None
+
+
+def test_postgres_persistence_requires_database_url() -> None:
+    with pytest.raises(
+        ValidationError,
+        match="database_url must be configured for postgres persistence",
+    ):
+        Settings(environment="test", persistence_mode="postgres")
+
+
+def test_postgres_persistence_rejects_non_psycopg_driver() -> None:
+    with pytest.raises(
+        ValidationError,
+        match=r"database_url must use the postgresql\+psycopg driver",
+    ):
+        Settings(
+            environment="test",
+            persistence_mode="postgres",
+            database_url=SecretStr("postgresql+asyncpg://db.example/platform"),
+        )
+
+
+def test_postgres_persistence_keeps_database_url_secret() -> None:
+    raw_database_url = "postgresql+psycopg://db.example/platform?sslmode=require"
+
+    settings = Settings(
+        environment="test",
+        persistence_mode="postgres",
+        database_url=SecretStr(raw_database_url),
+    )
+
+    assert settings.database_url is not None
+    assert settings.database_url.get_secret_value() == raw_database_url
+    assert raw_database_url not in repr(settings)
 
 
 def test_structured_logging_initialization_emits_json(capsys: pytest.CaptureFixture[str]) -> None:
