@@ -11,7 +11,9 @@ const ALLOWED_PATHS = new Set([
   "plans",
   "plans/resume",
   "plans/replan",
-  "progress"
+  "progress",
+  "assessments/start",
+  "assessments/submit"
 ]);
 
 type RouteContext = Readonly<{
