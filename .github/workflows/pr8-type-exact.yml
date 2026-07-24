@@ -1,4 +1,4 @@
-name: PR8 exact type diagnostic
+name: PR8 strict typing repair
 
 on:
   push:
@@ -9,9 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  diagnose:
+  repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -22,23 +22,43 @@ jobs:
           version: "0.11.18"
           python-version: "3.13.13"
           working-directory: apps/api
-      - name: Capture exact CI mypy output
-        shell: bash
+      - name: Apply bounded type repair
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("apps/api/tests/test_assessment_api.py")
+          text = path.read_text(encoding="utf-8")
+          updated = text.replace("from typing import Any\n", "from typing import Any, cast\n", 1)
+          count = updated.count("return response.json()")
+          if count not in {0, 2}:
+              raise RuntimeError(f"unexpected response.json return count: {count}")
+          updated = updated.replace(
+              "return response.json()",
+              "return cast(dict[str, Any], response.json())",
+          )
+          path.write_text(updated, encoding="utf-8", newline="\n")
+          report = Path(".diagnostics/pr8-mypy-exact.txt")
+          if report.exists():
+              report.unlink()
+          PY
+      - name: Verify complete API gate
         working-directory: apps/api
         run: |
-          set +e
-          mkdir -p ../../.diagnostics
-          uv sync --locked --all-groups >/dev/null 2>&1
-          uv run --locked mypy src tests ../../scripts >../../.diagnostics/pr8-mypy-exact.txt 2>&1
-          echo "exit_code=$?" >>../../.diagnostics/pr8-mypy-exact.txt
-          exit 0
-      - name: Commit report once
+          uv sync --locked --all-groups
+          uv run --locked ruff format --check . ../../scripts
+          uv run --locked ruff check . ../../scripts
+          uv run --locked mypy src tests ../../scripts
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
+      - name: Commit verified repair
         run: |
-          if test -z "$(git status --porcelain -- .diagnostics/pr8-mypy-exact.txt)"; then
+          if test -z "$(git status --porcelain -- apps/api/tests/test_assessment_api.py .diagnostics/pr8-mypy-exact.txt)"; then
             exit 0
           fi
           git config user.name "TheBayoumi Automation"
           git config user.email "107598562+TheBayoumi@users.noreply.github.com"
-          git add .diagnostics/pr8-mypy-exact.txt
-          git commit -m "chore(assessment): publish exact mypy report"
+          git add -A apps/api/tests/test_assessment_api.py .diagnostics/pr8-mypy-exact.txt
+          git commit -m "fix(assessment): type decoded API payloads explicitly"
           git push origin "HEAD:${GITHUB_REF_NAME}"
