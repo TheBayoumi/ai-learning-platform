@@ -43,6 +43,26 @@ vc() {
   npx --yes vercel@56.5.0 "$@"
 }
 
+retry_json_endpoint() {
+  local url=$1
+  local filter=$2
+  local attempts=${3:-12}
+  local delay_seconds=${4:-5}
+  local response="$RUNNER_TEMP/retry-response.json"
+
+  for ((attempt = 1; attempt <= attempts; attempt += 1)); do
+    if curl -fsS "$url" >"$response" && jq -e "$filter" "$response" >/dev/null; then
+      return 0
+    fi
+    if (( attempt < attempts )); then
+      sleep "$delay_seconds"
+    fi
+  done
+
+  cat "$response" >&2 || true
+  return 1
+}
+
 phase="toolchain"
 node --version
 npm --version
@@ -63,7 +83,7 @@ if test "$status" = "404"; then
     -X POST "https://api.vercel.com/v11/projects?teamId=$TEAM_ID" \
     "${auth[@]}" \
     --data "$(jq -n --arg name "$BACKEND_PROJECT_NAME" \
-      '{name:$name, serverlessFunctionRegion:"fra1"}')")
+      '{name:$name,framework:"fastapi",serverlessFunctionRegion:"fra1"}')")
 fi
 case "$status" in
   200|201) ;;
@@ -73,6 +93,13 @@ case "$status" in
     ;;
 esac
 backend_project_id=$(jq -er '.id' "$project_response")
+
+# Keep the project preset explicit even when the project already existed.
+curl -fsS -X PATCH \
+  "https://api.vercel.com/v9/projects/$backend_project_id?teamId=$TEAM_ID" \
+  "${auth[@]}" \
+  --data '{"framework":"fastapi","serverlessFunctionRegion":"fra1"}' \
+  | jq -e '.framework == "fastapi"' >/dev/null
 
 env_response="$RUNNER_TEMP/backend-env.json"
 curl -fsS \
@@ -115,11 +142,32 @@ curl -fsS -X POST \
 
 phase="backend-deployment"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
-  vc deploy --cwd apps/api --yes --archive=tgz --prod \
+  vc deploy --cwd apps/api --yes --archive=tgz --prod --force \
     --token "$VERCEL_API_TOKEN" 2>&1 | tee "$RUNNER_TEMP/backend-deploy.txt"
-backend_url=$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' \
-  "$RUNNER_TEMP/backend-deploy.txt" | tail -n 1)
-test -n "$backend_url"
+backend_deployment_url=$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' \
+  "$RUNNER_TEMP/backend-deploy.txt" | head -n 1)
+test -n "$backend_deployment_url"
+
+phase="backend-public-domain"
+domains_response="$RUNNER_TEMP/backend-domains.json"
+curl -fsS \
+  "https://api.vercel.com/v9/projects/$backend_project_id/domains?teamId=$TEAM_ID" \
+  -H "Authorization: Bearer $VERCEL_API_TOKEN" >"$domains_response"
+backend_domain=$(jq -er '
+  [.domains[]
+   | select((.verified // true) == true)
+   | select((.gitBranch // null) == null)
+   | .name
+   | select(endswith(".vercel.app"))][0]
+' "$domains_response")
+backend_url="https://$backend_domain"
+
+# The runtime proxy cannot rely on a Vercel login or protection-bypass header.
+# Verify the stable backend production domain publicly before publishing it.
+phase="backend-public-verification"
+retry_json_endpoint "$backend_url/health/live" '.status == "ok"'
+retry_json_endpoint "$backend_url/api/v1/roles" \
+  'length == 1 and .[0].id == "junior-python-backend-engineer"'
 
 phase="frontend-connection"
 if test "$GITHUB_REF" = "refs/heads/main"; then
@@ -155,22 +203,17 @@ frontend_url=$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' \
 test -n "$frontend_url"
 
 phase="deployed-verification"
-bypass=()
+frontend_bypass=()
 if test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"; then
-  bypass=( -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" )
+  frontend_bypass=( -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" )
 fi
 
-curl -fsS "${bypass[@]}" "$backend_url/health/live" \
-  | jq -e '.status == "ok"' >/dev/null
-curl -fsS "${bypass[@]}" "$backend_url/api/v1/roles" \
-  | jq -e 'length == 1 and .[0].id == "junior-python-backend-engineer"' >/dev/null
-
-page=$(curl -fsS "${bypass[@]}" "$frontend_url/")
+page=$(curl -fsS "${frontend_bypass[@]}" "$frontend_url/")
 grep -F "Career Atlas" <<<"$page" >/dev/null
 grep -F "Learning service online" <<<"$page" >/dev/null
 
 plan="$RUNNER_TEMP/deployed-plan.json"
-curl -fsS "${bypass[@]}" \
+curl -fsS "${frontend_bypass[@]}" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/plans" \
   --data '{
@@ -188,7 +231,7 @@ jq -e '.current_activity.id | length > 5' "$plan" >/dev/null
 
 resume_payload="$RUNNER_TEMP/resume-payload.json"
 jq '{state_token}' "$plan" >"$resume_payload"
-curl -fsS "${bypass[@]}" \
+curl -fsS "${frontend_bypass[@]}" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/plans/resume" \
   --data-binary "@$resume_payload" \
@@ -199,7 +242,7 @@ jq '{state_token, activity_id:.current_activity.id, reflection:
   "The deployed API, same-origin proxy, signed resume, and progress transition were verified end to end."}' \
   "$plan" >"$progress_payload"
 progress="$RUNNER_TEMP/deployed-progress.json"
-curl -fsS "${bypass[@]}" \
+curl -fsS "${frontend_bypass[@]}" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/progress" \
   --data-binary "@$progress_payload" >"$progress"
@@ -211,6 +254,7 @@ jq -n \
   --arg commit_sha "$GITHUB_SHA" \
   --arg environment "$environment" \
   --arg backend_project_id "$backend_project_id" \
+  --arg backend_deployment_url "$backend_deployment_url" \
   --arg backend_url "$backend_url" \
   --arg frontend_project_id "$FRONTEND_PROJECT_ID" \
   --arg frontend_url "$frontend_url" \
@@ -221,7 +265,14 @@ jq -n \
     result:"PASSED",
     commit_sha:$commit_sha,
     environment:$environment,
-    backend:{project_id:$backend_project_id,url:$backend_url,health:"ok",role_catalog:"ok"},
+    backend:{
+      project_id:$backend_project_id,
+      deployment_url:$backend_deployment_url,
+      public_url:$backend_url,
+      public_access:"ok",
+      health:"ok",
+      role_catalog:"ok"
+    },
     frontend:{project_id:$frontend_project_id,url:$frontend_url,page:"ok",proxy:"ok"},
     journey:{create:"ok",resume:"ok",progress:"ok",initial_readiness:$initial_readiness,progressed_readiness:$progressed_readiness}
   }' >"$EVIDENCE_PATH"
