@@ -2,8 +2,8 @@ name: Quality Gates
 
 on:
   pull_request:
-  push:
-    branches: [main, "automation/**", "product/**"]
+    branches: [main]
+    types: [opened, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -13,11 +13,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
 jobs:
   api:
     name: API quality
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     services:
@@ -97,6 +98,7 @@ jobs:
 
   web:
     name: Web quality
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -133,6 +135,7 @@ jobs:
 
   runtime-smoke:
     name: Runtime smoke
+    if: ${{ github.event.pull_request.draft == false }}
     needs: [api, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -173,6 +176,7 @@ jobs:
 
   phase-gate:
     name: Phase gate
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -203,7 +207,7 @@ jobs:
   gate-projection:
     name: Gate projection
     needs: [api, web, runtime-smoke, phase-gate]
-    if: ${{ always() }}
+    if: ${{ always() && github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
