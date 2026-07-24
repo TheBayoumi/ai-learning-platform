@@ -158,14 +158,21 @@ def apply_service_integration() -> None:
         "        )[:4]\n",
         1,
     )
-    weighted_pattern = re.compile(
-        r"        weighted_mastery = sum\(\n"
-        r"            state\.mastery\.get\(item\.identifier, 0\) \* item\.weight\n"
-        r"            for item in role\.competencies\n"
-        r"        \)\n"
-        r"        readiness = round\(weighted_mastery / total_weight\)\n"
+    weighted_block = (
+        "        weighted_mastery = sum(\n"
+        "            state.mastery.get(item.identifier, 0) * item.weight\n"
+        "            for item in role.competencies\n"
+        "        )\n"
+        "        readiness = round(weighted_mastery / total_weight)\n"
     )
-    text = weighted_pattern.sub(
+    weighted_inline_block = (
+        "        weighted_mastery = sum(\n"
+        "            state.mastery.get(item.identifier, 0) * item.weight "
+        "for item in role.competencies\n"
+        "        )\n"
+        "        readiness = round(weighted_mastery / total_weight)\n"
+    )
+    weighted_replacement = (
         "        weighted_evidence_mastery = sum(\n"
         "            state.mastery.get(item.identifier, 0) * item.weight\n"
         "            for item in role.competencies\n"
@@ -178,10 +185,15 @@ def apply_service_integration() -> None:
         "        readiness = round(weighted_effective_mastery / total_weight)\n"
         "        assessment_coverage = round(\n"
         "            (len(state.assessment_scores) / len(role.competencies)) * 100\n"
-        "        )\n",
-        text,
-        count=1,
+        "        )\n"
     )
+    weighted_count = text.count(weighted_block) + text.count(weighted_inline_block)
+    if weighted_count != 1:
+        raise RuntimeError(f"readiness source block count was {weighted_count}, expected 1")
+    if weighted_block in text:
+        text = text.replace(weighted_block, weighted_replacement, 1)
+    else:
+        text = text.replace(weighted_inline_block, weighted_replacement, 1)
     text = text.replace(
         "            readiness_percent=readiness,\n",
         "            readiness_percent=readiness,\n"
