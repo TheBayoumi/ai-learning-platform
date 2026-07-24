@@ -12,24 +12,16 @@ const ACCOUNT_COOKIE = "ai_platform_account";
 const ACCOUNT_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_PATHS = new Set([
-  "runtime",
   "roles",
   "plans",
   "plans/resume",
   "plans/replan",
   "progress",
   "assessments/start",
-  "assessments/submit",
-  "persistent/plans",
-  "persistent/plans/import",
-  "persistent/plans/resume",
-  "persistent/plans/replan",
-  "persistent/progress",
-  "persistent/assessments/start",
-  "persistent/assessments/submit"
+  "assessments/submit"
 ]);
 
-const GET_PATHS = new Set(["runtime", "roles"]);
+const GET_PATHS = new Set(["roles"]);
 
 type RouteContext = Readonly<{
   params: Promise<Readonly<{ path: string[] }>>;
