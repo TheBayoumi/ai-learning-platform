@@ -1,4 +1,4 @@
-"""HTTP transport for the learner diagnosis and progress slice."""
+"""HTTP transport for learner diagnosis, evidence, and adaptive replanning."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from ai_learning_platform_api.learning.schemas import (
     PlanRequest,
     PlanView,
     ProgressRequest,
+    ReplanRequest,
     ResumeRequest,
     RoleView,
 )
@@ -41,6 +42,15 @@ def create_learning_router(service: LearningPlanService) -> APIRouter:
     )
     async def resume_plan(request: ResumeRequest) -> PlanView:
         return _run(lambda: service.resume(request.state_token))
+
+    @router.post(
+        "/plans/replan",
+        response_model=PlanView,
+        responses={400: {"model": ApiError}},
+        operation_id="replan_curriculum",
+    )
+    async def replan_curriculum(request: ReplanRequest) -> PlanView:
+        return _run(lambda: service.replan(request))
 
     @router.post(
         "/progress",
@@ -76,5 +86,11 @@ def _safe_message(error: LearningPlanError) -> str:
         "INVALID_COMPETENCY_RATING": "Competency ratings contain an unknown or duplicate item.",
         "UNKNOWN_ACTIVITY": "The selected activity does not belong to this learning plan.",
         "ACTIVITY_ALREADY_COMPLETED": "The selected activity is already completed.",
+        "INVALID_EVIDENCE": (
+            "The evidence submission contains a duplicate or unknown acceptance criterion."
+        ),
+        "INVALID_REPLAN_FOCUS": (
+            "The requested curriculum focus contains a duplicate or unknown competency."
+        ),
     }
     return messages.get(error.code, "The learning request could not be processed.")
