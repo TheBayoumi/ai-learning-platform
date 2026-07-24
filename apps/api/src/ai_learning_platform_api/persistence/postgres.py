@@ -183,7 +183,12 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
             if recovered is not None:
                 return recovered
             raise LearnerStateConflictError from error
-        except (IdempotencyConflictError, LearnerStateConflictError):
+        except LearnerStateConflictError:
+            recovered = await self._recover_idempotent(request, command_hash)
+            if recovered is not None:
+                return recovered
+            raise
+        except IdempotencyConflictError:
             raise
         except SQLAlchemyError as error:
             raise PersistenceUnavailableError from error
