@@ -89,7 +89,9 @@ def _answers(attempt: dict[str, Any], *, correct: bool) -> list[dict[str, str]]:
         assert isinstance(options, list)
         option_ids = [str(option["id"]) for option in options if isinstance(option, dict)]
         correct_id = CORRECT_OPTIONS[question_id]
-        selected = correct_id if correct else next(item for item in option_ids if item != correct_id)
+        selected = (
+            correct_id if correct else next(item for item in option_ids if item != correct_id)
+        )
         result.append({"question_id": question_id, "option_id": selected})
     return result
 

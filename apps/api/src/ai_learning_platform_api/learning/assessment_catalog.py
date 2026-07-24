@@ -62,7 +62,9 @@ ASSESSMENT_QUESTIONS: Final = (
         options=(
             _option("a", "Move all code into a larger router module."),
             _option("b", "Put pricing rules in Pydantic validators."),
-            _option("c", "Delegate domain decisions to a typed service behind an explicit adapter."),
+            _option(
+                "c", "Delegate domain decisions to a typed service behind an explicit adapter."
+            ),
             _option("d", "Replace exceptions with print statements."),
         ),
         correct_option_id="c",
@@ -155,7 +157,10 @@ ASSESSMENT_QUESTIONS: Final = (
         ),
         options=(
             _option("a", "Use one stage and delete files in the final command."),
-            _option("b", "Use a multi-stage build and copy only runtime artifacts into a non-root image."),
+            _option(
+                "b",
+                "Use a multi-stage build and copy only runtime artifacts into a non-root image.",
+            ),
             _option("c", "Store secrets in environment variables during image build."),
             _option("d", "Run the final container as root for compatibility."),
         ),
@@ -211,7 +216,9 @@ ASSESSMENT_QUESTIONS: Final = (
         ),
         options=(
             _option("a", "State a confident root cause so stakeholders are reassured."),
-            _option("b", "Separate confirmed impact, current hypotheses, mitigation, and next check."),
+            _option(
+                "b", "Separate confirmed impact, current hypotheses, mitigation, and next check."
+            ),
             _option("c", "Share every raw log line without interpretation."),
             _option("d", "Wait until the incident is fully resolved before communicating."),
         ),
