@@ -1,0 +1,44 @@
+name: PR8 exact type diagnostic
+
+on:
+  push:
+    branches:
+      - automation/assessment-calibration
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          working-directory: apps/api
+      - name: Capture exact CI mypy output
+        shell: bash
+        working-directory: apps/api
+        run: |
+          set +e
+          mkdir -p ../../.diagnostics
+          uv sync --locked --all-groups >/dev/null 2>&1
+          uv run --locked mypy src tests ../../scripts >../../.diagnostics/pr8-mypy-exact.txt 2>&1
+          echo "exit_code=$?" >>../../.diagnostics/pr8-mypy-exact.txt
+          exit 0
+      - name: Commit report once
+        run: |
+          if test -z "$(git status --porcelain -- .diagnostics/pr8-mypy-exact.txt)"; then
+            exit 0
+          fi
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add .diagnostics/pr8-mypy-exact.txt
+          git commit -m "chore(assessment): publish exact mypy report"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
