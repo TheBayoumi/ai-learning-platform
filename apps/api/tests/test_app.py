@@ -23,6 +23,27 @@ def test_application_factory_creates_foundation_application() -> None:
     assert app.title == "AI Career Learning Platform API"
 
 
+def test_postgres_mode_wires_durable_compatibility_routes() -> None:
+    settings = Settings(
+        environment="test",
+        persistence_mode="postgres",
+        database_url=SecretStr("postgresql+psycopg://db.example/platform"),
+    )
+    app = create_app(settings)
+    paths = {route.path for route in app.routes}
+
+    assert "/api/v1/plans" in paths
+    assert "/api/v1/plans/resume" in paths
+    assert "/api/v1/progress" in paths
+    assert all(not path.startswith("/api/v1/persistent/") for path in paths)
+
+    async def run_lifespan() -> None:
+        async with app.router.lifespan_context(app):
+            pass
+
+    asyncio.run(run_lifespan())
+
+
 def test_live_health_check_returns_typed_process_status() -> None:
     response = asyncio.run(get_health("/health/live"))
 
