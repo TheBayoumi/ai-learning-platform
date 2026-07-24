@@ -1,11 +1,18 @@
-"""HTTP transport for learner diagnosis, evidence, and adaptive replanning."""
+"""HTTP transport for learner diagnosis, evidence, assessment, and replanning."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from fastapi import APIRouter, HTTPException, status
 
+from ai_learning_platform_api.learning.assessment import AssessmentError
 from ai_learning_platform_api.learning.schemas import (
     ApiError,
+    AssessmentAttemptView,
+    AssessmentStartRequest,
+    AssessmentSubmissionView,
+    AssessmentSubmitRequest,
     PlanRequest,
     PlanView,
     ProgressRequest,
@@ -61,25 +68,38 @@ def create_learning_router(service: LearningPlanService) -> APIRouter:
     async def complete_activity(request: ProgressRequest) -> PlanView:
         return _run(lambda: service.complete_activity(request))
 
+    @router.post(
+        "/assessments/start",
+        response_model=AssessmentAttemptView,
+        responses={400: {"model": ApiError}},
+        operation_id="start_assessment",
+    )
+    async def start_assessment(request: AssessmentStartRequest) -> AssessmentAttemptView:
+        return _run(lambda: service.start_assessment(request))
+
+    @router.post(
+        "/assessments/submit",
+        response_model=AssessmentSubmissionView,
+        responses={400: {"model": ApiError}},
+        operation_id="submit_assessment",
+    )
+    async def submit_assessment(request: AssessmentSubmitRequest) -> AssessmentSubmissionView:
+        return _run(lambda: service.submit_assessment(request))
+
     return router
 
 
-def _run(operation: object) -> PlanView:
-    if not callable(operation):
-        raise TypeError("operation must be callable")
+def _run[T](operation: Callable[[], T]) -> T:
     try:
-        result = operation()
-    except LearningPlanError as error:
+        return operation()
+    except (LearningPlanError, AssessmentError) as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": error.code, "message": _safe_message(error)},
+            detail={"code": error.code, "message": _safe_message(error.code)},
         ) from None
-    if not isinstance(result, PlanView):
-        raise TypeError("learning operation returned an invalid projection")
-    return result
 
 
-def _safe_message(error: LearningPlanError) -> str:
+def _safe_message(code: str) -> str:
     messages = {
         "INVALID_STATE_TOKEN": "The saved learning session is invalid or has been modified.",
         "UNKNOWN_TARGET_ROLE": "The selected target role is not available.",
@@ -92,5 +112,11 @@ def _safe_message(error: LearningPlanError) -> str:
         "INVALID_REPLAN_FOCUS": (
             "The requested curriculum focus contains a duplicate or unknown competency."
         ),
+        "INVALID_ASSESSMENT_ATTEMPT": (
+            "The calibration attempt is invalid, expired, or does not match this learning state."
+        ),
+        "INVALID_ASSESSMENT_ANSWER": (
+            "Assessment answers are incomplete, duplicated, or contain an unavailable option."
+        ),
     }
-    return messages.get(error.code, "The learning request could not be processed.")
+    return messages.get(code, "The learning request could not be processed.")
