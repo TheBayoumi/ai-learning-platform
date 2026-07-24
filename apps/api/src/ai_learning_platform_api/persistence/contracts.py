@@ -22,6 +22,10 @@ class PersistenceUnavailableError(PersistenceError):
     """The configured persistence backend cannot complete the operation."""
 
 
+class LearnerStateNotFoundError(PersistenceError):
+    """No durable learner aggregate belongs to the supplied account and identifier."""
+
+
 class LearnerStateConflictError(PersistenceError):
     """The aggregate version changed before the requested commit completed."""
 
