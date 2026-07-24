@@ -4,7 +4,7 @@ import asyncio
 import base64
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import httpx
@@ -63,7 +63,7 @@ def _create_plan() -> dict[str, Any]:
         )
     )
     assert response.status_code == 201
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 def _start(plan: dict[str, Any], count: int = 4) -> dict[str, Any]:
@@ -75,7 +75,7 @@ def _start(plan: dict[str, Any], count: int = 4) -> dict[str, Any]:
         )
     )
     assert response.status_code == 200
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 def _answers(attempt: dict[str, Any], *, correct: bool) -> list[dict[str, str]]:
