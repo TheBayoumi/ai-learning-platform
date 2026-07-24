@@ -1,0 +1,95 @@
+name: Assessment frontend integration
+
+on:
+  push:
+    branches:
+      - automation/assessment-calibration
+
+permissions:
+  contents: write
+  statuses: write
+
+concurrency:
+  group: assessment-frontend-integration
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply browser synchronization
+        run: python scripts/apply_assessment_frontend_integration.py
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Synchronize dependencies
+        run: |
+          uv sync --project apps/api --locked --all-groups
+          npm install --global npm@11.18.0
+          npm ci --prefix apps/web
+
+      - name: Verify API
+        run: |
+          uv run --project apps/api --locked ruff format --check apps/api scripts
+          uv run --project apps/api --locked ruff check apps/api scripts
+          uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
+          cd apps/api
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
+
+      - name: Verify web
+        working-directory: apps/web
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Verify real runtime integration
+        run: uv run --project apps/api --locked python scripts/smoke.py
+
+      - name: Commit verified frontend integration
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "TheBayoumi Automation"
+          git config user.email "107598562+TheBayoumi@users.noreply.github.com"
+          git add apps/web
+          git commit -m "feat(assessment): connect calibration workspace to dashboard"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Publish integration status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          STATUS_DESCRIPTION: ${{ job.status == 'success' && 'Assessment frontend verified' || 'Assessment frontend integration failed' }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state="$STATUS_STATE"
+          -f context="Product / assessment frontend integration"
+          -f description="$STATUS_DESCRIPTION"
+          -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
