@@ -24,6 +24,42 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
+      - name: Apply deterministic client-state repair
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("apps/web/components/learning-platform.tsx")
+          text = path.read_text(encoding="utf-8")
+          old_store = '''  const storePlan = useCallback((nextPlan: PlanView) => {
+            setPlan(nextPlan);
+            setReplanHours(nextPlan.weekly_hours);
+            setFocusCompetencyIds([...nextPlan.focus_competency_ids]);
+            window.localStorage.setItem(SESSION_STORAGE_KEY, nextPlan.state_token);
+          }, []);'''
+          new_store = '''  const storePlan = useCallback(
+            (nextPlan: PlanView) => {
+              setPlan(nextPlan);
+              setReplanHours(nextPlan.weekly_hours);
+              setFocusCompetencyIds([...nextPlan.focus_competency_ids]);
+              resetEvidenceForm();
+              window.localStorage.setItem(SESSION_STORAGE_KEY, nextPlan.state_token);
+            },
+            [resetEvidenceForm]
+          );'''
+          old_effect = '''
+          useEffect(() => {
+            resetEvidenceForm();
+          }, [plan?.current_activity?.id, resetEvidenceForm]);
+          '''
+          if old_store not in text:
+              raise RuntimeError("storePlan repair anchor missing")
+          if old_effect not in text:
+              raise RuntimeError("evidence effect repair anchor missing")
+          updated = text.replace(old_store, new_store, 1).replace(old_effect, "\n", 1)
+          path.write_text(updated, encoding="utf-8", newline="\n")
+          PY
+
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
