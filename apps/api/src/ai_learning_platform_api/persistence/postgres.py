@@ -21,6 +21,7 @@ from ai_learning_platform_api.persistence.contracts import (
     LearnerStateConflictError,
     LearnerStateRepository,
     PersistenceUnavailableError,
+    ReplayDivergenceError,
     StoredLearnerState,
 )
 from ai_learning_platform_api.persistence.models import (
@@ -64,6 +65,50 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
         if row is None:
             return None
         return _stored_state(row)
+
+    async def replay(
+        self,
+        *,
+        account_id: str,
+        learner_id: UUID,
+    ) -> StoredLearnerState | None:
+        """Reconstruct one aggregate from its contiguous append-only event sequence."""
+        try:
+            async with self._engine.connect() as connection:
+                result = await connection.execute(
+                    select(
+                        learner_events.c.account_id,
+                        learner_events.c.learner_id,
+                        learner_events.c.aggregate_version,
+                        learner_events.c.state,
+                        learner_events.c.occurred_at,
+                    )
+                    .where(
+                        learner_events.c.account_id == account_id,
+                        learner_events.c.learner_id == learner_id,
+                    )
+                    .order_by(learner_events.c.aggregate_version)
+                )
+                rows = result.mappings().all()
+        except SQLAlchemyError as error:
+            raise PersistenceUnavailableError from error
+        if not rows:
+            return None
+        for expected_version, row in enumerate(rows):
+            if int(row["aggregate_version"]) != expected_version:
+                raise ReplayDivergenceError
+        latest = rows[-1]
+        try:
+            state = LearnerState.model_validate(latest["state"])
+            return StoredLearnerState(
+                account_id=str(latest["account_id"]),
+                learner_id=latest["learner_id"],
+                version=int(latest["aggregate_version"]),
+                state=state,
+                updated_at=latest["occurred_at"],
+            )
+        except (ValidationError, ValueError) as error:
+            raise ReplayDivergenceError from error
 
     async def commit(self, request: LearnerStateCommit) -> StoredLearnerState:
         """Commit one state transition with optimistic concurrency and idempotency."""
