@@ -67,6 +67,20 @@ function initialRatings(role: RoleView | undefined): Record<string, number> {
   );
 }
 
+function formatDateTime(value: string | null): string {
+  if (value === null) {
+    return "No review scheduled";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) {
+    return "Review date unavailable";
+  }
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(parsed);
+}
+
 export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
   const [roles, setRoles] = useState<readonly RoleView[]>([]);
   const [plan, setPlan] = useState<PlanView | null>(null);
@@ -75,15 +89,33 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
   const [weeklyHours, setWeeklyHours] = useState(8);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [reflection, setReflection] = useState("");
+  const [evidenceReference, setEvidenceReference] = useState("");
+  const [criteriaMet, setCriteriaMet] = useState<readonly string[]>([]);
+  const [confidence, setConfidence] = useState(0);
+  const [replanHours, setReplanHours] = useState(8);
+  const [focusCompetencyIds, setFocusCompetencyIds] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const activeRole = roles[0];
 
-  const storePlan = useCallback((nextPlan: PlanView) => {
-    setPlan(nextPlan);
-    window.localStorage.setItem(SESSION_STORAGE_KEY, nextPlan.state_token);
+  const resetEvidenceForm = useCallback(() => {
+    setReflection("");
+    setEvidenceReference("");
+    setCriteriaMet([]);
+    setConfidence(0);
   }, []);
+
+  const storePlan = useCallback(
+  (nextPlan: PlanView) => {
+    setPlan(nextPlan);
+    setReplanHours(nextPlan.weekly_hours);
+    setFocusCompetencyIds([...nextPlan.focus_competency_ids]);
+    resetEvidenceForm();
+    window.localStorage.setItem(SESSION_STORAGE_KEY, nextPlan.state_token);
+  },
+  [resetEvidenceForm]
+);
 
   const loadPlatform = useCallback(async () => {
     try {
@@ -124,6 +156,7 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
     }, 0);
     return () => window.clearTimeout(handle);
   }, [loadPlatform]);
+
 
   const createPlan = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -177,19 +210,53 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
         body: {
           state_token: plan.state_token,
           activity_id: plan.current_activity.id,
-          reflection
+          reflection,
+          evidence_reference: evidenceReference,
+          criteria_met: criteriaMet,
+          confidence
         }
       });
       if (!isPlanView(value)) {
         throw new Error("The updated learning plan did not match the expected contract.");
       }
       storePlan(value);
-      setReflection("");
+      resetEvidenceForm();
     } catch (caught) {
       setError(
         caught instanceof Error
           ? caught.message
-          : "Progress could not be recorded."
+          : "Evidence could not be recorded."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const replanCurriculum = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (plan === null) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const value = await platformRequest("plans/replan", {
+        method: "POST",
+        body: {
+          state_token: plan.state_token,
+          weekly_hours: replanHours,
+          focus_competency_ids: focusCompetencyIds
+        }
+      });
+      if (!isPlanView(value)) {
+        throw new Error("The replanned curriculum did not match the expected contract.");
+      }
+      storePlan(value);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "The curriculum could not be replanned."
       );
     } finally {
       setBusy(false);
@@ -199,7 +266,7 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
   const resetPlan = () => {
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
     setPlan(null);
-    setReflection("");
+    resetEvidenceForm();
     setError(null);
   };
 
@@ -220,7 +287,7 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
     <section className="learning-product" aria-labelledby="learning-product-heading">
       <div className="product-toolbar">
         <div>
-          <p className="eyebrow">Career accelerator · first live track</p>
+          <p className="eyebrow">Career accelerator · adaptive evidence cycle</p>
           <h2 id="learning-product-heading">
             {plan === null ? "Build your personal path" : `Welcome back, ${plan.learner_name}`}
           </h2>
@@ -276,9 +343,36 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
           plan={plan}
           progressPercent={progressPercent}
           reflection={reflection}
+          evidenceReference={evidenceReference}
+          criteriaMet={criteriaMet}
+          confidence={confidence}
+          replanHours={replanHours}
+          focusCompetencyIds={focusCompetencyIds}
           busy={busy}
           onReflectionChange={setReflection}
+          onEvidenceReferenceChange={setEvidenceReference}
+          onConfidenceChange={setConfidence}
+          onCriterionToggle={(criterion, checked) =>
+            setCriteriaMet((current) =>
+              checked
+                ? [...current, criterion]
+                : current.filter((item) => item !== criterion)
+            )
+          }
+          onReplanHoursChange={setReplanHours}
+          onFocusToggle={(competencyId, checked) =>
+            setFocusCompetencyIds((current) => {
+              if (!checked) {
+                return current.filter((item) => item !== competencyId);
+              }
+              if (current.includes(competencyId) || current.length >= 4) {
+                return current;
+              }
+              return [...current, competencyId];
+            })
+          }
           onComplete={completeCurrentActivity}
+          onReplan={replanCurriculum}
         />
       )}
     </section>
@@ -415,27 +509,49 @@ interface DashboardProps {
   readonly plan: PlanView;
   readonly progressPercent: number;
   readonly reflection: string;
+  readonly evidenceReference: string;
+  readonly criteriaMet: readonly string[];
+  readonly confidence: number;
+  readonly replanHours: number;
+  readonly focusCompetencyIds: readonly string[];
   readonly busy: boolean;
   readonly onReflectionChange: (value: string) => void;
+  readonly onEvidenceReferenceChange: (value: string) => void;
+  readonly onConfidenceChange: (value: number) => void;
+  readonly onCriterionToggle: (criterion: string, checked: boolean) => void;
+  readonly onReplanHoursChange: (value: number) => void;
+  readonly onFocusToggle: (competencyId: string, checked: boolean) => void;
   readonly onComplete: (event: FormEvent<HTMLFormElement>) => void;
+  readonly onReplan: (event: FormEvent<HTMLFormElement>) => void;
 }
 
 function Dashboard({
   plan,
   progressPercent,
   reflection,
+  evidenceReference,
+  criteriaMet,
+  confidence,
+  replanHours,
+  focusCompetencyIds,
   busy,
   onReflectionChange,
-  onComplete
+  onEvidenceReferenceChange,
+  onConfidenceChange,
+  onCriterionToggle,
+  onReplanHoursChange,
+  onFocusToggle,
+  onComplete,
+  onReplan
 }: DashboardProps) {
   return (
     <div className="dashboard-grid">
       <aside className="dashboard-summary">
         <div className="readiness-card">
-          <p className="step-label">Role readiness signal</p>
+          <p className="step-label">Provisional readiness signal</p>
           <div className="readiness-value">
             <strong>{plan.readiness_percent}%</strong>
-            <span>current evidence estimate</span>
+            <span>self-reported evidence estimate</span>
           </div>
           <div
             className="progress-track"
@@ -448,7 +564,7 @@ function Dashboard({
             <span style={{ width: `${progressPercent}%` }} />
           </div>
           <p className="progress-copy">
-            {plan.completed_count} of {plan.total_count} generated activities complete
+            {plan.completed_count} of {plan.total_count} active activities complete · revision {plan.plan_revision}
           </p>
         </div>
 
@@ -458,7 +574,10 @@ function Dashboard({
             {plan.priority_competencies.map((competency) => (
               <li key={competency.id}>
                 <div>
-                  <strong>{competency.name}</strong>
+                  <strong>
+                    {competency.name}
+                    {competency.focused ? <em>Focus</em> : null}
+                  </strong>
                   <small>{competency.category}</small>
                 </div>
                 <span>{competency.mastery_percent}%</span>
@@ -466,44 +585,129 @@ function Dashboard({
             ))}
           </ul>
         </div>
+
+        <div className="review-panel">
+          <p className="step-label">Evidence rhythm</p>
+          <strong>{formatDateTime(plan.next_review_at)}</strong>
+          <span>{plan.evidence_history.length} recent evidence records retained</span>
+        </div>
+
+        <details className="replan-panel">
+          <summary>Rebuild active curriculum</summary>
+          <form onSubmit={onReplan}>
+            <label className="field-label" htmlFor="replan-hours">
+              Weekly capacity: <strong>{replanHours} hours</strong>
+            </label>
+            <input
+              id="replan-hours"
+              type="range"
+              min={2}
+              max={20}
+              value={replanHours}
+              onChange={(event) => onReplanHoursChange(Number(event.target.value))}
+            />
+            <fieldset className="focus-list">
+              <legend>Optional focus areas · up to four</legend>
+              {plan.role.competencies.map((competency) => (
+                <label key={competency.id}>
+                  <input
+                    type="checkbox"
+                    checked={focusCompetencyIds.includes(competency.id)}
+                    disabled={
+                      !focusCompetencyIds.includes(competency.id) &&
+                      focusCompetencyIds.length >= 4
+                    }
+                    onChange={(event) =>
+                      onFocusToggle(competency.id, event.target.checked)
+                    }
+                  />
+                  <span>{competency.name}</span>
+                </label>
+              ))}
+            </fieldset>
+            <button className="button button-quiet" type="submit" disabled={busy}>
+              {busy ? "Replanning…" : "Rebuild my active plan"}
+            </button>
+          </form>
+        </details>
       </aside>
 
       <section className="activity-panel">
         {plan.current_activity === null ? (
           <div className="completion-state">
-            <p className="step-label">Plan complete</p>
-            <h3>You completed this generated evidence cycle.</h3>
+            <p className="step-label">No activity available now</p>
+            <h3>Your active work is complete or waiting for review.</h3>
             <p>
-              Start a new diagnosis after adding the completed artifacts to your portfolio
-              and updating ratings based on evidence—not confidence alone.
+              Use the curriculum controls to generate another focused cycle, or return when the
+              next spaced review becomes available.
             </p>
+            <strong>{formatDateTime(plan.next_review_at)}</strong>
           </div>
         ) : (
           <>
             <div className="activity-heading">
               <div>
-                <p className="step-label">Current mission · {plan.current_activity.competency_name}</p>
+                <p className="step-label">
+                  {plan.current_activity.kind === "review" ? "Spaced review" : "Current mission"}
+                  {" · "}
+                  {plan.current_activity.competency_name}
+                </p>
                 <h3>{plan.current_activity.title}</h3>
               </div>
               <span>{plan.current_activity.estimated_minutes} min</span>
             </div>
             <p className="activity-objective">{plan.current_activity.objective}</p>
+            <p className="activity-rationale">{plan.current_activity.rationale}</p>
 
             <div className="deliverable-box">
               <p>Required deliverable</p>
               <strong>{plan.current_activity.deliverable}</strong>
             </div>
 
-            <div className="criteria-block">
-              <p className="step-label">Acceptance criteria</p>
-              <ul>
-                {plan.current_activity.acceptance_criteria.map((criterion) => (
-                  <li key={criterion}>{criterion}</li>
-                ))}
-              </ul>
-            </div>
-
             <form className="completion-form" onSubmit={onComplete}>
+              <fieldset className="criteria-checklist">
+                <legend className="step-label">Acceptance criteria met</legend>
+                {plan.current_activity.acceptance_criteria.map((criterion) => (
+                  <label key={criterion}>
+                    <input
+                      type="checkbox"
+                      checked={criteriaMet.includes(criterion)}
+                      onChange={(event) =>
+                        onCriterionToggle(criterion, event.target.checked)
+                      }
+                    />
+                    <span>{criterion}</span>
+                  </label>
+                ))}
+              </fieldset>
+
+              <label className="field-label" htmlFor="evidence-reference">
+                Evidence reference
+              </label>
+              <input
+                id="evidence-reference"
+                type="text"
+                maxLength={500}
+                value={evidenceReference}
+                onChange={(event) => onEvidenceReferenceChange(event.target.value)}
+                placeholder="Repository, pull request, document, local artifact name, or concise locator"
+              />
+
+              <label className="field-label" htmlFor="activity-confidence">
+                Confidence reproducing this independently
+              </label>
+              <select
+                id="activity-confidence"
+                value={confidence}
+                onChange={(event) => onConfidenceChange(Number(event.target.value))}
+              >
+                <option value={0}>0 · Cannot reproduce yet</option>
+                <option value={1}>1 · Heavy support required</option>
+                <option value={2}>2 · Some guidance required</option>
+                <option value={3}>3 · Independent with references</option>
+                <option value={4}>4 · Independent and defensible</option>
+              </select>
+
               <label className="field-label" htmlFor="activity-reflection">
                 Evidence reflection
               </label>
@@ -513,12 +717,35 @@ function Dashboard({
                 maxLength={1_000}
                 value={reflection}
                 onChange={(event) => onReflectionChange(event.target.value)}
-                placeholder="What did you build, what evidence proves it, and what would you improve?"
+                placeholder="What did you build, what evidence supports it, what failed, and what would you improve?"
               />
               <button className="button button-primary" type="submit" disabled={busy}>
-                {busy ? "Updating mastery…" : "Mark evidence cycle complete"}
+                {busy ? "Recording evidence…" : "Record evidence and schedule review"}
               </button>
+              <p className="privacy-note">
+                Mastery changes are provisional and based on your attestation. They are not an
+                external assessment or employer certification.
+              </p>
             </form>
+
+            {plan.evidence_history.length > 0 ? (
+              <section className="evidence-history" aria-labelledby="evidence-history-heading">
+                <p className="step-label" id="evidence-history-heading">Recent evidence</p>
+                <ol>
+                  {[...plan.evidence_history].reverse().slice(0, 4).map((evidence) => (
+                    <li key={`${evidence.activity_id}-${evidence.submitted_at}`}>
+                      <div>
+                        <strong>{evidence.competency_name}</strong>
+                        <span>{evidence.title}</span>
+                      </div>
+                      <small>
+                        +{evidence.provisional_mastery_delta} provisional · confidence {evidence.confidence}/4 · review {formatDateTime(evidence.next_review_at)}
+                      </small>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ) : null}
           </>
         )}
       </section>

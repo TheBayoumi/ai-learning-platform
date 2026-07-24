@@ -60,6 +60,33 @@ describe("platform API proxy", () => {
     );
   });
 
+  it("allows the adaptive replan route as a POST-only boundary", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({ plan_revision: 2 }, { status: 200 })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const body = {
+      state_token: "signed-token-with-sufficient-length",
+      weekly_hours: 6,
+      focus_competency_ids: ["fastapi"]
+    };
+
+    const response = await POST(
+      new Request("http://web.test/api/platform/plans/replan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+      }),
+      context(["plans", "replan"])
+    );
+
+    expect(response.status).toBe(200);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "http://127.0.0.1:8000/api/v1/plans/replan"
+    );
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(body));
+  });
+
   it("rejects unknown paths before contacting the backend", async () => {
     const fetchMock = vi.fn<typeof fetch>();
     vi.stubGlobal("fetch", fetchMock);

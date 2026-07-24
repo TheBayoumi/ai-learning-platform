@@ -6,7 +6,13 @@ export const runtime = "nodejs";
 const UPSTREAM_TIMEOUT_MS = 8_000;
 const MAX_REQUEST_BYTES = 96 * 1024;
 const MAX_RESPONSE_BYTES = 768 * 1024;
-const ALLOWED_PATHS = new Set(["roles", "plans", "plans/resume", "progress"]);
+const ALLOWED_PATHS = new Set([
+  "roles",
+  "plans",
+  "plans/resume",
+  "plans/replan",
+  "progress"
+]);
 
 type RouteContext = Readonly<{
   params: Promise<Readonly<{ path: string[] }>>;
