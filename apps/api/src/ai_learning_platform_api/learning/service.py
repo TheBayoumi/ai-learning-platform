@@ -266,9 +266,7 @@ class LearningPlanService:
                 "mastery": mastery,
                 "completed_activity_ids": completed,
                 "activities": activities,
-                "evidence_history": [*state.evidence_history, evidence][
-                    -_MAX_EVIDENCE_HISTORY:
-                ],
+                "evidence_history": [*state.evidence_history, evidence][-_MAX_EVIDENCE_HISTORY:],
             }
         )
         return self._project(updated, role)
@@ -325,7 +323,6 @@ class LearningPlanService:
             key=lambda item: (
                 0 if item.kind == "review" else 1,
                 item.available_from or "",
-                item.id,
             )
         )
         current = available[0] if available else None
@@ -451,11 +448,14 @@ class LearningPlanService:
         mastery: dict[str, int],
         focus_competency_ids: list[str],
     ) -> list[CompetencyDefinition]:
-        focus = set(focus_competency_ids)
+        focus_order = {
+            identifier: position for position, identifier in enumerate(focus_competency_ids)
+        }
         return sorted(
             role.competencies,
             key=lambda item: (
-                0 if item.identifier in focus else 1,
+                0 if item.identifier in focus_order else 1,
+                focus_order.get(item.identifier, len(focus_order)),
                 -(100 - mastery.get(item.identifier, 0)) * item.weight,
                 item.identifier,
             ),
@@ -516,7 +516,7 @@ class LearningPlanService:
         focused: bool,
     ) -> ActivityView:
         selector_seed = hashlib.sha256(
-            f"{seed}|{competency.identifier}|{position}|{generation}".encode("utf-8")
+            f"{seed}|{competency.identifier}|{position}|{generation}".encode()
         ).hexdigest()
         template = competency.activities[int(selector_seed[:4], 16) % len(competency.activities)]
         fingerprint = selector_seed[:12]
@@ -552,7 +552,7 @@ class LearningPlanService:
         available_from: datetime,
     ) -> ActivityView:
         fingerprint = hashlib.sha256(
-            f"{source.id}|review|{generation}|{available_from.isoformat()}".encode("utf-8")
+            f"{source.id}|review|{generation}|{available_from.isoformat()}".encode()
         ).hexdigest()[:12]
         return ActivityView(
             id=f"activity-review-{source.competency_id}-{fingerprint}",

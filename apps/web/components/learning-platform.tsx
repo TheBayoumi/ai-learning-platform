@@ -106,12 +106,16 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
     setConfidence(0);
   }, []);
 
-  const storePlan = useCallback((nextPlan: PlanView) => {
+  const storePlan = useCallback(
+  (nextPlan: PlanView) => {
     setPlan(nextPlan);
     setReplanHours(nextPlan.weekly_hours);
     setFocusCompetencyIds([...nextPlan.focus_competency_ids]);
+    resetEvidenceForm();
     window.localStorage.setItem(SESSION_STORAGE_KEY, nextPlan.state_token);
-  }, []);
+  },
+  [resetEvidenceForm]
+);
 
   const loadPlatform = useCallback(async () => {
     try {
@@ -153,9 +157,6 @@ export function LearningPlatform({ apiAvailability }: LearningPlatformProps) {
     return () => window.clearTimeout(handle);
   }, [loadPlatform]);
 
-  useEffect(() => {
-    resetEvidenceForm();
-  }, [plan?.current_activity?.id, resetEvidenceForm]);
 
   const createPlan = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
