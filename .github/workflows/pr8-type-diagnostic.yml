@@ -1,0 +1,41 @@
+name: PR8 type diagnostic
+
+on:
+  push:
+    branches:
+      - automation/assessment-calibration
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          working-directory: apps/api
+      - name: Capture mypy output
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/pr8-type"
+          uv sync --project apps/api --locked --all-groups >"$RUNNER_TEMP/pr8-type/setup.txt" 2>&1
+          uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts \
+            >"$RUNNER_TEMP/pr8-type/mypy.txt" 2>&1
+          echo "$?" >"$RUNNER_TEMP/pr8-type/mypy.exit"
+          exit 0
+      - name: Upload report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pr8-type-${{ github.sha }}
+          path: ${{ runner.temp }}/pr8-type
+          if-no-files-found: error
+          retention-days: 3
