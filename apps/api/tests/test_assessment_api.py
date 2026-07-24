@@ -156,19 +156,22 @@ def test_submit_all_correct_calibrates_and_replans() -> None:
     assert updated["plan_revision"] == 1
     assert updated["sequence"] == 1
     assert len(updated["assessment_history"]) == 1
-    assert updated["assessment_history"][0]["score_percent"] == 100
-    assert updated["current_activity"]["generation"] == 1
-    assessed = {
-        item["id"]: item["assessment_percent"]
-        for item in updated["priority_competencies"]
-        if item["assessment_percent"] is not None
-    }
-    assert assessed == {
+    assessment_record = updated["assessment_history"][0]
+    assert assessment_record["score_percent"] == 100
+    assert assessment_record["competency_scores"] == {
         "python": 100,
         "fastapi": 100,
         "postgresql": 100,
         "testing": 100,
     }
+    assert updated["current_activity"]["generation"] == 1
+    assessed_priorities = {
+        item["id"]: item["assessment_percent"]
+        for item in updated["priority_competencies"]
+        if item["assessment_percent"] is not None
+    }
+    assert set(assessed_priorities).issubset(assessment_record["competency_scores"])
+    assert all(score == 100 for score in assessed_priorities.values())
 
 
 def test_wrong_answers_do_not_overstate_calibration() -> None:
