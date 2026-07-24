@@ -20,6 +20,7 @@ export interface PriorityCompetencyView {
   readonly category: string;
   readonly mastery_percent: number;
   readonly gap_percent: number;
+  readonly focused: boolean;
 }
 
 export interface ActivityView {
@@ -31,6 +32,24 @@ export interface ActivityView {
   readonly deliverable: string;
   readonly acceptance_criteria: readonly string[];
   readonly estimated_minutes: number;
+  readonly kind: "build" | "review";
+  readonly rationale: string;
+  readonly generation: number;
+  readonly available_from: string | null;
+}
+
+export interface EvidenceRecordView {
+  readonly activity_id: string;
+  readonly competency_id: string;
+  readonly competency_name: string;
+  readonly title: string;
+  readonly submitted_at: string;
+  readonly reflection: string;
+  readonly evidence_reference: string;
+  readonly criteria_met: readonly string[];
+  readonly confidence: number;
+  readonly provisional_mastery_delta: number;
+  readonly next_review_at: string;
 }
 
 export interface PlanView {
@@ -44,6 +63,11 @@ export interface PlanView {
   readonly completed_count: number;
   readonly total_count: number;
   readonly sequence: number;
+  readonly weekly_hours: number;
+  readonly plan_revision: number;
+  readonly focus_competency_ids: readonly string[];
+  readonly evidence_history: readonly EvidenceRecordView[];
+  readonly next_review_at: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -84,7 +108,8 @@ function isPriority(value: unknown): value is PriorityCompetencyView {
     typeof value.name === "string" &&
     typeof value.category === "string" &&
     typeof value.mastery_percent === "number" &&
-    typeof value.gap_percent === "number"
+    typeof value.gap_percent === "number" &&
+    typeof value.focused === "boolean"
   );
 }
 
@@ -98,7 +123,28 @@ function isActivity(value: unknown): value is ActivityView {
     typeof value.objective === "string" &&
     typeof value.deliverable === "string" &&
     isStringArray(value.acceptance_criteria) &&
-    typeof value.estimated_minutes === "number"
+    typeof value.estimated_minutes === "number" &&
+    (value.kind === "build" || value.kind === "review") &&
+    typeof value.rationale === "string" &&
+    typeof value.generation === "number" &&
+    (value.available_from === null || typeof value.available_from === "string")
+  );
+}
+
+function isEvidence(value: unknown): value is EvidenceRecordView {
+  return (
+    isRecord(value) &&
+    typeof value.activity_id === "string" &&
+    typeof value.competency_id === "string" &&
+    typeof value.competency_name === "string" &&
+    typeof value.title === "string" &&
+    typeof value.submitted_at === "string" &&
+    typeof value.reflection === "string" &&
+    typeof value.evidence_reference === "string" &&
+    isStringArray(value.criteria_met) &&
+    typeof value.confidence === "number" &&
+    typeof value.provisional_mastery_delta === "number" &&
+    typeof value.next_review_at === "string"
   );
 }
 
@@ -119,7 +165,13 @@ export function isPlanView(value: unknown): value is PlanView {
     (value.current_activity === null || isActivity(value.current_activity)) &&
     typeof value.completed_count === "number" &&
     typeof value.total_count === "number" &&
-    typeof value.sequence === "number"
+    typeof value.sequence === "number" &&
+    typeof value.weekly_hours === "number" &&
+    typeof value.plan_revision === "number" &&
+    isStringArray(value.focus_competency_ids) &&
+    Array.isArray(value.evidence_history) &&
+    value.evidence_history.every(isEvidence) &&
+    (value.next_review_at === null || typeof value.next_review_at === "string")
   );
 }
 
