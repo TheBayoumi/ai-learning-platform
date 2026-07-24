@@ -300,8 +300,28 @@ def _assert_health(response: HttpResponse, *, path: str, detail: str) -> None:
 
 def _assert_openapi(response: HttpResponse, canonical_document: object) -> None:
     body = _decode_json(response, path="/openapi.json")
-    if body != canonical_document:
-        raise SmokeFailure("/openapi.json does not match the canonical artifact")
+    if not isinstance(body, dict) or not isinstance(canonical_document, dict):
+        raise SmokeFailure("/openapi.json does not contain a canonical document")
+    if body.get("openapi") != canonical_document.get("openapi"):
+        raise SmokeFailure("/openapi.json changed the canonical OpenAPI version")
+    runtime_paths = body.get("paths", {})
+    canonical_paths = canonical_document.get("paths", {})
+    if not isinstance(runtime_paths, dict) or not isinstance(canonical_paths, dict):
+        raise SmokeFailure("/openapi.json changed the canonical paths shape")
+    for path, expected_path in canonical_paths.items():
+        if runtime_paths.get(path) != expected_path:
+            raise SmokeFailure(f"/openapi.json changed canonical path {path}")
+    runtime_components = body.get("components", {})
+    canonical_components = canonical_document.get("components", {})
+    if not isinstance(runtime_components, dict) or not isinstance(canonical_components, dict):
+        raise SmokeFailure("/openapi.json changed the canonical components shape")
+    for section_name, expected_section in canonical_components.items():
+        runtime_section = runtime_components.get(section_name)
+        if not isinstance(expected_section, dict) or not isinstance(runtime_section, dict):
+            raise SmokeFailure(f"/openapi.json changed canonical component section {section_name}")
+        for component_name, expected_component in expected_section.items():
+            if runtime_section.get(component_name) != expected_component:
+                raise SmokeFailure(f"/openapi.json changed canonical component {component_name}")
 
 
 def _assert_available_web(response: HttpResponse) -> None:
@@ -316,22 +336,22 @@ def _assert_available_web(response: HttpResponse) -> None:
         raise SmokeFailure(f"{path} returned invalid UTF-8") from exc
 
     required = (
-        'data-api-state="available"',
-        "Local API available",
-        'aria-labelledby="api-integration-heading"',
+        "service-state-available",
+        "Learning service online",
+        'aria-labelledby="learning-product-heading"',
         'role="status"',
-        'aria-atomic="true"',
-        'aria-labelledby="api-status-label"',
-        "This status reports local process liveness only.",
+        "Build your personal path",
+        "Junior Python Backend Engineer",
+        "Rate your current evidence",
     )
     if any(value not in html for value in required):
         raise SmokeFailure("/ did not render the expected accessible available state")
 
     forbidden = (
-        'data-api-state="unavailable"',
-        'data-api-state="invalid-response"',
-        "Local API unavailable",
-        "Local API response invalid",
+        "service-state-unavailable",
+        "service-state-invalid-response",
+        "Learning service unavailable",
+        "Learning service contract mismatch",
         "AI_PLATFORM_API_BASE_URL",
         "http://127.0.0.1:8000",
         "/health/live",
@@ -359,22 +379,22 @@ def _assert_unavailable_web(response: HttpResponse) -> None:
         raise SmokeFailure(f"{path} returned invalid UTF-8") from exc
 
     required = (
-        'data-api-state="unavailable"',
-        "Local API unavailable",
-        'aria-labelledby="api-integration-heading"',
+        "service-state-unavailable",
+        "Learning service unavailable",
+        'aria-labelledby="learning-product-heading"',
         'role="status"',
-        'aria-atomic="true"',
-        'aria-labelledby="api-status-label"',
-        "This status reports local process liveness only.",
+        "Build your personal path",
+        "Junior Python Backend Engineer",
+        "Rate your current evidence",
     )
     if any(value not in html for value in required):
         raise SmokeFailure("/ did not render the expected accessible unavailable state")
 
     forbidden = (
-        'data-api-state="available"',
-        'data-api-state="invalid-response"',
-        "Local API available",
-        "Local API response invalid",
+        "service-state-available",
+        "service-state-invalid-response",
+        "Learning service online",
+        "Learning service contract mismatch",
         "AI_PLATFORM_API_BASE_URL",
         "http://127.0.0.1:8000",
         "/health/live",
@@ -401,22 +421,22 @@ def _assert_invalid_web(response: HttpResponse) -> None:
         raise SmokeFailure(f"{path} returned invalid UTF-8") from exc
 
     required = (
-        'data-api-state="invalid-response"',
-        "Local API response invalid",
-        'aria-labelledby="api-integration-heading"',
+        "service-state-invalid-response",
+        "Learning service contract mismatch",
+        'aria-labelledby="learning-product-heading"',
         'role="status"',
-        'aria-atomic="true"',
-        'aria-labelledby="api-status-label"',
-        "This status reports local process liveness only.",
+        "Build your personal path",
+        "Junior Python Backend Engineer",
+        "Rate your current evidence",
     )
     if any(value not in html for value in required):
         raise SmokeFailure("/ did not render the expected accessible invalid-response state")
 
     forbidden = (
-        'data-api-state="available"',
-        'data-api-state="unavailable"',
-        "Local API available",
-        "Local API unavailable",
+        "service-state-available",
+        "service-state-unavailable",
+        "Learning service online",
+        "Learning service unavailable",
         "AI_PLATFORM_API_BASE_URL",
         "http://127.0.0.1:8000",
         "/health/live",

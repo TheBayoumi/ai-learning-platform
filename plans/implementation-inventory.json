@@ -2,9 +2,9 @@
   "schema_version": 2,
   "generated_at": "2026-07-23T11:16:35.957Z",
   "repository": {
-    "branch": "automation/f04-vercel-deployment-baseline",
-    "head": "76a90647f0028c58c3f7955fde575d4d21f2774c",
-    "working_tree": "F04 acceptance state: implementation 76a90647f0028c58c3f7955fde575d4d21f2774c passed READY deployment dpl_2Dq1ds1KoNWPLKMyHDtEEhAAZsiH, Quality Gates run 30001175093, and dedicated Vercel run 30001172411; no successor foundation phase is defined",
+    "branch": "automation/product-vertical-slice",
+    "head": "bf65bb6a13dcff559d8868f88c73b479129c5d41",
+    "working_tree": "F04 is merged and verified at bf65bb6a13dcff559d8868f88c73b479129c5d41; the directed product vertical slice is under exact CI and deployment verification",
     "source_of_truth": [
       "specs/roadmap.md",
       "plans/autonomous-loop/state.json",

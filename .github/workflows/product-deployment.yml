@@ -1,0 +1,87 @@
+name: Product deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: product-deployment-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Connected product deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Enforce trusted exact-source boundary
+        env:
+          EVENT_REPOSITORY: ${{ github.repository }}
+          EXACT_REF: ${{ github.ref }}
+          EXACT_SHA: ${{ github.sha }}
+        run: |
+          test "$EVENT_REPOSITORY" = "TheBayoumi/ai-learning-platform"
+          test "$EXACT_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$EXACT_SHA"
+
+      - name: Configure backend FastAPI project
+        env:
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          TEAM_ID: team_bZWPrEPMa4sBoWU7syo3ZIRZ
+          BACKEND_PROJECT_NAME: ai-learning-platform-api
+        run: |
+          test -n "$VERCEL_API_TOKEN"
+          curl -fsS -X PATCH \
+            "https://api.vercel.com/v9/projects/$BACKEND_PROJECT_NAME?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data '{"framework":"fastapi","serverlessFunctionRegion":"fra1"}' \
+            | jq -e '.framework == "fastapi"' >/dev/null
+
+      - name: Deploy and verify connected product
+        env:
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          TEAM_ID: team_bZWPrEPMa4sBoWU7syo3ZIRZ
+          FRONTEND_PROJECT_ID: prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN
+          BACKEND_PROJECT_NAME: ai-learning-platform-api
+          EVIDENCE_PATH: ${{ runner.temp }}/product-deployment-evidence.json
+        run: bash scripts/deploy-product.sh
+
+      - name: Upload sanitized deployment evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: product-deployment-evidence-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/product-deployment-evidence.json
+            ${{ runner.temp }}/backend-deploy.txt
+            ${{ runner.temp }}/frontend-deploy.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish deployment status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          STATUS_DESCRIPTION: ${{ job.status == 'success' && 'Connected learner journey deployed' || 'Connected learner journey deployment failed' }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+          -f state="$STATUS_STATE"
+          -f context="Product / deployed vertical slice"
+          -f description="$STATUS_DESCRIPTION"
+          -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
