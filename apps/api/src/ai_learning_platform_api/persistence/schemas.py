@@ -1,4 +1,4 @@
-"""Strict transport contracts for PostgreSQL-backed learner operations."""
+"""Strict internal contracts for PostgreSQL-backed learner operations."""
 
 from __future__ import annotations
 
@@ -19,12 +19,6 @@ from ai_learning_platform_api.learning.schemas import (
 IdempotencyKey = Annotated[str, Field(min_length=16, max_length=160, pattern=r"^[^\s]+$")]
 
 
-class RuntimeCapabilitiesView(StrictModel):
-    """Server capabilities that select the browser persistence protocol."""
-
-    persistence_mode: Literal["signed_state", "postgres"]
-
-
 class PersistentPlanCreateRequest(StrictModel):
     """Create and atomically persist an initial deterministic learner plan."""
 
@@ -41,12 +35,6 @@ class PersistentPlanImportRequest(StrictModel):
 
     idempotency_key: IdempotencyKey
     state_token: Annotated[str, Field(min_length=20, max_length=65_536)]
-
-
-class PersistentResumeRequest(StrictModel):
-    """Resume an account-owned durable learner aggregate."""
-
-    learner_id: UUID
 
 
 class PersistentMutationRequest(StrictModel):
