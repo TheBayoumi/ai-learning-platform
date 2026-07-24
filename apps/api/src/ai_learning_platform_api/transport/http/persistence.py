@@ -26,15 +26,20 @@ from ai_learning_platform_api.persistence.schemas import (
     PersistentPlanView,
     PersistentProgressRequest,
     PersistentReplanRequest,
+    PersistentResumeRequest,
     RuntimeCapabilitiesView,
 )
 from ai_learning_platform_api.persistence.service import PersistentLearningService
+from ai_learning_platform_api.settings import PersistenceMode
 
 T = TypeVar("T")
-AccountHeader = Annotated[str, Header(alias="X-Platform-Account-Id", min_length=36, max_length=36)]
+AccountHeader = Annotated[
+    str,
+    Header(alias="X-Platform-Account-Id", min_length=36, max_length=36),
+]
 
 
-def create_runtime_router(persistence_mode: str) -> APIRouter:
+def create_runtime_router(persistence_mode: PersistenceMode) -> APIRouter:
     """Expose a non-confidential capability contract for browser protocol selection."""
     router = APIRouter(prefix="/api/v1", tags=["runtime"])
 
@@ -156,7 +161,10 @@ async def _run(operation: Callable[[], Awaitable[T]]) -> T:
     except LearnerStateNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "LEARNER_STATE_NOT_FOUND", "message": "The learning plan was not found."},
+            detail={
+                "code": "LEARNER_STATE_NOT_FOUND",
+                "message": "The learning plan was not found.",
+            },
         ) from error
     except (LearnerStateConflictError, IdempotencyConflictError) as error:
         code = (
