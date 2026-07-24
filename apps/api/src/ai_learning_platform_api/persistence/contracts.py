@@ -81,11 +81,14 @@ class LearnerStateCommit:
 class LearnerStateRepository(Protocol):
     """Durable learner-state boundary implemented by PostgreSQL infrastructure."""
 
-    async def load(self, *, account_id: str, learner_id: UUID) -> StoredLearnerState | None:
-        """Load an aggregate only when it belongs to the supplied account."""
+    async def load(
+        self,
+        *,
+        account_id: str,
+        learner_id: UUID,
+    ) -> StoredLearnerState | None: ...
 
-    async def commit(self, request: LearnerStateCommit) -> StoredLearnerState:
-        """Atomically persist a state transition or return its idempotent result."""
+    async def commit(self, request: LearnerStateCommit) -> StoredLearnerState: ...
 
 
 def _validate_account_id(account_id: str) -> None:
