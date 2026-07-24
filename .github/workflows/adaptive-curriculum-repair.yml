@@ -65,47 +65,35 @@ jobs:
 
           service_path = Path("apps/api/src/ai_learning_platform_api/learning/service.py")
           service_text = service_path.read_text(encoding="utf-8")
-          old_available = '''        available.sort(
-              key=lambda item: (
-                  0 if item.kind == "review" else 1,
-                  item.available_from or "",
-                  item.id,
-              )
-          )'''
-          new_available = '''        available.sort(
-              key=lambda item: (
-                  0 if item.kind == "review" else 1,
-                  item.available_from or "",
-              )
-          )'''
-          old_rank = '''        focus = set(focus_competency_ids)
-          return sorted(
-              role.competencies,
-              key=lambda item: (
-                  0 if item.identifier in focus else 1,
-                  -(100 - mastery.get(item.identifier, 0)) * item.weight,
-                  item.identifier,
-              ),
-          )'''
-          new_rank = '''        focus_order = {
-              identifier: position
-              for position, identifier in enumerate(focus_competency_ids)
-          }
-          return sorted(
-              role.competencies,
-              key=lambda item: (
-                  0 if item.identifier in focus_order else 1,
-                  focus_order.get(item.identifier, len(focus_order)),
-                  -(100 - mastery.get(item.identifier, 0)) * item.weight,
-                  item.identifier,
-              ),
-          )'''
-          if old_available not in service_text:
-              raise RuntimeError("available activity sort repair anchor missing")
-          if old_rank not in service_text:
-              raise RuntimeError("focus rank repair anchor missing")
-          service_text = service_text.replace(old_available, new_available, 1)
-          service_text = service_text.replace(old_rank, new_rank, 1)
+
+          old_id_tiebreaker = "                item.id,\n"
+          if service_text.count(old_id_tiebreaker) != 1:
+              raise RuntimeError("activity ID tiebreaker count was not exactly one")
+          service_text = service_text.replace(old_id_tiebreaker, "", 1)
+
+          old_focus_line = "        focus = set(focus_competency_ids)\n"
+          new_focus_lines = (
+              "        focus_order = {\n"
+              "            identifier: position\n"
+              "            for position, identifier in enumerate(focus_competency_ids)\n"
+              "        }\n"
+          )
+          if service_text.count(old_focus_line) != 1:
+              raise RuntimeError("focus set line count was not exactly one")
+          service_text = service_text.replace(old_focus_line, new_focus_lines, 1)
+
+          old_rank_lines = (
+              "                0 if item.identifier in focus else 1,\n"
+              "                -(100 - mastery.get(item.identifier, 0)) * item.weight,\n"
+          )
+          new_rank_lines = (
+              "                0 if item.identifier in focus_order else 1,\n"
+              "                focus_order.get(item.identifier, len(focus_order)),\n"
+              "                -(100 - mastery.get(item.identifier, 0)) * item.weight,\n"
+          )
+          if service_text.count(old_rank_lines) != 1:
+              raise RuntimeError("focused ranking tuple count was not exactly one")
+          service_text = service_text.replace(old_rank_lines, new_rank_lines, 1)
           service_path.write_text(service_text, encoding="utf-8", newline="\n")
           PY
 
