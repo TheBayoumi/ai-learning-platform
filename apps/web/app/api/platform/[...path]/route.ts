@@ -6,15 +6,26 @@ export const runtime = "nodejs";
 const UPSTREAM_TIMEOUT_MS = 8_000;
 const MAX_REQUEST_BYTES = 96 * 1024;
 const MAX_RESPONSE_BYTES = 768 * 1024;
+const ACCOUNT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_PATHS = new Set([
+  "runtime",
   "roles",
   "plans",
   "plans/resume",
   "plans/replan",
   "progress",
   "assessments/start",
-  "assessments/submit"
+  "assessments/submit",
+  "persistent/plans",
+  "persistent/plans/import",
+  "persistent/plans/resume",
+  "persistent/plans/replan",
+  "persistent/progress",
+  "persistent/assessments/start",
+  "persistent/assessments/submit"
 ]);
+
+const GET_PATHS = new Set(["runtime", "roles"]);
 
 type RouteContext = Readonly<{
   params: Promise<Readonly<{ path: string[] }>>;
@@ -46,8 +57,21 @@ async function proxyRequest(
   if (!ALLOWED_PATHS.has(relativePath)) {
     return errorResponse(404, "PLATFORM_ROUTE_NOT_FOUND", "The platform route is not available.");
   }
-  if ((relativePath === "roles") !== (method === "GET")) {
+  if (GET_PATHS.has(relativePath) !== (method === "GET")) {
     return errorResponse(405, "PLATFORM_METHOD_NOT_ALLOWED", "The request method is not allowed.");
+  }
+
+  let accountId: string | undefined;
+  if (relativePath.startsWith("persistent/")) {
+    const candidate = request.headers.get("x-platform-account-id") ?? "";
+    if (!ACCOUNT_ID_PATTERN.test(candidate)) {
+      return errorResponse(
+        400,
+        "INVALID_ACCOUNT_CONTEXT",
+        "The anonymous account context is invalid."
+      );
+    }
+    accountId = candidate.toLowerCase();
   }
 
   let body: string | undefined;
@@ -66,7 +90,8 @@ async function proxyRequest(
       method,
       headers: {
         accept: "application/json",
-        ...(body === undefined ? {} : { "content-type": "application/json" })
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
+        ...(accountId === undefined ? {} : { "x-platform-account-id": accountId })
       },
       body,
       cache: "no-store",
