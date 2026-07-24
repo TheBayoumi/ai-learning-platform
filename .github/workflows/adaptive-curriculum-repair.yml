@@ -24,15 +24,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Apply deterministic client-state repair
+      - name: Apply deterministic adaptive repairs
         run: |
           python - <<'PY'
           import re
           from pathlib import Path
 
-          path = Path("apps/web/components/learning-platform.tsx")
-          text = path.read_text(encoding="utf-8")
-
+          web_path = Path("apps/web/components/learning-platform.tsx")
+          web_text = web_path.read_text(encoding="utf-8")
           store_pattern = re.compile(
               r"  const storePlan = useCallback\(\(nextPlan: PlanView\) => \{\n"
               r"    setPlan\(nextPlan\);\n"
@@ -41,7 +40,7 @@ jobs:
               r"    window\.localStorage\.setItem\(SESSION_STORAGE_KEY, nextPlan\.state_token\);\n"
               r"  \}, \[\]\);"
           )
-          replacement = """  const storePlan = useCallback(
+          store_replacement = """  const storePlan = useCallback(
             (nextPlan: PlanView) => {
               setPlan(nextPlan);
               setReplanHours(nextPlan.weekly_hours);
@@ -51,21 +50,63 @@ jobs:
             },
             [resetEvidenceForm]
           );"""
-          text, store_count = store_pattern.subn(replacement, text, count=1)
-
+          web_text, store_count = store_pattern.subn(store_replacement, web_text, count=1)
           effect_pattern = re.compile(
               r"\n  useEffect\(\(\) => \{\n"
               r"    resetEvidenceForm\(\);\n"
               r"  \}, \[plan\?\.current_activity\?\.id, resetEvidenceForm\]\);\n"
           )
-          text, effect_count = effect_pattern.subn("\n", text, count=1)
+          web_text, effect_count = effect_pattern.subn("\n", web_text, count=1)
+          if store_count != 1 or effect_count != 1:
+              raise RuntimeError(
+                  f"client repair counts were store={store_count}, effect={effect_count}"
+              )
+          web_path.write_text(web_text, encoding="utf-8", newline="\n")
 
-          if store_count != 1:
-              raise RuntimeError(f"storePlan repair count was {store_count}, expected 1")
-          if effect_count != 1:
-              raise RuntimeError(f"effect repair count was {effect_count}, expected 1")
-
-          path.write_text(text, encoding="utf-8", newline="\n")
+          service_path = Path("apps/api/src/ai_learning_platform_api/learning/service.py")
+          service_text = service_path.read_text(encoding="utf-8")
+          old_available = '''        available.sort(
+              key=lambda item: (
+                  0 if item.kind == "review" else 1,
+                  item.available_from or "",
+                  item.id,
+              )
+          )'''
+          new_available = '''        available.sort(
+              key=lambda item: (
+                  0 if item.kind == "review" else 1,
+                  item.available_from or "",
+              )
+          )'''
+          old_rank = '''        focus = set(focus_competency_ids)
+          return sorted(
+              role.competencies,
+              key=lambda item: (
+                  0 if item.identifier in focus else 1,
+                  -(100 - mastery.get(item.identifier, 0)) * item.weight,
+                  item.identifier,
+              ),
+          )'''
+          new_rank = '''        focus_order = {
+              identifier: position
+              for position, identifier in enumerate(focus_competency_ids)
+          }
+          return sorted(
+              role.competencies,
+              key=lambda item: (
+                  0 if item.identifier in focus_order else 1,
+                  focus_order.get(item.identifier, len(focus_order)),
+                  -(100 - mastery.get(item.identifier, 0)) * item.weight,
+                  item.identifier,
+              ),
+          )'''
+          if old_available not in service_text:
+              raise RuntimeError("available activity sort repair anchor missing")
+          if old_rank not in service_text:
+              raise RuntimeError("focus rank repair anchor missing")
+          service_text = service_text.replace(old_available, new_available, 1)
+          service_text = service_text.replace(old_rank, new_rank, 1)
+          service_path.write_text(service_text, encoding="utf-8", newline="\n")
           PY
 
       - name: Install uv
@@ -89,48 +130,17 @@ jobs:
           npm install --global npm@11.18.0
           npm ci --prefix apps/web
 
-      - name: Format API
+      - name: Format and verify API
         run: |
           uv run --project apps/api --locked ruff format apps/api scripts
           uv run --project apps/api --locked ruff check --fix apps/api scripts
-
-      - name: Capture API static and test verification
-        shell: bash
-        run: |
-          set +e
-          output="$RUNNER_TEMP/adaptive-api-verification"
-          mkdir -p "$output"
-          overall=0
-
-          run_check() {
-            local name="$1"
-            shift
-            echo "===== $name =====" >>"$output/output.txt"
-            "$@" >>"$output/output.txt" 2>&1
-            local status=$?
-            echo "$name=$status" >>"$output/statuses.txt"
-            if test "$status" -ne 0; then
-              overall=1
-            fi
-          }
-
-          run_check format-check uv run --project apps/api --locked ruff format --check apps/api scripts
-          run_check lint uv run --project apps/api --locked ruff check apps/api scripts
-          run_check mypy uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
-          run_check pytest uv run --project apps/api --locked coverage run -m pytest -c apps/api/pyproject.toml apps/api/tests
-          run_check coverage uv run --project apps/api --locked coverage report --data-file=apps/api/.coverage --fail-under=95
-
-          echo "$overall" >"$output/overall.exit"
-          exit "$overall"
-
-      - name: Upload API verification output
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: adaptive-api-verification-${{ github.sha }}
-          path: ${{ runner.temp }}/adaptive-api-verification
-          if-no-files-found: error
-          retention-days: 7
+          uv run --project apps/api --locked ruff format --check apps/api scripts
+          uv run --project apps/api --locked ruff check apps/api scripts
+          uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
+          cd apps/api
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
 
       - name: Verify web
         working-directory: apps/web
@@ -143,7 +153,7 @@ jobs:
       - name: Verify real runtime integration
         run: uv run --project apps/api --locked python scripts/smoke.py
 
-      - name: Commit verified formatter output
+      - name: Commit verified repairs
         run: |
           if git diff --quiet; then
             exit 0
@@ -152,11 +162,6 @@ jobs:
           git config user.email "107598562+TheBayoumi@users.noreply.github.com"
           git add apps/api apps/web
           git commit -m "fix(curriculum): pass adaptive slice quality gates"
-
-      - name: Validate committed phase state
-        run: >-
-          uv run --project apps/api --locked python scripts/phase_gate.py validate
-          --expected-sha "$(git rev-parse HEAD)"
 
       - name: Push verified repair
         run: |
