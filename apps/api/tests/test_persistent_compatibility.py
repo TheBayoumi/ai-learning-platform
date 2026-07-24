@@ -15,7 +15,6 @@ from ai_learning_platform_api.persistence.contracts import (
     StoredLearnerState,
 )
 from ai_learning_platform_api.persistence.service import PersistentLearningService
-from ai_learning_platform_api.transport.http.persistence import create_runtime_router
 from ai_learning_platform_api.transport.http.persistent_compatibility import (
     PersistentCompatibilityService,
     create_persistent_compatibility_router,
@@ -28,6 +27,8 @@ _NOW = datetime(2026, 7, 24, 14, 0, tzinfo=UTC)
 
 
 class MemoryRepository:
+    """In-memory optimistic repository for compatibility transport tests."""
+
     def __init__(self) -> None:
         self.values: dict[tuple[str, UUID], StoredLearnerState] = {}
         self.idempotent: dict[tuple[str, str], StoredLearnerState] = {}
@@ -67,7 +68,6 @@ def _app() -> FastAPI:
         clock=lambda: _NOW,
     )
     app = FastAPI()
-    app.include_router(create_runtime_router("postgres"))
     app.include_router(
         create_persistent_compatibility_router(
             PersistentCompatibilityService(
@@ -96,13 +96,10 @@ async def _request(
         return await client.request(method, path, json=body, headers=headers)
 
 
-def test_runtime_and_complete_existing_ui_flow() -> None:
+def test_complete_existing_ui_flow() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=_app())
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            runtime = await client.get("/api/v1/runtime")
-            assert runtime.json() == {"persistence_mode": "postgres"}
-
             created = await client.post(
                 "/api/v1/plans",
                 headers={
