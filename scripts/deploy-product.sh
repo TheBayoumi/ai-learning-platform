@@ -207,6 +207,9 @@ frontend_bypass=()
 if test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"; then
   frontend_bypass=( -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" )
 fi
+cookie_jar="$RUNNER_TEMP/product-deployment-cookies.txt"
+touch "$cookie_jar"
+chmod 600 "$cookie_jar"
 
 page=$(curl -fsS "${frontend_bypass[@]}" "$frontend_url/")
 grep -F "Career Atlas" <<<"$page" >/dev/null
@@ -214,6 +217,8 @@ grep -F "Learning service online" <<<"$page" >/dev/null
 
 plan="$RUNNER_TEMP/deployed-plan.json"
 curl -fsS "${frontend_bypass[@]}" \
+  --cookie "$cookie_jar" \
+  --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/plans" \
   --data '{
@@ -232,6 +237,8 @@ jq -e '.current_activity.id | length > 5' "$plan" >/dev/null
 resume_payload="$RUNNER_TEMP/resume-payload.json"
 jq '{state_token}' "$plan" >"$resume_payload"
 curl -fsS "${frontend_bypass[@]}" \
+  --cookie "$cookie_jar" \
+  --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/plans/resume" \
   --data-binary "@$resume_payload" \
@@ -239,14 +246,26 @@ curl -fsS "${frontend_bypass[@]}" \
 
 progress_payload="$RUNNER_TEMP/progress-payload.json"
 jq '{state_token, activity_id:.current_activity.id, reflection:
-  "The deployed API, same-origin proxy, signed resume, and progress transition were verified end to end."}' \
+  "The deployed API, same-origin proxy, durable resume, and progress transition were verified end to end."}' \
   "$plan" >"$progress_payload"
 progress="$RUNNER_TEMP/deployed-progress.json"
 curl -fsS "${frontend_bypass[@]}" \
+  --cookie "$cookie_jar" \
+  --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/progress" \
   --data-binary "@$progress_payload" >"$progress"
 jq -e '.sequence == 1 and .completed_count == 1' "$progress" >/dev/null
+
+progressed_resume_payload="$RUNNER_TEMP/progressed-resume-payload.json"
+jq '{state_token}' "$progress" >"$progressed_resume_payload"
+curl -fsS "${frontend_bypass[@]}" \
+  --cookie "$cookie_jar" \
+  --cookie-jar "$cookie_jar" \
+  -H "Content-Type: application/json" \
+  -X POST "$frontend_url/api/platform/plans/resume" \
+  --data-binary "@$progressed_resume_payload" \
+  | jq -e '.sequence == 1 and .completed_count == 1' >/dev/null
 
 phase="evidence-publication"
 trap - ERR
@@ -274,5 +293,12 @@ jq -n \
       role_catalog:"ok"
     },
     frontend:{project_id:$frontend_project_id,url:$frontend_url,page:"ok",proxy:"ok"},
-    journey:{create:"ok",resume:"ok",progress:"ok",initial_readiness:$initial_readiness,progressed_readiness:$progressed_readiness}
+    journey:{
+      create:"ok",
+      resume:"ok",
+      progress:"ok",
+      post_progress_resume:"ok",
+      initial_readiness:$initial_readiness,
+      progressed_readiness:$progressed_readiness
+    }
   }' >"$EVIDENCE_PATH"
