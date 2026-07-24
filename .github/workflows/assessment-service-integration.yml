@@ -25,7 +25,9 @@ jobs:
           persist-credentials: true
 
       - name: Apply assessment orchestration
-        run: python scripts/apply_assessment_service_integration.py
+        run: |
+          python scripts/apply_assessment_service_integration.py
+          git checkout "$GITHUB_SHA" -- apps/api/tests/test_assessment_api.py
 
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
