@@ -8,24 +8,16 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: p01-controller-contract-repair
-  cancel-in-progress: false
-
 jobs:
   repair:
-    if: >-
-      github.repository == 'TheBayoumi/ai-learning-platform' &&
-      github.event.pull_request.number == 10 &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'product/p01-postgres-learner-persistence'
+    if: github.event.pull_request.number == 10
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: Check out the exact PR branch
+      - name: Check out the PR branch
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: product/p01-postgres-learner-persistence
           fetch-depth: 0
           persist-credentials: true
 
@@ -37,89 +29,14 @@ jobs:
           enable-cache: true
           working-directory: apps/api
 
-      - name: Synchronize locked API dependencies
+      - name: Synchronize dependencies
         working-directory: apps/api
         run: uv sync --locked --all-groups
 
-      - name: Apply bounded controller and lint repairs
-        run: |
-          python - <<'PY'
-          from pathlib import Path
+      - name: Apply bounded repairs
+        run: python .github/scripts/p01_controller_contract_repair.py patch
 
-          def replace_once(path: str, old: str, new: str) -> None:
-              file_path = Path(path)
-              text = file_path.read_text(encoding="utf-8")
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"expected one match in {path}, found {count}: {old!r}")
-              file_path.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
-
-          workflow_path = Path(".github/workflows/ci.yml")
-          workflow = workflow_path.read_text(encoding="utf-8")
-          draft_guard = "    if: ${{ github.event.pull_request.draft == false }}\n"
-          if workflow.count(draft_guard) != 4:
-              raise SystemExit("unexpected draft guard count")
-          workflow = workflow.replace(draft_guard, "")
-          old_projection_guard = (
-              "    if: ${{ always() && github.event.pull_request.draft == false }}\n"
-          )
-          if workflow.count(old_projection_guard) != 1:
-              raise SystemExit("projection guard not found exactly once")
-          workflow = workflow.replace(
-              old_projection_guard,
-              "    if: ${{ always() }}\n",
-              1,
-          )
-          workflow_path.write_text(workflow, encoding="utf-8", newline="\n")
-
-          phase_path = (
-              "apps/api/src/ai_learning_platform_api/automation/phase_gate.py"
-          )
-          replace_once(
-              phase_path,
-              '''    if "pull_request:" not in text or 'branches: [main, "automation/**"]' not in text:\n        raise _violation("workflow_trigger_invalid")\n''',
-              '''    trigger = re.search(\n        r"^on:\\n(?P<body>.*?)(?=^\\S)",\n        text,\n        re.MULTILINE | re.DOTALL,\n    )\n    expected_trigger = (\n        "  pull_request:\\n"\n        "    branches: [main]\\n"\n        "    types: [opened, reopened, ready_for_review]\\n\\n"\n    )\n    if trigger is None or trigger.group("body") != expected_trigger:\n        raise _violation("workflow_trigger_invalid")\n''',
-          )
-          replace_once(
-              phase_path,
-              '''    expected_expression = "EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}"\n''',
-              '''    expected_expression = "EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}"\n''',
-          )
-          replace_once(
-              phase_path,
-              '''        "api": 10,\n''',
-              '''        "api": 12,\n''',
-          )
-
-          test_path = "apps/api/tests/test_phase_gate.py"
-          replace_once(
-              test_path,
-              '''        (\n            'branches: [main, "automation/**"]',\n            "branches: [main]",\n            "workflow_trigger_invalid",\n        ),\n''',
-              '''        (\n            "branches: [main]",\n            "branches: [develop]",\n            "workflow_trigger_invalid",\n        ),\n        (\n            "types: [opened, reopened, ready_for_review]",\n            "types: [opened, reopened, synchronize, ready_for_review]",\n            "workflow_trigger_invalid",\n        ),\n        (\n            "  pull_request:\\n",\n            "  pull_request:\\n  push:\\n",\n            "workflow_trigger_invalid",\n        ),\n''',
-          )
-
-          compatibility_path = (
-              "apps/api/src/ai_learning_platform_api/transport/http/"
-              "persistent_compatibility.py"
-          )
-          replace_once(
-              compatibility_path,
-              '''from typing import Annotated, TypeVar\n''',
-              '''from typing import Annotated\n''',
-          )
-          replace_once(
-              compatibility_path,
-              '''T = TypeVar("T")\n''',
-              '''''',
-          )
-          replace_once(
-              compatibility_path,
-              '''async def _run(operation: Callable[[], Awaitable[T]]) -> T:\n''',
-              '''async def _run[T](operation: Callable[[], Awaitable[T]]) -> T:\n''',
-          )
-          PY
-
-      - name: Format and verify controller contract
+      - name: Verify repairs
         working-directory: apps/api
         run: |
           uv run --locked ruff format \
@@ -130,36 +47,14 @@ jobs:
           uv run --locked pytest tests/test_phase_gate.py
 
       - name: Refresh governed hashes
+        run: python .github/scripts/p01_controller_contract_repair.py refresh-hashes
+
+      - name: Remove one-shot repair files
         run: |
-          python - <<'PY'
-          import hashlib
-          import json
-          from pathlib import Path
+          git rm .github/workflows/p01-controller-contract-repair.yml
+          git rm .github/scripts/p01_controller_contract_repair.py
 
-          governed = (
-              ".github/workflows/ci.yml",
-              "apps/api/src/ai_learning_platform_api/automation/phase_gate.py",
-              "apps/api/tests/test_phase_gate.py",
-          )
-          state_path = Path("plans/autonomous-loop/state.json")
-          state = json.loads(state_path.read_text(encoding="utf-8"))
-          hashes = state["authoritative_file_hashes"]
-          for relative in governed:
-              data = Path(relative).read_bytes().replace(b"\r\n", b"\n")
-              hashes[relative] = hashlib.sha256(data).hexdigest()
-              print(f"{relative}={hashes[relative]}")
-          state_path.write_text(
-              json.dumps(state, indent=2, ensure_ascii=False) + "\n",
-              encoding="utf-8",
-          )
-          PY
-
-      - name: Remove this one-shot workflow
-        run: git rm .github/workflows/p01-controller-contract-repair.yml
-
-      - name: Commit and push the verified repair
-        env:
-          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+      - name: Commit and push
         run: |
           git diff --check
           git config user.name "github-actions[bot]"
@@ -170,6 +65,5 @@ jobs:
             apps/api/src/ai_learning_platform_api/transport/http/persistent_compatibility.py \
             apps/api/tests/test_phase_gate.py \
             plans/autonomous-loop/state.json
-          git diff --cached --stat
           git commit -m "fix(ci): govern PR-only quality gates"
-          git push origin "HEAD:${HEAD_BRANCH}"
+          git push origin HEAD:product/p01-postgres-learner-persistence
