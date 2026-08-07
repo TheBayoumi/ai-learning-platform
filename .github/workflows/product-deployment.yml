@@ -14,6 +14,9 @@ concurrency:
   group: product-deployment-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  VERCEL_FUNCTION_REGION: pdx1
+
 jobs:
   deploy:
     name: Connected product deployment
@@ -58,6 +61,10 @@ jobs:
               AI_PLATFORM_DATABASE_URL="$AI_PLATFORM_DATABASE_URL" \
                 uv run --project apps/api --locked alembic \
                   --config apps/api/alembic.ini upgrade head
+              AI_PLATFORM_DATABASE_URL="$AI_PLATFORM_DATABASE_URL" \
+                uv run --project apps/api --locked python scripts/verify_recovery.py \
+                  --expected-revision 20260724_01 \
+                  --write-check
               ;;
             *)
               echo "Unsupported persistence mode" >&2
@@ -78,19 +85,36 @@ jobs:
               ;;
           esac
 
-      - name: Configure backend FastAPI project
+      - name: Configure Vercel function topology
         env:
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
           TEAM_ID: team_bZWPrEPMa4sBoWU7syo3ZIRZ
+          FRONTEND_PROJECT_ID: prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN
           BACKEND_PROJECT_NAME: ai-learning-platform-api
         run: |
           test -n "$VERCEL_API_TOKEN"
+          backend_payload=$(jq -n \
+            --arg region "$VERCEL_FUNCTION_REGION" \
+            '{framework:"fastapi",serverlessFunctionRegion:$region}')
           curl -fsS -X PATCH \
             "https://api.vercel.com/v9/projects/$BACKEND_PROJECT_NAME?teamId=$TEAM_ID" \
             -H "Authorization: Bearer $VERCEL_API_TOKEN" \
             -H "Content-Type: application/json" \
-            --data '{"framework":"fastapi","serverlessFunctionRegion":"fra1"}' \
-            | jq -e '.framework == "fastapi"' >/dev/null
+            --data "$backend_payload" \
+            | jq -e --arg region "$VERCEL_FUNCTION_REGION" \
+                '.framework == "fastapi" and .serverlessFunctionRegion == $region' >/dev/null
+
+          frontend_payload=$(jq -n \
+            --arg region "$VERCEL_FUNCTION_REGION" \
+            '{serverlessFunctionRegion:$region}')
+          curl -fsS -X PATCH \
+            "https://api.vercel.com/v9/projects/$FRONTEND_PROJECT_ID?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$frontend_payload" \
+            | jq -e --arg region "$VERCEL_FUNCTION_REGION" \
+                '.serverlessFunctionRegion == $region' >/dev/null
+          unset backend_payload frontend_payload
 
       - name: Configure backend runtime environment
         env:
