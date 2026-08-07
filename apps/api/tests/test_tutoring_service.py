@@ -7,7 +7,11 @@ import pytest
 
 from ai_learning_platform_api.learning.schemas import PlanRequest, PlanView
 from ai_learning_platform_api.learning.service import LearningPlanService
-from ai_learning_platform_api.tutoring.contracts import TutorHistoryTurn, TutorTurnRequest
+from ai_learning_platform_api.tutoring.contracts import (
+    TutorHistoryTurn,
+    TutorMove,
+    TutorTurnRequest,
+)
 from ai_learning_platform_api.tutoring.gateway import TutorGatewayRequest
 from ai_learning_platform_api.tutoring.service import TutorService, TutorUnavailableError
 
@@ -97,7 +101,10 @@ def test_tutor_service_builds_minimized_non_authoritative_context() -> None:
         ("review", "Review only the work described"),
     ],
 )
-def test_tutor_service_applies_move_specific_policy(move: str, expected: str) -> None:
+def test_tutor_service_applies_move_specific_policy(
+    move: TutorMove,
+    expected: str,
+) -> None:
     gateway = FakeGateway()
     plan = make_plan()
 
@@ -112,7 +119,7 @@ def test_tutor_service_applies_move_specific_policy(move: str, expected: str) ->
             request=TutorTurnRequest(
                 state_token=plan.state_token,
                 message="Help",
-                move=move,  # type: ignore[arg-type]
+                move=move,
             ),
         )
         assert expected in prepared.gateway_request.instructions
