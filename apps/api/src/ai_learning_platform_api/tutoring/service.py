@@ -84,8 +84,6 @@ def _instructions(*, plan: PlanView, move: str) -> str:
             else {
                 "competency": plan.current_activity.competency_name,
                 "title": plan.current_activity.title,
-                "objective": plan.current_activity.objective,
-                "deliverable": plan.current_activity.deliverable,
                 "acceptance_criteria": plan.current_activity.acceptance_criteria,
                 "kind": plan.current_activity.kind,
             }
@@ -137,8 +135,8 @@ def _instructions(*, plan: PlanView, move: str) -> str:
                 "Be technically precise, concise, and action-oriented. State uncertainty. "
                 "Do not invent repository contents, test results, or runtime evidence."
             ),
-            "The context intentionally excludes the learner name, identifiers, artifact locations, "
-            "reflections, and state token.",
+            "The context intentionally excludes the learner name, identifiers, free-text profile, "
+            "activity objective, deliverable, artifact locations, reflections, and state token.",
             "LEARNER_CONTEXT_JSON:",
             json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
         )
