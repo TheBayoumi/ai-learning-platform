@@ -41,6 +41,12 @@ class MemoryRepository:
     async def load(self, *, account_id: str, learner_id: UUID) -> StoredLearnerState | None:
         return self.values.get((account_id, learner_id))
 
+    async def delete_account(self, *, account_id: str) -> bool:
+        identities = [identity for identity in self.values if identity[0] == account_id]
+        for identity in identities:
+            del self.values[identity]
+        return bool(identities)
+
     async def commit(self, request: LearnerStateCommit) -> StoredLearnerState:
         stored = StoredLearnerState(
             account_id=request.account_id,
