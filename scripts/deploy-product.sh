@@ -64,6 +64,38 @@ retry_json_endpoint() {
   return 1
 }
 
+report_json_http_failure() {
+  local label=$1
+  local status=$2
+  local response=$3
+  local code
+
+  code=$(jq -r '
+    if (.detail | type) == "object" then
+      (.detail.code // "detail_object")
+    elif (.detail | type) == "array" then
+      ([.detail[]?.type // "validation_error"] | unique | join(","))
+    elif (.error | type) == "object" then
+      (.error.code // "error_object")
+    else
+      "unclassified_json_error"
+    end
+  ' "$response" 2>/dev/null || printf '%s' "non_json_response")
+  printf 'deployment verification failed: %s HTTP %s code=%s\n' "$label" "$status" "$code" >&2
+  return 1
+}
+
+require_json_http_status() {
+  local label=$1
+  local expected=$2
+  local status=$3
+  local response=$4
+
+  if test "$status" != "$expected"; then
+    report_json_http_failure "$label" "$status" "$response"
+  fi
+}
+
 phase="toolchain"
 node --version
 npm --version
@@ -212,21 +244,30 @@ frontend_url=$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' \
   "$RUNNER_TEMP/frontend-deploy.txt" | tail -n 1)
 test -n "$frontend_url"
 
-phase="deployed-verification"
-frontend_bypass=()
-if test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"; then
-  frontend_bypass=( -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" )
+# Production must be publicly usable. A protection bypass is permitted only for
+# non-production verification and must never be required for the publishable main release.
+frontend_access_headers=()
+if test "$GITHUB_REF" != "refs/heads/main" && test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"; then
+  frontend_access_headers=( -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" )
 fi
 cookie_jar="$RUNNER_TEMP/product-deployment-cookies.txt"
 touch "$cookie_jar"
 chmod 600 "$cookie_jar"
 
-page=$(curl -fsS "${frontend_bypass[@]}" "$frontend_url/")
-grep -F "Career Atlas" <<<"$page" >/dev/null
-grep -F "Learning service online" <<<"$page" >/dev/null
+phase="deployed-page-verification"
+page_file="$RUNNER_TEMP/deployed-page.html"
+page_status=$(curl -sS "${frontend_access_headers[@]}" \
+  -o "$page_file" -w '%{http_code}' "$frontend_url/")
+if test "$page_status" != "200"; then
+  printf 'deployment verification failed: page HTTP %s\n' "$page_status" >&2
+  exit 1
+fi
+grep -F "Career Atlas" "$page_file" >/dev/null
+grep -F "Learning service online" "$page_file" >/dev/null
 
+phase="deployed-plan-create"
 plan="$RUNNER_TEMP/deployed-plan.json"
-curl -fsS "${frontend_bypass[@]}" \
+plan_status=$(curl -sS "${frontend_access_headers[@]}" \
   --cookie "$cookie_jar" \
   --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
@@ -240,55 +281,73 @@ curl -fsS "${frontend_bypass[@]}" \
       {"competency_id":"python","score":2},
       {"competency_id":"testing","score":2}
     ]
-  }' >"$plan"
+  }' \
+  -o "$plan" -w '%{http_code}')
+require_json_http_status "plan-create" "201" "$plan_status" "$plan"
 jq -e '.state_token | length > 20' "$plan" >/dev/null
 jq -e '.current_activity.id | length > 5' "$plan" >/dev/null
 
+phase="deployed-plan-resume"
 resume_payload="$RUNNER_TEMP/resume-payload.json"
+resume_response="$RUNNER_TEMP/deployed-resume.json"
 jq '{state_token}' "$plan" >"$resume_payload"
-curl -fsS "${frontend_bypass[@]}" \
+resume_status=$(curl -sS "${frontend_access_headers[@]}" \
   --cookie "$cookie_jar" \
   --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/plans/resume" \
   --data-binary "@$resume_payload" \
-  | jq -e '.sequence == 0 and .completed_count == 0' >/dev/null
+  -o "$resume_response" -w '%{http_code}')
+require_json_http_status "plan-resume" "200" "$resume_status" "$resume_response"
+jq -e '.sequence == 0 and .completed_count == 0' "$resume_response" >/dev/null
 
+phase="deployed-progress"
 progress_payload="$RUNNER_TEMP/progress-payload.json"
 jq '{state_token, activity_id:.current_activity.id, reflection:
   "The deployed API, same-origin proxy, durable resume, and progress transition were verified end to end."}' \
   "$plan" >"$progress_payload"
 progress="$RUNNER_TEMP/deployed-progress.json"
-curl -fsS "${frontend_bypass[@]}" \
+progress_status=$(curl -sS "${frontend_access_headers[@]}" \
   --cookie "$cookie_jar" \
   --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/progress" \
-  --data-binary "@$progress_payload" >"$progress"
+  --data-binary "@$progress_payload" \
+  -o "$progress" -w '%{http_code}')
+require_json_http_status "progress" "200" "$progress_status" "$progress"
 jq -e '.sequence == 1 and .completed_count == 1' "$progress" >/dev/null
 
+phase="deployed-progressed-resume"
 progressed_resume_payload="$RUNNER_TEMP/progressed-resume-payload.json"
+progressed_resume_response="$RUNNER_TEMP/progressed-resume.json"
 jq '{state_token}' "$progress" >"$progressed_resume_payload"
-curl -fsS "${frontend_bypass[@]}" \
+progressed_resume_status=$(curl -sS "${frontend_access_headers[@]}" \
   --cookie "$cookie_jar" \
   --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
   -X POST "$frontend_url/api/platform/plans/resume" \
   --data-binary "@$progressed_resume_payload" \
-  | jq -e '.sequence == 1 and .completed_count == 1' >/dev/null
+  -o "$progressed_resume_response" -w '%{http_code}')
+require_json_http_status \
+  "post-progress-resume" "200" "$progressed_resume_status" "$progressed_resume_response"
+jq -e '.sequence == 1 and .completed_count == 1' "$progressed_resume_response" >/dev/null
 
+phase="deployed-account-deletion"
 # Account deletion is part of the release contract, not an optional UI-only control.
 deleted="$RUNNER_TEMP/deployed-deletion.json"
-curl -fsS "${frontend_bypass[@]}" \
+delete_status=$(curl -sS "${frontend_access_headers[@]}" \
   --cookie "$cookie_jar" \
   --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
   -X DELETE "$frontend_url/api/platform/account" \
-  --data '{"confirmation":"DELETE"}' >"$deleted"
+  --data '{"confirmation":"DELETE"}' \
+  -o "$deleted" -w '%{http_code}')
+require_json_http_status "account-deletion" "200" "$delete_status" "$deleted"
 jq -e '.deleted == true and .scope == "current_anonymous_account"' "$deleted" >/dev/null
 
+phase="deployed-post-delete-resume"
 post_delete_resume="$RUNNER_TEMP/post-delete-resume.json"
-post_delete_status=$(curl -sS "${frontend_bypass[@]}" \
+post_delete_status=$(curl -sS "${frontend_access_headers[@]}" \
   --cookie "$cookie_jar" \
   --cookie-jar "$cookie_jar" \
   -H "Content-Type: application/json" \
@@ -296,7 +355,7 @@ post_delete_status=$(curl -sS "${frontend_bypass[@]}" \
   --data-binary "@$progressed_resume_payload" \
   -o "$post_delete_resume" \
   -w '%{http_code}')
-test "$post_delete_status" = "404"
+require_json_http_status "post-delete-resume" "404" "$post_delete_status" "$post_delete_resume"
 jq -e '.detail.code == "LEARNER_STATE_NOT_FOUND"' "$post_delete_resume" >/dev/null
 
 phase="evidence-publication"
