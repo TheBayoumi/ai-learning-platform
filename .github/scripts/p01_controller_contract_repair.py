@@ -52,6 +52,11 @@ def patch() -> None:
         """        (\n            'branches: [main, \"automation/**\"]',\n            \"branches: [main]\",\n            \"workflow_trigger_invalid\",\n        ),\n""",
         """        (\n            \"branches: [main]\",\n            \"branches: [develop]\",\n            \"workflow_trigger_invalid\",\n        ),\n        (\n            \"types: [opened, reopened, ready_for_review]\",\n            \"types: [opened, reopened, synchronize, ready_for_review]\",\n            \"workflow_trigger_invalid\",\n        ),\n        (\n            \"  pull_request:\\n\",\n            \"  pull_request:\\n  push:\\n\",\n            \"workflow_trigger_invalid\",\n        ),\n""",
     )
+    _replace_once(
+        test_path,
+        '            "EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}",\n',
+        '            "EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}",\n',
+    )
 
     compatibility_path = (
         "apps/api/src/ai_learning_platform_api/transport/http/"
