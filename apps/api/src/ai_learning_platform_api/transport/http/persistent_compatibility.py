@@ -64,6 +64,10 @@ class PersistentCompatibilityService:
     def list_roles(self) -> list[RoleView]:
         return self._core.list_roles()
 
+    async def current_plan(self, *, account_id: str, state_token: str) -> PlanView:
+        """Return the ownership-checked exact durable plan for a read-only operation."""
+        return (await self._current(account_id=account_id, state_token=state_token)).plan
+
     async def create_plan(
         self,
         *,
