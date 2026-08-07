@@ -11,6 +11,8 @@ _REQUIRED_PREFERRED_REGION_FILES = (
     Path("apps/web/app/page.tsx"),
     Path("apps/web/app/status/page.tsx"),
 )
+_DEPLOYMENT_WORKFLOW = Path(".github/workflows/product-deployment.yml")
+_DEPLOYMENT_SCRIPT = Path("scripts/deploy-product.sh")
 
 
 class TopologyVerificationError(RuntimeError):
@@ -20,17 +22,24 @@ class TopologyVerificationError(RuntimeError):
 def verify_topology(root: Path | None = None) -> dict[str, object]:
     """Verify committed deployment-region controls from the selected repository root."""
     repository_root = root if root is not None else Path.cwd()
-    workflow = (repository_root / ".github/workflows/product-deployment.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (repository_root / _DEPLOYMENT_WORKFLOW).read_text(encoding="utf-8")
+    deployment_script = (repository_root / _DEPLOYMENT_SCRIPT).read_text(encoding="utf-8")
+
     if f"VERCEL_FUNCTION_REGION: {_SELECTED_REGION}" not in workflow:
         raise TopologyVerificationError("deployment_region_missing")
     if "serverlessFunctionRegion:$region" not in workflow:
         raise TopologyVerificationError("project_region_update_missing")
-    if "fra1" in workflow:
+    if "VERCEL_FUNCTION_REGION" not in deployment_script:
+        raise TopologyVerificationError("deploy_script_region_input_missing")
+    if "serverlessFunctionRegion:$region" not in deployment_script:
+        raise TopologyVerificationError("deploy_script_region_update_missing")
+    if "fra1" in workflow or "fra1" in deployment_script:
         raise TopologyVerificationError("legacy_cross_region_target_present")
 
-    checked_files: list[str] = []
+    checked_files = [
+        _DEPLOYMENT_WORKFLOW.as_posix(),
+        _DEPLOYMENT_SCRIPT.as_posix(),
+    ]
     expected_export = f'export const preferredRegion = "{_SELECTED_REGION}";'
     for relative_path in _REQUIRED_PREFERRED_REGION_FILES:
         content = (repository_root / relative_path).read_text(encoding="utf-8")
