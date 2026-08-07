@@ -4,11 +4,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
-import { LEARNING_SESSION_STORAGE_KEY } from "../../lib/learning-session";
 import { publishPlanSaved } from "../../lib/learning-events";
-import { createPlan, loadRoles } from "../../lib/platform-client";
+import { LEARNING_SESSION_STORAGE_KEY } from "../../lib/learning-session";
 import type { RoleView } from "../../lib/learning-contract";
+import { createPlan, loadRoles } from "../../lib/platform-client";
 import styles from "./onboarding.module.css";
+
+function initialRatings(role: RoleView | undefined): Record<string, number> {
+  if (role === undefined) {
+    return {};
+  }
+  return Object.fromEntries(role.competencies.map((item) => [item.id, 0]));
+}
 
 export function Onboarding() {
   const router = useRouter();
@@ -26,8 +33,10 @@ export function Onboarding() {
     const handle = window.setTimeout(() => {
       void loadRoles()
         .then((catalog) => {
+          const firstRole = catalog[0];
           setRoles(catalog);
-          setSelectedRoleId((current) => current || catalog[0]?.id || "");
+          setSelectedRoleId(firstRole?.id ?? "");
+          setRatings(initialRatings(firstRole));
         })
         .catch((caught: unknown) => {
           setError(caught instanceof Error ? caught.message : "The career catalog could not load.");
@@ -42,12 +51,10 @@ export function Onboarding() {
     [roles, selectedRoleId]
   );
 
-  useEffect(() => {
-    if (selectedRole === undefined) {
-      return;
-    }
-    setRatings(Object.fromEntries(selectedRole.competencies.map((item) => [item.id, 0])));
-  }, [selectedRole]);
+  const selectRole = (role: RoleView) => {
+    setSelectedRoleId(role.id);
+    setRatings(initialRatings(role));
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -117,7 +124,7 @@ export function Onboarding() {
                   name="target-role"
                   value={role.id}
                   checked={selectedRoleId === role.id}
-                  onChange={() => setSelectedRoleId(role.id)}
+                  onChange={() => selectRole(role)}
                 />
                 <span>{role.competencies.length} competencies</span>
                 <strong>{role.title}</strong>
