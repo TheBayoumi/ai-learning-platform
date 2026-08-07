@@ -36,18 +36,22 @@ jobs:
       - name: Apply bounded repairs
         run: python .github/scripts/p01_controller_contract_repair.py patch
 
-      - name: Verify repairs
+      - name: Format repaired sources
         working-directory: apps/api
         run: |
           uv run --locked ruff format \
             src/ai_learning_platform_api/automation/phase_gate.py \
             src/ai_learning_platform_api/transport/http/persistent_compatibility.py \
             tests/test_phase_gate.py
+
+      - name: Refresh governed hashes before fixture validation
+        run: python .github/scripts/p01_controller_contract_repair.py refresh-hashes
+
+      - name: Verify repaired contract
+        working-directory: apps/api
+        run: |
           uv run --locked ruff check . ../../scripts
           uv run --locked pytest tests/test_phase_gate.py
-
-      - name: Refresh governed hashes
-        run: python .github/scripts/p01_controller_contract_repair.py refresh-hashes
 
       - name: Remove one-shot repair files
         run: |
