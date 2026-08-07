@@ -12,6 +12,7 @@ const MAX_RESPONSE_BYTES = 768 * 1024;
 const ACCOUNT_COOKIE = "ai_platform_account";
 const ACCOUNT_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ACCOUNT_DELETE_PATH = "account";
 const TUTOR_STREAM_PATH = "tutor/stream";
 const ALLOWED_PATHS = new Set([
   "roles",
@@ -21,16 +22,19 @@ const ALLOWED_PATHS = new Set([
   "progress",
   "assessments/start",
   "assessments/submit",
+  ACCOUNT_DELETE_PATH,
   TUTOR_STREAM_PATH
 ]);
 
 const GET_PATHS = new Set(["roles"]);
+const DELETE_PATHS = new Set([ACCOUNT_DELETE_PATH]);
 
 type RouteContext = Readonly<{
   params: Promise<Readonly<{ path: string[] }>>;
 }>;
 
-type ProxyMethod = "GET" | "POST";
+type ProxyMethod = "DELETE" | "GET" | "POST";
+type AccountContext = Readonly<{ accountId: string; created: boolean }>;
 
 export async function GET(
   request: Request,
@@ -46,6 +50,13 @@ export async function POST(
   return proxyRequest(request, context, "POST");
 }
 
+export async function DELETE(
+  request: Request,
+  context: RouteContext
+): Promise<Response> {
+  return proxyRequest(request, context, "DELETE");
+}
+
 async function proxyRequest(
   request: Request,
   context: RouteContext,
@@ -56,13 +67,29 @@ async function proxyRequest(
   if (!ALLOWED_PATHS.has(relativePath)) {
     return errorResponse(404, "PLATFORM_ROUTE_NOT_FOUND", "The platform route is not available.");
   }
-  if (GET_PATHS.has(relativePath) !== (method === "GET")) {
+  if (!methodAllowed(relativePath, method)) {
     return errorResponse(405, "PLATFORM_METHOD_NOT_ALLOWED", "The request method is not allowed.");
   }
 
-  const accountContext = method === "POST" ? resolveAccountContext(request) : null;
+  const isAccountDeletion = relativePath === ACCOUNT_DELETE_PATH && method === "DELETE";
+  const accountContext =
+    method === "GET"
+      ? null
+      : isAccountDeletion
+        ? resolveExistingAccountContext(request)
+        : resolveAccountContext(request);
+
+  if (isAccountDeletion && accountContext === null) {
+    const headers = responseHeaders("application/json; charset=utf-8");
+    headers.set("set-cookie", expiredAccountCookie(request.url));
+    return new Response(
+      JSON.stringify({ deleted: false, scope: "current_anonymous_account" }),
+      { status: 200, headers }
+    );
+  }
+
   let body: string | undefined;
-  if (method === "POST") {
+  if (method !== "GET") {
     body = await request.text();
     if (Buffer.byteLength(body, "utf8") > MAX_REQUEST_BYTES) {
       return errorResponse(413, "PLATFORM_REQUEST_TOO_LARGE", "The request is too large.");
@@ -130,7 +157,11 @@ async function proxyRequest(
       );
     }
     const headers = responseHeaders("application/json; charset=utf-8");
-    applyAccountCookie(headers, accountContext, request.url);
+    if (isAccountDeletion && upstream.ok) {
+      headers.set("set-cookie", expiredAccountCookie(request.url));
+    } else {
+      applyAccountCookie(headers, accountContext, request.url);
+    }
     return new Response(responseBody, {
       status: upstream.status,
       headers
@@ -146,16 +177,32 @@ async function proxyRequest(
   }
 }
 
-function resolveAccountContext(request: Request): Readonly<{
-  accountId: string;
-  created: boolean;
-}> {
+function methodAllowed(relativePath: string, method: ProxyMethod): boolean {
+  if (method === "GET") {
+    return GET_PATHS.has(relativePath);
+  }
+  if (method === "DELETE") {
+    return DELETE_PATHS.has(relativePath);
+  }
+  return !GET_PATHS.has(relativePath) && !DELETE_PATHS.has(relativePath);
+}
+
+function resolveExistingAccountContext(request: Request): AccountContext | null {
   const cookies = parseCookies(request.headers.get("cookie") ?? "");
   const existing = cookies.get(ACCOUNT_COOKIE);
-  if (existing !== undefined && ACCOUNT_ID_PATTERN.test(existing)) {
-    return { accountId: existing.toLowerCase(), created: false };
+  if (existing === undefined || !ACCOUNT_ID_PATTERN.test(existing)) {
+    return null;
   }
-  return { accountId: randomUUID().toLowerCase(), created: true };
+  return { accountId: existing.toLowerCase(), created: false };
+}
+
+function resolveAccountContext(request: Request): AccountContext {
+  return (
+    resolveExistingAccountContext(request) ?? {
+      accountId: randomUUID().toLowerCase(),
+      created: true
+    }
+  );
 }
 
 function parseCookies(value: string): ReadonlyMap<string, string> {
@@ -179,6 +226,11 @@ function accountCookie(accountId: string, requestUrl: string): string {
   return `${ACCOUNT_COOKIE}=${accountId}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax${secure}`;
 }
 
+function expiredAccountCookie(requestUrl: string): string {
+  const secure = new URL(requestUrl).protocol === "https:" ? "; Secure" : "";
+  return `${ACCOUNT_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure}`;
+}
+
 function responseHeaders(contentType: string): Headers {
   return new Headers({
     "cache-control": "no-store",
@@ -189,7 +241,7 @@ function responseHeaders(contentType: string): Headers {
 
 function applyAccountCookie(
   headers: Headers,
-  accountContext: Readonly<{ accountId: string; created: boolean }> | null,
+  accountContext: AccountContext | null,
   requestUrl: string
 ): void {
   if (accountContext?.created === true) {
