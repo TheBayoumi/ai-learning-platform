@@ -198,14 +198,14 @@ candidate_health="$RUNNER_TEMP/backend-candidate-health.json"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
   vc curl --url "$backend_deployment_url/health/live" \
     --silent --show-error --output "$candidate_health"
-jq -e '.status == "ok"' "$candidate_health" >/dev/null
+head -n 1 "$candidate_health" | jq -e '.status == "ok"' >/dev/null
 
 candidate_roles="$RUNNER_TEMP/backend-candidate-roles.json"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
   vc curl --url "$backend_deployment_url/api/v1/roles" \
     --silent --show-error --output "$candidate_roles"
-jq -e 'length == 1 and .[0].id == "junior-python-backend-engineer"' \
-  "$candidate_roles" >/dev/null
+head -n 1 "$candidate_roles" \
+  | jq -e 'length == 1 and .[0].id == "junior-python-backend-engineer"' >/dev/null
 unset VERCEL_TOKEN
 
 phase="backend-promotion"
