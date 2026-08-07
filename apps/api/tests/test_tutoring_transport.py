@@ -20,6 +20,7 @@ from ai_learning_platform_api.tutoring.gateway import (
     TutorGatewayMessage,
     TutorGatewayRequest,
 )
+from ai_learning_platform_api.tutoring.limits import TutorTurnLimiter
 from ai_learning_platform_api.tutoring.service import (
     PreparedTutorTurn,
     TutorService,
@@ -48,9 +49,11 @@ class FakeTutorService:
         *,
         prepare_error: Exception | None = None,
         stream_error: bool = False,
+        empty_stream: bool = False,
     ) -> None:
         self.prepare_error = prepare_error
         self.stream_error = stream_error
+        self.empty_stream = empty_stream
         self.account_id: str | None = None
         self.request: TutorTurnRequest | None = None
 
@@ -62,15 +65,45 @@ class FakeTutorService:
         return PREPARED
 
     async def stream(self, _: PreparedTutorTurn) -> AsyncIterator[str]:
+        if self.empty_stream:
+            return
         yield "First"
         if self.stream_error:
             raise TutorGatewayError("secret provider failure")
         yield " step"
 
 
-async def post(service: FakeTutorService, *, account_id: str = ACCOUNT_ID) -> httpx.Response:
+def limiter(
+    *,
+    max_concurrent_turns: int = 8,
+    requests_per_window: int = 20,
+    window_seconds: int = 60,
+) -> TutorTurnLimiter:
+    return TutorTurnLimiter(
+        max_concurrent_turns=max_concurrent_turns,
+        requests_per_window=requests_per_window,
+        window_seconds=window_seconds,
+    )
+
+
+def app_for(service: FakeTutorService, turn_limiter: TutorTurnLimiter) -> FastAPI:
     app = FastAPI()
-    app.include_router(create_tutoring_router(cast(TutorService, service)))
+    app.include_router(
+        create_tutoring_router(
+            cast(TutorService, service),
+            turn_limiter,
+        )
+    )
+    return app
+
+
+async def post(
+    service: FakeTutorService,
+    *,
+    account_id: str = ACCOUNT_ID,
+    turn_limiter: TutorTurnLimiter | None = None,
+) -> httpx.Response:
+    app = app_for(service, turn_limiter or limiter())
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://test",
@@ -107,6 +140,13 @@ def test_tutoring_router_emits_safe_stream_error_without_mutating_state() -> Non
     assert "event: done" not in response.text
 
 
+def test_tutoring_router_maps_empty_provider_stream_to_safe_error() -> None:
+    response = asyncio.run(post(FakeTutorService(empty_stream=True)))
+    assert response.status_code == 200
+    assert "TUTOR_PROVIDER_UNAVAILABLE" in response.text
+    assert "event: done" not in response.text
+
+
 @pytest.mark.parametrize(
     ("error", "status_code", "code"),
     [
@@ -124,6 +164,63 @@ def test_tutoring_router_maps_preflight_failures(
     response = asyncio.run(post(FakeTutorService(prepare_error=error)))
     assert response.status_code == status_code
     assert response.json()["detail"]["code"] == code
+
+
+def test_tutoring_router_releases_capacity_after_preflight_failure() -> None:
+    turn_limiter = limiter(max_concurrent_turns=1)
+
+    async def exercise() -> None:
+        failed_app = app_for(
+            FakeTutorService(prepare_error=TutorUnavailableError()),
+            turn_limiter,
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=failed_app),
+            base_url="http://test",
+        ) as client:
+            failed = await client.post(
+                "/api/v1/tutor/stream",
+                headers={"x-platform-account-id": ACCOUNT_ID},
+                json=BODY,
+            )
+        assert failed.status_code == 503
+
+        succeeded = await post(
+            FakeTutorService(),
+            turn_limiter=turn_limiter,
+        )
+        assert succeeded.status_code == 200
+
+    asyncio.run(exercise())
+
+
+def test_tutoring_router_rate_limits_before_provider_preflight() -> None:
+    service = FakeTutorService()
+    turn_limiter = limiter(requests_per_window=1)
+    app = app_for(service, turn_limiter)
+
+    async def exercise() -> tuple[httpx.Response, httpx.Response]:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            first = await client.post(
+                "/api/v1/tutor/stream",
+                headers={"x-platform-account-id": ACCOUNT_ID},
+                json=BODY,
+            )
+            second = await client.post(
+                "/api/v1/tutor/stream",
+                headers={"x-platform-account-id": ACCOUNT_ID},
+                json=BODY,
+            )
+            return first, second
+
+    first, second = asyncio.run(exercise())
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.json()["detail"]["code"] == "TUTOR_RATE_LIMITED"
+    assert 1 <= int(second.headers["retry-after"]) <= 60
 
 
 def test_tutoring_router_rejects_invalid_account_context() -> None:
