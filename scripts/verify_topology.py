@@ -41,8 +41,10 @@ def verify_topology(root: Path | None = None) -> dict[str, object]:
     required_promotion_controls = (
         'phase="backend-candidate-deployment"',
         'phase="backend-candidate-verification"',
-        'vc curl /health/live --deployment "$backend_deployment_url"',
-        'vc curl /api/v1/roles --deployment "$backend_deployment_url"',
+        'vc curl --url "$backend_deployment_url/health/live"',
+        '--silent --show-error --output "$candidate_health"',
+        'vc curl --url "$backend_deployment_url/api/v1/roles"',
+        '--silent --show-error --output "$candidate_roles"',
         'phase="backend-promotion"',
         'vc promote "$backend_deployment_url" --yes',
         'phase="backend-public-verification"',
