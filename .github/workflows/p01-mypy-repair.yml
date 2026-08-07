@@ -117,6 +117,10 @@ jobs:
       - name: Verify formatting, lint, and strict typing
         working-directory: apps/api
         run: |
+          uv run --locked ruff check --fix \
+            src/ai_learning_platform_api/persistence/postgres.py \
+            tests/test_persistent_compatibility_failures.py \
+            tests/test_app.py
           uv run --locked ruff format \
             src/ai_learning_platform_api/persistence/postgres.py \
             tests/test_persistent_compatibility_failures.py \
