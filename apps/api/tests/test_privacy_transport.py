@@ -6,13 +6,16 @@ import httpx
 from fastapi import FastAPI
 
 from ai_learning_platform_api.persistence.contracts import PersistenceUnavailableError
-from ai_learning_platform_api.transport.http.privacy import create_privacy_router
+from ai_learning_platform_api.transport.http.privacy import (
+    DeleteAccount,
+    create_privacy_router,
+)
 
 ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 
 
 async def request(
-    delete_account,
+    delete_account: DeleteAccount,
     *,
     account_id: str = ACCOUNT_ID,
     confirmation: str = "DELETE",
