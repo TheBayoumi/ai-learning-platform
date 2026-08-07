@@ -36,6 +36,15 @@ class MemoryRepository:
     async def load(self, *, account_id: str, learner_id: UUID) -> StoredLearnerState | None:
         return self.values.get((account_id, learner_id))
 
+    async def delete_account(self, *, account_id: str) -> bool:
+        identities = [identity for identity in self.values if identity[0] == account_id]
+        for identity in identities:
+            del self.values[identity]
+        idempotency_keys = [identity for identity in self.idempotent if identity[0] == account_id]
+        for identity in idempotency_keys:
+            del self.idempotent[identity]
+        return bool(identities)
+
     async def commit(self, request: LearnerStateCommit) -> StoredLearnerState:
         idempotent = self.idempotent.get((request.account_id, request.idempotency_key))
         if idempotent is not None:
