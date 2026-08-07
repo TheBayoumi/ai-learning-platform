@@ -37,9 +37,7 @@ class MemoryRepository:
         return self.values.get((account_id, learner_id))
 
     async def delete_account(self, *, account_id: str) -> bool:
-        learner_identities = [
-            identity for identity in self.values if identity[0] == account_id
-        ]
+        learner_identities = [identity for identity in self.values if identity[0] == account_id]
         for learner_identity in learner_identities:
             del self.values[learner_identity]
         idempotency_identities = [

@@ -51,9 +51,7 @@ def migrated_database() -> Iterator[None]:
 
 
 def state(name: str) -> LearnerState:
-    plan = LearningPlanService(_SECRET).create_plan(
-        PlanRequest(learner_name=name, ratings=[])
-    )
+    plan = LearningPlanService(_SECRET).create_plan(PlanRequest(learner_name=name, ratings=[]))
     return SignedStateCodec(_SECRET).decode(plan.state_token)
 
 
@@ -118,15 +116,9 @@ def test_delete_account_cascades_only_the_current_anonymous_account() -> None:
     async def counts() -> tuple[int, int, int, int]:
         async with runtime.engine.connect() as connection:
             account_count = await connection.scalar(select(func.count()).select_from(accounts))
-            state_count = await connection.scalar(
-                select(func.count()).select_from(learner_states)
-            )
-            event_count = await connection.scalar(
-                select(func.count()).select_from(learner_events)
-            )
-            outbox_count = await connection.scalar(
-                select(func.count()).select_from(outbox_records)
-            )
+            state_count = await connection.scalar(select(func.count()).select_from(learner_states))
+            event_count = await connection.scalar(select(func.count()).select_from(learner_events))
+            outbox_count = await connection.scalar(select(func.count()).select_from(outbox_records))
         return (
             int(account_count or 0),
             int(state_count or 0),
