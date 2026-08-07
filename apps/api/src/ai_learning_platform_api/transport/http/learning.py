@@ -29,6 +29,16 @@ def create_learning_router(service: LearningPlanService) -> APIRouter:
 
     @router.get("/roles", response_model=list[RoleView], operation_id="list_roles")
     async def list_roles() -> list[RoleView]:
+        """Keep the original published role endpoint backward compatible."""
+        return service.list_roles()[:1]
+
+    @router.get(
+        "/career-tracks",
+        response_model=list[RoleView],
+        operation_id="list_career_tracks",
+    )
+    async def list_career_tracks() -> list[RoleView]:
+        """Return the complete career catalog used by the routed application."""
         return service.list_roles()
 
     @router.post(
