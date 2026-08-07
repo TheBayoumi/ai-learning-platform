@@ -39,6 +39,32 @@ jobs:
           test "$EXACT_REF" = "refs/heads/main"
           test "$(git rev-parse HEAD)" = "$EXACT_SHA"
 
+      - name: Validate required deployment credentials
+        env:
+          PERSISTENCE_MODE: ${{ vars.AI_PLATFORM_PERSISTENCE_MODE || 'postgres' }}
+          DATABASE_URL: ${{ secrets.AI_PLATFORM_DATABASE_URL }}
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+        run: |
+          if ! test -n "$VERCEL_API_TOKEN"; then
+            echo "Missing required Actions secret: VERCEL_API_TOKEN" >&2
+            exit 1
+          fi
+          case "$PERSISTENCE_MODE" in
+            signed_state)
+              ;;
+            postgres)
+              if ! test -n "$DATABASE_URL"; then
+                echo "Missing required Actions secret: AI_PLATFORM_DATABASE_URL" >&2
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Unsupported persistence mode" >&2
+              exit 1
+              ;;
+          esac
+          unset DATABASE_URL VERCEL_API_TOKEN
+
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
@@ -56,7 +82,6 @@ jobs:
             signed_state)
               ;;
             postgres)
-              test -n "$AI_PLATFORM_DATABASE_URL"
               uv sync --project apps/api --locked --all-groups
               AI_PLATFORM_DATABASE_URL="$AI_PLATFORM_DATABASE_URL" \
                 uv run --project apps/api --locked alembic \
@@ -92,7 +117,6 @@ jobs:
           FRONTEND_PROJECT_ID: prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN
           BACKEND_PROJECT_NAME: ai-learning-platform-api
         run: |
-          test -n "$VERCEL_API_TOKEN"
           backend_payload=$(jq -n \
             --arg region "$VERCEL_FUNCTION_REGION" \
             '{framework:"fastapi",serverlessFunctionRegion:$region}')
@@ -142,7 +166,6 @@ jobs:
               }
             ]')
           if test "$PERSISTENCE_MODE" = "postgres"; then
-            test -n "$DATABASE_URL"
             payload=$(jq -n \
               --arg persistence_mode "$PERSISTENCE_MODE" \
               --arg tutor_mode "$TUTOR_MODE" \
@@ -183,6 +206,23 @@ jobs:
           BACKEND_PROJECT_NAME: ai-learning-platform-api
           EVIDENCE_PATH: ${{ runner.temp }}/product-deployment-evidence.json
         run: bash scripts/deploy-product.sh
+
+      - name: Finalize sanitized deployment evidence
+        if: always()
+        env:
+          EVIDENCE_PATH: ${{ runner.temp }}/product-deployment-evidence.json
+        run: |
+          if ! test -f "$EVIDENCE_PATH"; then
+            jq -n --arg commit_sha "$GITHUB_SHA" '{
+              schema_version:1,
+              result:"FAILED",
+              commit_sha:$commit_sha,
+              phase:"preflight",
+              message:"Deployment did not reach application deployment"
+            }' >"$EVIDENCE_PATH"
+          fi
+          test -f "$RUNNER_TEMP/backend-deploy.txt" || : >"$RUNNER_TEMP/backend-deploy.txt"
+          test -f "$RUNNER_TEMP/frontend-deploy.txt" || : >"$RUNNER_TEMP/frontend-deploy.txt"
 
       - name: Upload sanitized deployment evidence
         if: always()
