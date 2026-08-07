@@ -117,9 +117,12 @@ jobs:
         run: |
           uv run --project apps/api --locked python -m ai_learning_platform_api.contracts.health_openapi check apps/api/openapi/health.openapi.json
           uv run --project apps/api --locked python -m ai_learning_platform_api.contracts.health_typescript check apps/api/openapi/health.openapi.json apps/web/server/contracts/generated/health-response.ts
-          uv run --project apps/api --locked ruff format --config apps/api/pyproject.toml --check apps/api scripts
-          uv run --project apps/api --locked ruff check --config apps/api/pyproject.toml apps/api scripts
-          uv run --project apps/api --locked mypy --config-file apps/api/pyproject.toml apps/api/src apps/api/tests scripts
+          (
+            cd apps/api
+            uv run --locked ruff format --check . ../../scripts
+            uv run --locked ruff check . ../../scripts
+            uv run --locked mypy src tests ../../scripts
+          )
           uv run --project apps/api --locked alembic --config apps/api/alembic.ini upgrade head
           uv run --project apps/api --locked alembic --config apps/api/alembic.ini downgrade base
           uv run --project apps/api --locked alembic --config apps/api/alembic.ini upgrade head
