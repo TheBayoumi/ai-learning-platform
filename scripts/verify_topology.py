@@ -38,13 +38,15 @@ def verify_topology(root: Path | None = None) -> dict[str, object]:
 
     if "vc deploy --cwd apps/api --yes --archive=tgz --prod" in deployment_script:
         raise TopologyVerificationError("backend_unverified_direct_production_deploy")
+    if "vc curl" in deployment_script:
+        raise TopologyVerificationError("backend_candidate_beta_cli_present")
     required_promotion_controls = (
         'phase="backend-candidate-deployment"',
         'phase="backend-candidate-verification"',
-        'vc curl --url "$backend_deployment_url/health/live"',
-        '--silent --show-error --output "$candidate_health"',
-        'vc curl --url "$backend_deployment_url/api/v1/roles"',
-        '--silent --show-error --output "$candidate_roles"',
+        'candidate_access_headers=()',
+        'x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET',
+        '"$backend_deployment_url/health/live" >"$candidate_health"',
+        '"$backend_deployment_url/api/v1/roles" >"$candidate_roles"',
         'phase="backend-promotion"',
         'vc promote "$backend_deployment_url" --yes',
         'phase="backend-public-verification"',
