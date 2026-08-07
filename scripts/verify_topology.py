@@ -36,7 +36,7 @@ def verify_topology(root: Path | None = None) -> dict[str, object]:
     if "fra1" in workflow or "fra1" in deployment_script:
         raise TopologyVerificationError("legacy_cross_region_target_present")
 
-    if 'vc deploy --cwd apps/api --yes --archive=tgz --prod' in deployment_script:
+    if "vc deploy --cwd apps/api --yes --archive=tgz --prod" in deployment_script:
         raise TopologyVerificationError("backend_unverified_direct_production_deploy")
     required_promotion_controls = (
         'phase="backend-candidate-deployment"',
