@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from typing import cast
 
 import httpx
 import pytest
@@ -19,7 +20,11 @@ from ai_learning_platform_api.tutoring.gateway import (
     TutorGatewayMessage,
     TutorGatewayRequest,
 )
-from ai_learning_platform_api.tutoring.service import PreparedTutorTurn, TutorUnavailableError
+from ai_learning_platform_api.tutoring.service import (
+    PreparedTutorTurn,
+    TutorService,
+    TutorUnavailableError,
+)
 
 ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 BODY = {
@@ -38,7 +43,12 @@ PREPARED = PreparedTutorTurn(
 
 
 class FakeTutorService:
-    def __init__(self, *, prepare_error: Exception | None = None, stream_error: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        prepare_error: Exception | None = None,
+        stream_error: bool = False,
+    ) -> None:
         self.prepare_error = prepare_error
         self.stream_error = stream_error
         self.account_id: str | None = None
@@ -60,7 +70,7 @@ class FakeTutorService:
 
 async def post(service: FakeTutorService, *, account_id: str = ACCOUNT_ID) -> httpx.Response:
     app = FastAPI()
-    app.include_router(create_tutoring_router(service))  # type: ignore[arg-type]
+    app.include_router(create_tutoring_router(cast(TutorService, service)))
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://test",
@@ -117,5 +127,11 @@ def test_tutoring_router_maps_preflight_failures(
 
 
 def test_tutoring_router_rejects_invalid_account_context() -> None:
-    response = asyncio.run(post(FakeTutorService(), account_id="attacker-controlled"))
-    assert response.status_code == 422 or response.status_code == 400
+    service = FakeTutorService()
+    response = asyncio.run(post(service, account_id="x" * 36))
+    assert response.status_code == 400
+    assert response.json()["detail"] == {
+        "code": "INVALID_REQUEST_CONTEXT",
+        "message": "The request context is invalid.",
+    }
+    assert service.request is None
