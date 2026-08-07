@@ -65,6 +65,19 @@ jobs:
               ;;
           esac
 
+      - name: Validate optional tutor activation
+        env:
+          TUTOR_MODE: ${{ vars.AI_PLATFORM_TUTOR_MODE || 'disabled' }}
+        run: |
+          case "$TUTOR_MODE" in
+            disabled|vercel_ai_gateway)
+              ;;
+            *)
+              echo "Unsupported tutor mode" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Configure backend FastAPI project
         env:
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
@@ -79,28 +92,46 @@ jobs:
             --data '{"framework":"fastapi","serverlessFunctionRegion":"fra1"}' \
             | jq -e '.framework == "fastapi"' >/dev/null
 
-      - name: Configure backend persistence environment
+      - name: Configure backend runtime environment
         env:
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
           TEAM_ID: team_bZWPrEPMa4sBoWU7syo3ZIRZ
           BACKEND_PROJECT_NAME: ai-learning-platform-api
           PERSISTENCE_MODE: ${{ vars.AI_PLATFORM_PERSISTENCE_MODE || 'signed_state' }}
+          TUTOR_MODE: ${{ vars.AI_PLATFORM_TUTOR_MODE || 'disabled' }}
           DATABASE_URL: ${{ secrets.AI_PLATFORM_DATABASE_URL }}
         run: |
-          payload=$(jq -n --arg mode "$PERSISTENCE_MODE" '[{
-            key:"AI_PLATFORM_PERSISTENCE_MODE",
-            value:$mode,
-            type:"plain",
-            target:["preview","production"]
-          }]')
+          payload=$(jq -n \
+            --arg persistence_mode "$PERSISTENCE_MODE" \
+            --arg tutor_mode "$TUTOR_MODE" '[
+              {
+                key:"AI_PLATFORM_PERSISTENCE_MODE",
+                value:$persistence_mode,
+                type:"plain",
+                target:["preview","production"]
+              },
+              {
+                key:"AI_PLATFORM_TUTOR_MODE",
+                value:$tutor_mode,
+                type:"plain",
+                target:["preview","production"]
+              }
+            ]')
           if test "$PERSISTENCE_MODE" = "postgres"; then
             test -n "$DATABASE_URL"
             payload=$(jq -n \
-              --arg mode "$PERSISTENCE_MODE" \
+              --arg persistence_mode "$PERSISTENCE_MODE" \
+              --arg tutor_mode "$TUTOR_MODE" \
               --arg database_url "$DATABASE_URL" '[
                 {
                   key:"AI_PLATFORM_PERSISTENCE_MODE",
-                  value:$mode,
+                  value:$persistence_mode,
+                  type:"plain",
+                  target:["preview","production"]
+                },
+                {
+                  key:"AI_PLATFORM_TUTOR_MODE",
+                  value:$tutor_mode,
                   type:"plain",
                   target:["preview","production"]
                 },
