@@ -1,13 +1,14 @@
 """Validated process and product configuration boundary."""
 
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
-from pydantic import SecretStr, model_validator
+from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "test", "production"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 PersistenceMode = Literal["signed_state", "postgres"]
+TutorMode = Literal["auto", "disabled", "vercel_ai_gateway"]
 
 _DEVELOPMENT_STATE_SECRET = "development-only-learner-state-secret-change-me"
 _POSTGRESQL_URL_PREFIX = "postgresql+psycopg://"
@@ -23,6 +24,27 @@ class Settings(BaseSettings):
     learner_state_secret: SecretStr = SecretStr(_DEVELOPMENT_STATE_SECRET)
     persistence_mode: PersistenceMode = "signed_state"
     database_url: SecretStr | None = None
+    tutor_mode: TutorMode = "auto"
+    tutor_model: Annotated[
+        str,
+        Field(min_length=3, max_length=160, pattern=r"^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
+    ] = "alibaba/qwen3.5-flash"
+    tutor_timeout_seconds: Annotated[float, Field(ge=5.0, le=45.0)] = 25.0
+    tutor_max_output_tokens: Annotated[int, Field(ge=128, le=1_000)] = 600
+    ai_gateway_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "AI_PLATFORM_AI_GATEWAY_API_KEY",
+            "AI_GATEWAY_API_KEY",
+        ),
+    )
+    vercel_oidc_token: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "AI_PLATFORM_VERCEL_OIDC_TOKEN",
+            "VERCEL_OIDC_TOKEN",
+        ),
+    )
 
     @model_validator(mode="after")
     def require_runtime_secrets(self) -> Self:
@@ -43,3 +65,13 @@ class Settings(BaseSettings):
                 raise ValueError("database_url must use the postgresql+psycopg driver")
 
         return self
+
+    def tutor_gateway_token(self) -> str | None:
+        """Return the first configured server-only gateway credential."""
+        for candidate in (self.ai_gateway_api_key, self.vercel_oidc_token):
+            if candidate is None:
+                continue
+            value = candidate.get_secret_value().strip()
+            if value:
+                return value
+        return None
