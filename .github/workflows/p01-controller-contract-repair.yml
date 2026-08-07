@@ -53,18 +53,12 @@ jobs:
           uv run --locked ruff check . ../../scripts
           uv run --locked pytest tests/test_phase_gate.py
 
-      - name: Remove one-shot repair files
-        run: |
-          git rm .github/workflows/p01-controller-contract-repair.yml
-          git rm .github/scripts/p01_controller_contract_repair.py
-
-      - name: Commit and push
+      - name: Commit and push non-workflow repairs
         run: |
           git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            .github/workflows/ci.yml \
             apps/api/src/ai_learning_platform_api/automation/phase_gate.py \
             apps/api/src/ai_learning_platform_api/transport/http/persistent_compatibility.py \
             apps/api/tests/test_phase_gate.py \
