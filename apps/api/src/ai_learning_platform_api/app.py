@@ -30,6 +30,7 @@ from ai_learning_platform_api.tutoring import (
     TutorService,
     VercelAiGateway,
 )
+from ai_learning_platform_api.tutoring.limits import TutorTurnLimiter
 
 
 def create_app(
@@ -50,6 +51,7 @@ def create_app(
     persistent_service: PersistentLearningService | None = None
     compatibility_service: PersistentCompatibilityService | None = None
     tutor_service: TutorService | None = None
+    tutor_limiter: TutorTurnLimiter | None = None
     secret = resolved_settings.learner_state_secret.get_secret_value()
     core_service = LearningPlanService(secret)
 
@@ -87,6 +89,11 @@ def create_app(
             return core_service.resume(state_token)
 
         tutor_service = TutorService(gateway=gateway, resolve_plan=resolve_plan)
+        tutor_limiter = TutorTurnLimiter(
+            max_concurrent_turns=resolved_settings.tutor_max_concurrent_turns,
+            requests_per_window=resolved_settings.tutor_requests_per_window,
+            window_seconds=resolved_settings.tutor_rate_window_seconds,
+        )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -101,7 +108,7 @@ def create_app(
 
     app = FastAPI(
         title="AI Career Learning Platform API",
-        version="0.3.0" if include_product_routes else "0.0.0",
+        version="0.4.0" if include_product_routes else "0.0.0",
         description=(
             "Health, role diagnosis, personalized competency planning, durable learner state, "
             "bounded AI tutoring, and assessment calibration for the first career-learning slice."
@@ -122,5 +129,6 @@ def create_app(
         else:
             app.include_router(create_persistent_compatibility_router(compatibility_service))
         assert tutor_service is not None
-        app.include_router(create_tutoring_router(tutor_service))
+        assert tutor_limiter is not None
+        app.include_router(create_tutoring_router(tutor_service, tutor_limiter))
     return app
