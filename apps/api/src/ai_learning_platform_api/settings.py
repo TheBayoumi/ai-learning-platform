@@ -5,6 +5,8 @@ from typing import Annotated, Literal, Self
 from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ai_learning_platform_api.persistence.database import normalize_database_url
+
 Environment = Literal["development", "test", "production"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 PersistenceMode = Literal["signed_state", "postgres"]
@@ -65,11 +67,12 @@ class Settings(BaseSettings):
         if self.persistence_mode == "postgres":
             if self.database_url is None:
                 raise ValueError("database_url must be configured for postgres persistence")
-            database_url = self.database_url.get_secret_value().strip()
+            database_url = normalize_database_url(self.database_url.get_secret_value())
             if not database_url:
                 raise ValueError("database_url must be configured for postgres persistence")
             if not database_url.startswith(_POSTGRESQL_URL_PREFIX):
                 raise ValueError("database_url must use the postgresql+psycopg driver")
+            self.database_url = SecretStr(database_url)
 
         if self.tutor_mode == "vercel_ai_gateway" and self.tutor_gateway_token() is None:
             raise ValueError(
