@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 import httpx
@@ -36,44 +37,45 @@ def stream_response(*events: dict[str, object] | str) -> httpx.Response:
     )
 
 
-@pytest.mark.asyncio
-async def test_vercel_gateway_streams_only_normalized_text_deltas() -> None:
-    async def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url == "https://ai-gateway.vercel.sh/v1/responses"
-        assert request.headers["authorization"] == "Bearer secret-token"
-        payload = json.loads(request.content)
-        assert payload["model"] == "alibaba/qwen3.5-flash"
-        assert payload["max_output_tokens"] == 600
-        assert payload["temperature"] == 0.2
-        assert payload["stream"] is True
-        assert payload["instructions"] == "bounded instructions"
-        return stream_response(
-            {"type": "response.created"},
-            {"type": "response.output_text.delta", "delta": "First"},
-            {"type": "response.output_text.delta", "delta": " step"},
-            "[DONE]",
+def test_vercel_gateway_streams_only_normalized_text_deltas() -> None:
+    async def exercise() -> None:
+        async def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url == "https://ai-gateway.vercel.sh/v1/responses"
+            assert request.headers["authorization"] == "Bearer secret-token"
+            payload = json.loads(request.content)
+            assert payload["model"] == "alibaba/qwen3.5-flash"
+            assert payload["max_output_tokens"] == 600
+            assert payload["temperature"] == 0.2
+            assert payload["stream"] is True
+            assert payload["instructions"] == "bounded instructions"
+            return stream_response(
+                {"type": "response.created"},
+                {"type": "response.output_text.delta", "delta": "First"},
+                {"type": "response.output_text.delta", "delta": " step"},
+                "[DONE]",
+            )
+
+        client = httpx.AsyncClient(
+            base_url="https://ai-gateway.vercel.sh/v1",
+            transport=httpx.MockTransport(handler),
         )
+        gateway = VercelAiGateway(
+            token="secret-token",
+            model="alibaba/qwen3.5-flash",
+            timeout_seconds=25,
+            max_output_tokens=600,
+            client=client,
+        )
+        assert gateway.available is True
+        assert gateway.model == "alibaba/qwen3.5-flash"
+        assert await collect(gateway) == ["First", " step"]
+        await gateway.aclose()
+        assert not client.is_closed
+        await client.aclose()
 
-    client = httpx.AsyncClient(
-        base_url="https://ai-gateway.vercel.sh/v1",
-        transport=httpx.MockTransport(handler),
-    )
-    gateway = VercelAiGateway(
-        token="secret-token",
-        model="alibaba/qwen3.5-flash",
-        timeout_seconds=25,
-        max_output_tokens=600,
-        client=client,
-    )
-    assert gateway.available is True
-    assert gateway.model == "alibaba/qwen3.5-flash"
-    assert await collect(gateway) == ["First", " step"]
-    await gateway.aclose()
-    assert not client.is_closed
-    await client.aclose()
+    asyncio.run(exercise())
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("response", "message"),
     [
@@ -88,85 +90,108 @@ async def test_vercel_gateway_streams_only_normalized_text_deltas() -> None:
         ),
     ],
 )
-async def test_vercel_gateway_fails_closed_on_invalid_provider_responses(
+def test_vercel_gateway_fails_closed_on_invalid_provider_responses(
     response: httpx.Response,
     message: str,
 ) -> None:
-    async def handler(_: httpx.Request) -> httpx.Response:
-        return response
+    async def exercise() -> None:
+        async def handler(_: httpx.Request) -> httpx.Response:
+            return response
 
-    client = httpx.AsyncClient(
-        base_url="https://ai-gateway.vercel.sh/v1",
-        transport=httpx.MockTransport(handler),
-    )
-    gateway = VercelAiGateway(
-        token="token",
-        model="alibaba/qwen3.5-flash",
-        timeout_seconds=5,
-        max_output_tokens=128,
-        client=client,
-    )
-    with pytest.raises(TutorGatewayError, match=message):
-        await collect(gateway)
-    await client.aclose()
-
-
-@pytest.mark.asyncio
-async def test_vercel_gateway_bounds_total_output() -> None:
-    async def handler(_: httpx.Request) -> httpx.Response:
-        return stream_response(
-            *[
-                {"type": "response.output_text.delta", "delta": "x" * 2_000}
-                for _ in range(7)
-            ]
+        client = httpx.AsyncClient(
+            base_url="https://ai-gateway.vercel.sh/v1",
+            transport=httpx.MockTransport(handler),
         )
+        gateway = VercelAiGateway(
+            token="token",
+            model="alibaba/qwen3.5-flash",
+            timeout_seconds=5,
+            max_output_tokens=128,
+            client=client,
+        )
+        with pytest.raises(TutorGatewayError, match=message):
+            await collect(gateway)
+        await client.aclose()
 
-    client = httpx.AsyncClient(
-        base_url="https://ai-gateway.vercel.sh/v1",
-        transport=httpx.MockTransport(handler),
-    )
-    gateway = VercelAiGateway(
-        token="token",
-        model="model/id",
-        timeout_seconds=5,
-        max_output_tokens=128,
-        client=client,
-    )
-    with pytest.raises(TutorGatewayError, match="response limit"):
-        await collect(gateway)
-    await client.aclose()
+    asyncio.run(exercise())
 
 
-@pytest.mark.asyncio
-async def test_vercel_gateway_sanitizes_transport_failures() -> None:
-    async def handler(request: httpx.Request) -> httpx.Response:
-        raise httpx.ConnectError("credential=should-not-propagate", request=request)
+def test_vercel_gateway_bounds_total_output() -> None:
+    async def exercise() -> None:
+        async def handler(_: httpx.Request) -> httpx.Response:
+            return stream_response(
+                *[
+                    {"type": "response.output_text.delta", "delta": "x" * 2_000}
+                    for _ in range(7)
+                ]
+            )
 
-    client = httpx.AsyncClient(
-        base_url="https://ai-gateway.vercel.sh/v1",
-        transport=httpx.MockTransport(handler),
-    )
-    gateway = VercelAiGateway(
-        token="token",
-        model="model/id",
-        timeout_seconds=5,
-        max_output_tokens=128,
-        client=client,
-    )
-    with pytest.raises(TutorGatewayError, match="temporarily unavailable") as captured:
-        await collect(gateway)
-    assert "credential" not in str(captured.value)
-    await client.aclose()
+        client = httpx.AsyncClient(
+            base_url="https://ai-gateway.vercel.sh/v1",
+            transport=httpx.MockTransport(handler),
+        )
+        gateway = VercelAiGateway(
+            token="token",
+            model="model/id",
+            timeout_seconds=5,
+            max_output_tokens=128,
+            client=client,
+        )
+        with pytest.raises(TutorGatewayError, match="response limit"):
+            await collect(gateway)
+        await client.aclose()
+
+    asyncio.run(exercise())
 
 
-@pytest.mark.asyncio
-async def test_disabled_gateway_degrades_without_network() -> None:
-    gateway = DisabledTutorGateway()
-    assert gateway.available is False
-    assert gateway.model == "unavailable"
-    with pytest.raises(TutorGatewayError, match="unavailable"):
-        _ = [delta async for delta in gateway.stream(REQUEST)]
-    await gateway.aclose()
+def test_vercel_gateway_sanitizes_transport_failures() -> None:
+    async def exercise() -> None:
+        async def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("credential=should-not-propagate", request=request)
+
+        client = httpx.AsyncClient(
+            base_url="https://ai-gateway.vercel.sh/v1",
+            transport=httpx.MockTransport(handler),
+        )
+        gateway = VercelAiGateway(
+            token="token",
+            model="model/id",
+            timeout_seconds=5,
+            max_output_tokens=128,
+            client=client,
+        )
+        with pytest.raises(TutorGatewayError, match="temporarily unavailable") as captured:
+            await collect(gateway)
+        assert "credential" not in str(captured.value)
+        await client.aclose()
+
+    asyncio.run(exercise())
+
+
+def test_disabled_gateway_degrades_without_network() -> None:
+    async def exercise() -> None:
+        gateway = DisabledTutorGateway()
+        assert gateway.available is False
+        assert gateway.model == "unavailable"
+        with pytest.raises(TutorGatewayError, match="unavailable"):
+            _ = [delta async for delta in gateway.stream(REQUEST)]
+        await gateway.aclose()
+
+    asyncio.run(exercise())
+
+
+def test_owned_vercel_client_is_closed() -> None:
+    async def exercise() -> None:
+        gateway = VercelAiGateway(
+            token="token",
+            model="model/id",
+            timeout_seconds=5,
+            max_output_tokens=128,
+        )
+        await gateway.aclose()
+        assert gateway._client.is_closed is True
+
+    asyncio.run(exercise())
 
 
 def test_read_text_delta_ignores_non_data_and_non_delta_events() -> None:
