@@ -119,12 +119,11 @@ def test_vercel_gateway_fails_closed_on_invalid_provider_responses(
 def test_vercel_gateway_bounds_total_output() -> None:
     async def exercise() -> None:
         async def handler(_: httpx.Request) -> httpx.Response:
-            return stream_response(
-                *[
-                    {"type": "response.output_text.delta", "delta": "x" * 2_000}
-                    for _ in range(7)
-                ]
-            )
+            events: list[dict[str, object]] = [
+                {"type": "response.output_text.delta", "delta": "x" * 2_000}
+                for _ in range(7)
+            ]
+            return stream_response(*events)
 
         client = httpx.AsyncClient(
             base_url="https://ai-gateway.vercel.sh/v1",
