@@ -40,6 +40,15 @@ class MemoryRepository:
     async def load(self, *, account_id: str, learner_id: UUID) -> StoredLearnerState | None:
         return self.values.get((account_id, learner_id))
 
+    async def delete_account(self, *, account_id: str) -> bool:
+        identities = [identity for identity in self.values if identity[0] == account_id]
+        for identity in identities:
+            del self.values[identity]
+        idempotency_keys = [identity for identity in self.idempotent if identity[0] == account_id]
+        for identity in idempotency_keys:
+            del self.idempotent[identity]
+        return bool(identities)
+
     async def commit(self, request: LearnerStateCommit) -> StoredLearnerState:
         idempotency_identity = (request.account_id, request.idempotency_key)
         previous_result = self.idempotent.get(idempotency_identity)
@@ -160,6 +169,20 @@ def test_full_durable_learning_cycle() -> None:
     )
     assert submitted.version == 3
     assert submitted.submission.plan.sequence > replanned.plan.sequence
+
+
+def test_delete_account_removes_only_owned_memory_state() -> None:
+    repository = MemoryRepository()
+    service = _service(repository)
+    created = asyncio.run(service.create_plan(account_id=_ACCOUNT_ID, request=_create_request()))
+    learner_id = UUID(created.plan.learner_id)
+
+    assert asyncio.run(service.delete_account(account_id=_ACCOUNT_ID)) is True
+    assert asyncio.run(service.delete_account(account_id=_ACCOUNT_ID)) is False
+    assert repository.values == {}
+    assert repository.idempotent == {}
+    with pytest.raises(LearnerStateNotFoundError):
+        asyncio.run(service.resume_plan(account_id=_ACCOUNT_ID, learner_id=learner_id))
 
 
 def test_imports_valid_signed_state_and_is_idempotent() -> None:
