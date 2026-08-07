@@ -1,4 +1,4 @@
-"""Fail closed when deployment compute drifts away from the selected database region."""
+"""Fail closed when deployment compute or promotion controls drift."""
 
 from __future__ import annotations
 
@@ -16,11 +16,11 @@ _DEPLOYMENT_SCRIPT = Path("scripts/deploy-product.sh")
 
 
 class TopologyVerificationError(RuntimeError):
-    """The committed deployment topology does not match the selected region."""
+    """The committed deployment topology or promotion contract is unsafe."""
 
 
 def verify_topology(root: Path | None = None) -> dict[str, object]:
-    """Verify committed deployment-region controls from the selected repository root."""
+    """Verify committed deployment-region and safe-promotion controls."""
     repository_root = root if root is not None else Path.cwd()
     workflow = (repository_root / _DEPLOYMENT_WORKFLOW).read_text(encoding="utf-8")
     deployment_script = (repository_root / _DEPLOYMENT_SCRIPT).read_text(encoding="utf-8")
@@ -36,6 +36,20 @@ def verify_topology(root: Path | None = None) -> dict[str, object]:
     if "fra1" in workflow or "fra1" in deployment_script:
         raise TopologyVerificationError("legacy_cross_region_target_present")
 
+    if "vc deploy --cwd apps/api --yes --archive=tgz --prod" in deployment_script:
+        raise TopologyVerificationError("backend_unverified_direct_production_deploy")
+    required_promotion_controls = (
+        'phase="backend-candidate-deployment"',
+        'phase="backend-candidate-verification"',
+        'vc curl /health/live --deployment "$backend_deployment_url"',
+        'vc curl /api/v1/roles --deployment "$backend_deployment_url"',
+        'phase="backend-promotion"',
+        'vc promote "$backend_deployment_url" --yes',
+        'phase="backend-public-verification"',
+    )
+    if any(marker not in deployment_script for marker in required_promotion_controls):
+        raise TopologyVerificationError("backend_promotion_control_missing")
+
     checked_files = [
         _DEPLOYMENT_WORKFLOW.as_posix(),
         _DEPLOYMENT_SCRIPT.as_posix(),
@@ -48,6 +62,7 @@ def verify_topology(root: Path | None = None) -> dict[str, object]:
         checked_files.append(relative_path.as_posix())
 
     return {
+        "backend_promotion": "candidate_verified_before_promotion",
         "checked_files": checked_files,
         "region": _SELECTED_REGION,
         "status": "passed",
