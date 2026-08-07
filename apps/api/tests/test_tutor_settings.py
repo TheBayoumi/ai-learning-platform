@@ -67,4 +67,4 @@ def test_tutor_resource_bounds_fail_configuration(
     value: int,
 ) -> None:
     with pytest.raises(ValidationError, match=field):
-        Settings(environment="test", **{field: value})
+        Settings.model_validate({"environment": "test", field: value})
