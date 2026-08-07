@@ -263,8 +263,8 @@ ASSESSMENT_QUESTIONS: Final = (
         "rag-retrieval-miss",
         "rag",
         (
-            "A RAG answer is wrong because the relevant source never appeared in retrieved context. "
-            "Which subsystem should be investigated first?"
+            "A RAG answer is wrong because the relevant source never appeared in "
+            "retrieved context. Which subsystem should be investigated first?"
         ),
         (
             "Retrieval and ranking quality.",
@@ -274,8 +274,8 @@ ASSESSMENT_QUESTIONS: Final = (
         ),
         "a",
         (
-            "When necessary evidence was never retrieved, retrieval or ranking is the first failure "
-            "boundary; generation cannot cite context it never received."
+            "When necessary evidence was never retrieved, retrieval or ranking is "
+            "the first failure boundary; generation cannot cite context it never received."
         ),
     ),
     _question(
