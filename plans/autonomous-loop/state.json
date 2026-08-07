@@ -71,7 +71,6 @@
     "plans/implementation-inventory.md": "3ffbd5ba7af4a0cd6277247b06607105ab7fada4896127193014d873fcf15dbe",
     "plans/F04-vercel-deployment-baseline.md": "f82b1987656e8caaab06c3d27eafe03716cea3b39b3a402d05d488fbfac19c77",
     "plans/F04-vercel-alias-reversion-evidence.json": "03a0d9f16bb012f97c04656546c01a875a583e5b608ea7b389b091f10269a67d",
-    ".github/workflows/vercel-preview-verification.yml": "cfbcedf9e0c62a07eb3d5e33d1da77597879d3cfdf09bfceb166c01acb6179b1",
     "plans/F04-vercel-deployed-page-verifier-operations.md": "d5698a545b3b9eb14a2d23b4f417749e351babc931934df42e9d081b15ac3c45",
     "plans/F04-vercel-deployed-page-verification-evidence.json": "53e23522c69970a8011a3ecb9a0b7a61cfa598551531045ec63f7836b16f6f5b",
     "apps/web/package.json": "314e1086e5fe2753aae98a570ae9ef1cf68fa8bb06097f9d7633685d93e7366c",
