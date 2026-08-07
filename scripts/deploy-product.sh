@@ -182,13 +182,33 @@ curl -fsS -X POST \
     "target":["preview","production"]
   }]' >/dev/null
 
-phase="backend-deployment"
+# Build an isolated Preview candidate first. A bad runtime must never replace the
+# healthy production alias merely because its build completed successfully.
+phase="backend-candidate-deployment"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
-  vc deploy --cwd apps/api --yes --archive=tgz --prod --force \
+  vc deploy --cwd apps/api --yes --archive=tgz --force \
     --token "$VERCEL_API_TOKEN" 2>&1 | tee "$RUNNER_TEMP/backend-deploy.txt"
 backend_deployment_url=$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' \
   "$RUNNER_TEMP/backend-deploy.txt" | head -n 1)
 test -n "$backend_deployment_url"
+
+phase="backend-candidate-verification"
+candidate_health="$RUNNER_TEMP/backend-candidate-health.json"
+VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
+  vc curl /health/live --deployment "$backend_deployment_url" \
+    --token "$VERCEL_API_TOKEN" >"$candidate_health"
+jq -e '.status == "ok"' "$candidate_health" >/dev/null
+
+candidate_roles="$RUNNER_TEMP/backend-candidate-roles.json"
+VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
+  vc curl /api/v1/roles --deployment "$backend_deployment_url" \
+    --token "$VERCEL_API_TOKEN" >"$candidate_roles"
+jq -e 'length == 1 and .[0].id == "junior-python-backend-engineer"' \
+  "$candidate_roles" >/dev/null
+
+phase="backend-promotion"
+VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
+  vc promote "$backend_deployment_url" --yes --token "$VERCEL_API_TOKEN"
 
 phase="backend-public-domain"
 domains_response="$RUNNER_TEMP/backend-domains.json"
@@ -205,7 +225,7 @@ backend_domain=$(jq -er '
 backend_url="https://$backend_domain"
 
 # The runtime proxy cannot rely on a Vercel login or protection-bypass header.
-# Verify the stable backend production domain publicly before publishing it.
+# Verify the stable backend production domain again after explicit promotion.
 phase="backend-public-verification"
 retry_json_endpoint "$backend_url/health/live" '.status == "ok"'
 retry_json_endpoint "$backend_url/api/v1/roles" \
@@ -378,6 +398,8 @@ jq -n \
     backend:{
       project_id:$backend_project_id,
       deployment_url:$backend_deployment_url,
+      candidate_health:"ok",
+      promoted:"ok",
       public_url:$backend_url,
       public_access:"ok",
       health:"ok",
