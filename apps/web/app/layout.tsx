@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 
 import { readSiteUrl } from "../server/config/site-url";
 import "./globals.css";
-import "./adaptive-curriculum.css";
-import "./assessment-calibration.css";
 
 const siteUrl = readSiteUrl();
 
@@ -12,33 +10,33 @@ export const metadata: Metadata = {
   metadataBase: siteUrl,
   applicationName: "Career Atlas",
   title: {
-    default: "Career Atlas · Adaptive AI Career Learning",
+    default: "Career Atlas · AI Career Learning",
     template: "%s · Career Atlas"
   },
   description:
-    "Diagnose role gaps, follow learner-unique practical missions, collect evidence, calibrate knowledge, and use bounded AI coaching without employment-certification claims.",
+    "Choose a career track, diagnose your current evidence, follow a learner-specific roadmap, build projects, calibrate mastery, and prepare for the role with bounded AI coaching.",
   alternates: { canonical: "/" },
   category: "education",
   keywords: [
+    "career learning",
     "adaptive learning",
-    "career development",
-    "Python backend",
-    "competency assessment",
-    "AI tutor"
+    "AI tutor",
+    "career roadmap",
+    "competency mastery"
   ],
   openGraph: {
     type: "website",
     url: "/",
     siteName: "Career Atlas",
-    title: "Career Atlas · Adaptive AI Career Learning",
+    title: "Career Atlas · AI Career Learning",
     description:
-      "A persistent career-learning beta with adaptive missions, evidence tracking, assessment calibration, and bounded AI coaching."
+      "A role-driven learning system that adapts curriculum, projects, assessment, and evidence to the learner."
   },
   twitter: {
     card: "summary",
-    title: "Career Atlas · Adaptive AI Career Learning",
+    title: "Career Atlas · AI Career Learning",
     description:
-      "Adaptive missions, evidence tracking, calibration, and bounded AI coaching for a career target."
+      "Choose a role, close competency gaps, build proof, and become ready to do the work."
   },
   robots: {
     index: true,

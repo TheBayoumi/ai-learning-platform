@@ -17,6 +17,7 @@ const ACCOUNT_DELETE_PATH = "account";
 const TUTOR_STREAM_PATH = "tutor/stream";
 const ALLOWED_PATHS = new Set([
   "roles",
+  "career-tracks",
   "plans",
   "plans/resume",
   "plans/replan",
@@ -27,7 +28,7 @@ const ALLOWED_PATHS = new Set([
   TUTOR_STREAM_PATH
 ]);
 
-const GET_PATHS = new Set(["roles"]);
+const GET_PATHS = new Set(["roles", "career-tracks"]);
 const DELETE_PATHS = new Set([ACCOUNT_DELETE_PATH]);
 
 type RouteContext = Readonly<{
