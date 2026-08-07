@@ -68,7 +68,9 @@ class Settings(BaseSettings):
                 raise ValueError("database_url must use the postgresql+psycopg driver")
 
         if self.tutor_mode == "vercel_ai_gateway" and self.tutor_gateway_token() is None:
-            raise ValueError("a server-only AI Gateway credential is required when tutoring is enabled")
+            raise ValueError(
+                "a server-only AI Gateway credential is required when tutoring is enabled"
+            )
 
         return self
 
