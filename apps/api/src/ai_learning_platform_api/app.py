@@ -45,9 +45,7 @@ def create_app(
 
     if include_product_routes and resolved_settings.persistence_mode == "postgres":
         assert resolved_settings.database_url is not None
-        database_runtime = DatabaseRuntime.create(
-            resolved_settings.database_url.get_secret_value()
-        )
+        database_runtime = DatabaseRuntime.create(resolved_settings.database_url.get_secret_value())
         persistent_service = PersistentLearningService(
             secret=secret,
             repository=PostgresLearnerStateRepository(database_runtime.engine),

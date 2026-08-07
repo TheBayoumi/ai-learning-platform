@@ -199,7 +199,9 @@ def test_replay_reconstructs_latest_state_and_rejects_version_gaps() -> None:
         )
     )
 
-    assert asyncio.run(repository.replay(account_id=_ACCOUNT_ID, learner_id=learner_id)) == committed
+    assert (
+        asyncio.run(repository.replay(account_id=_ACCOUNT_ID, learner_id=learner_id)) == committed
+    )
 
     async def remove_initial_event() -> None:
         async with runtime.engine.begin() as connection:
