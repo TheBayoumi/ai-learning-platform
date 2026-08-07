@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     ] = "alibaba/qwen3.5-flash"
     tutor_timeout_seconds: Annotated[float, Field(ge=5.0, le=45.0)] = 25.0
     tutor_max_output_tokens: Annotated[int, Field(ge=128, le=1_000)] = 600
+    tutor_max_concurrent_turns: Annotated[int, Field(ge=1, le=100)] = 8
+    tutor_requests_per_window: Annotated[int, Field(ge=1, le=100)] = 6
+    tutor_rate_window_seconds: Annotated[int, Field(ge=10, le=3_600)] = 60
     ai_gateway_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices(
