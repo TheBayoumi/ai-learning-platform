@@ -81,14 +81,14 @@ class VercelAiGateway:
     ) -> None:
         self._model = model
         self._max_output_tokens = max_output_tokens
+        self._headers = {
+            "authorization": f"Bearer {token}",
+            "content-type": "application/json",
+            "user-agent": "career-atlas-tutor/1",
+        }
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
             base_url="https://ai-gateway.vercel.sh/v1",
-            headers={
-                "authorization": f"Bearer {token}",
-                "content-type": "application/json",
-                "user-agent": "career-atlas-tutor/1",
-            },
             timeout=httpx.Timeout(
                 timeout_seconds,
                 connect=min(5.0, timeout_seconds),
@@ -119,7 +119,12 @@ class VercelAiGateway:
         }
         total_characters = 0
         try:
-            async with self._client.stream("POST", "/responses", json=payload) as response:
+            async with self._client.stream(
+                "POST",
+                "/responses",
+                headers=self._headers,
+                json=payload,
+            ) as response:
                 if response.status_code != httpx.codes.OK:
                     await response.aread()
                     raise TutorGatewayError("tutor provider rejected the request")
