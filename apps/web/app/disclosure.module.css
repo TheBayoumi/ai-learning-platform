@@ -1,0 +1,100 @@
+.shell {
+  width: min(72rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 5rem;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.navigation a,
+.links a {
+  color: inherit;
+  font-weight: 750;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.2em;
+}
+
+.hero {
+  max-width: 52rem;
+  margin-bottom: 2rem;
+}
+
+.hero h1 {
+  max-width: 15ch;
+  margin: 0.35rem 0 1rem;
+}
+
+.hero p {
+  max-width: 68ch;
+}
+
+.notice {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-left: 0.35rem solid var(--accent);
+  border-radius: 0.9rem;
+  background: var(--surface);
+}
+
+.sections {
+  display: grid;
+  gap: 1rem;
+}
+
+.sections section {
+  padding: clamp(1.1rem, 3vw, 1.75rem);
+  border: 1px solid var(--line);
+  border-radius: 1.1rem;
+  background: var(--surface);
+}
+
+.sections h2 {
+  margin-top: 0;
+}
+
+.sections li + li {
+  margin-top: 0.55rem;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.statusCard {
+  display: grid;
+  gap: 0.7rem;
+  max-width: 42rem;
+  padding: 1.4rem;
+  border: 1px solid var(--line);
+  border-radius: 1.1rem;
+  background: var(--surface);
+}
+
+.statusCard strong {
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+}
+
+.available {
+  border-left: 0.4rem solid #2e7d5b;
+}
+
+.degraded,
+.unavailable {
+  border-left: 0.4rem solid var(--accent);
+}
+
+@media (max-width: 640px) {
+  .navigation {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
