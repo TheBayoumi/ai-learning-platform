@@ -14,7 +14,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import func, select
 
-from ai_learning_platform_api.learning.schemas import PlanRequest
+from ai_learning_platform_api.learning.schemas import LearnerState, PlanRequest
 from ai_learning_platform_api.learning.service import LearningPlanService, SignedStateCodec
 from ai_learning_platform_api.persistence.contracts import LearnerStateCommit
 from ai_learning_platform_api.persistence.database import DatabaseRuntime
@@ -53,7 +53,7 @@ def migrated_database() -> Iterator[None]:
         command.downgrade(configuration, "base")
 
 
-def state(name: str):
+def state(name: str) -> LearnerState:
     plan = LearningPlanService(_SECRET).create_plan(
         PlanRequest(learner_name=name, ratings=[])
     )
@@ -117,11 +117,22 @@ def test_delete_account_cascades_only_the_current_anonymous_account() -> None:
 
     async def counts() -> tuple[int, int, int, int]:
         async with runtime.engine.connect() as connection:
-            values = []
-            for table in (accounts, learner_states, learner_events, outbox_records):
-                count = await connection.scalar(select(func.count()).select_from(table))
-                values.append(int(count or 0))
-            return tuple(values)  # type: ignore[return-value]
+            account_count = await connection.scalar(select(func.count()).select_from(accounts))
+            state_count = await connection.scalar(
+                select(func.count()).select_from(learner_states)
+            )
+            event_count = await connection.scalar(
+                select(func.count()).select_from(learner_events)
+            )
+            outbox_count = await connection.scalar(
+                select(func.count()).select_from(outbox_records)
+            )
+        return (
+            int(account_count or 0),
+            int(state_count or 0),
+            int(event_count or 0),
+            int(outbox_count or 0),
+        )
 
     assert asyncio.run(counts()) == (1, 1, 1, 1)
     asyncio.run(runtime.shutdown())
