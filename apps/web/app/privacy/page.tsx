@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DataControls } from "../../components/data-controls";
 import styles from "../disclosure.module.css";
 
 export const metadata: Metadata = {
@@ -101,14 +102,19 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>Retention and deletion limits</h2>
+          <h2>Retention and deletion</h2>
           <p>
-            You can remove local storage and the anonymous cookie through your browser&apos;s site-data
-            controls. The current beta does not yet provide a self-service workflow that proves and
-            deletes an anonymous durable PostgreSQL account across devices. Therefore, do not use the
-            beta for sensitive personal or employer data. A private request channel and deletion
-            workflow are required before production identity features are introduced.
+            The data control below deletes only the current anonymous account associated with this
+            browser&apos;s HttpOnly cookie. In PostgreSQL mode, the account deletion cascades to its
+            learner snapshots, events, and outbox records. In signed-state mode, no durable account
+            record exists, but local learning state and the anonymous cookie are still cleared.
           </p>
+          <p>
+            This is not cross-device identity verification. It cannot locate a different browser,
+            a lost cookie, or a future signed-in identity. Continue to avoid sensitive personal and
+            employer data until verified identity and cross-device deletion controls are introduced.
+          </p>
+          <DataControls />
         </section>
 
         <section>
