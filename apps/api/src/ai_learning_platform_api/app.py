@@ -27,6 +27,7 @@ from ai_learning_platform_api.transport.http.persistent_compatibility import (
 from ai_learning_platform_api.transport.http.tutoring import create_tutoring_router
 from ai_learning_platform_api.tutoring import (
     DisabledTutorGateway,
+    TutorGateway,
     TutorService,
     VercelAiGateway,
 )
@@ -69,6 +70,7 @@ def create_app(
 
     if include_product_routes:
         gateway_token = resolved_settings.tutor_gateway_token()
+        gateway: TutorGateway
         if resolved_settings.tutor_mode == "vercel_ai_gateway":
             assert gateway_token is not None
             gateway = VercelAiGateway(
