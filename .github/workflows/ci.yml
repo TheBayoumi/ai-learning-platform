@@ -20,7 +20,23 @@ jobs:
     name: API quality
     if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ai_learning_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ai_learning_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AI_PLATFORM_DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ai_learning_platform
     defaults:
       run:
         working-directory: apps/api
@@ -55,6 +71,11 @@ jobs:
         run: uv run --locked ruff check . ../../scripts
       - name: Type check
         run: uv run --locked mypy src tests ../../scripts
+      - name: Verify migration round trip
+        run: |
+          uv run --locked alembic upgrade head
+          uv run --locked alembic downgrade base
+          uv run --locked alembic upgrade head
       - name: Test with coverage
         run: |
           uv run --locked coverage erase

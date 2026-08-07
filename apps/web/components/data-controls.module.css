@@ -1,0 +1,40 @@
+.control {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--line);
+  border-left: 0.35rem solid var(--accent);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.control h2 {
+  margin: 0.25rem 0 0.65rem;
+}
+
+.control form {
+  display: grid;
+  gap: 0.65rem;
+  max-width: 32rem;
+}
+
+.control label {
+  font-weight: 750;
+}
+
+.control input {
+  max-width: 16rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.control button {
+  justify-self: start;
+}
+
+.success {
+  margin: 0;
+  color: #1f6f50;
+  font-weight: 750;
+}

@@ -1,8 +1,11 @@
 import "server-only";
 
+import Link from "next/link";
+
+import type { ApiAvailability } from "../server/health/runtime-health";
 import { AssessmentCalibration } from "./assessment-calibration";
 import { LearningPlatform } from "./learning-platform";
-import type { ApiAvailability } from "../server/health/runtime-health";
+import { TutorPanel } from "./tutor-panel";
 
 interface PlatformShellProps {
   readonly apiAvailability: ApiAvailability;
@@ -58,14 +61,20 @@ export function PlatformShell({ apiAvailability }: PlatformShellProps) {
       </section>
 
       <LearningPlatform apiAvailability={apiAvailability} />
+      <TutorPanel />
       <AssessmentCalibration />
 
       <footer className="site-footer">
         <p>
-          This development slice provides diagnosis, adaptive planning, learner-attested
-          evidence, and bounded knowledge calibration. Account persistence, automated artifact
-          validation, and AI tutoring are not represented as complete yet.
+          Career Atlas provides diagnosis, adaptive planning, bounded AI coaching,
+          learner-attested evidence, and objective planning calibration. Tutor output is guidance,
+          not accepted evidence or employment certification.
         </p>
+        <nav aria-label="Publication information">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/status">Status</Link>
+        </nav>
       </footer>
     </main>
   );

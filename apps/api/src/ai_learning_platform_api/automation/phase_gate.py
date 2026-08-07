@@ -1087,11 +1087,19 @@ def validate_workflow_contract(text: str, policy: Policy) -> None:
         raise _violation("workflow_controller_bypass_invalid")
     if "permissions:\n  contents: read" not in text:
         raise _violation("workflow_permissions_invalid")
-    if "pull_request:" not in text or 'branches: [main, "automation/**"]' not in text:
+    trigger = re.search(
+        r"^on:\n(?P<body>.*?)(?=^\S)",
+        text,
+        re.MULTILINE | re.DOTALL,
+    )
+    expected_trigger = (
+        "  pull_request:\n    branches: [main]\n    types: [opened, reopened, ready_for_review]\n\n"
+    )
+    if trigger is None or trigger.group("body") != expected_trigger:
         raise _violation("workflow_trigger_invalid")
     if "cancel-in-progress: true" not in text:
         raise _violation("workflow_concurrency_invalid")
-    expected_expression = "EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}"
+    expected_expression = "EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}"
     if text.count(expected_expression) != 1:
         raise _violation("workflow_exact_head_invalid")
     job_names = re.findall(r"^    name: (.+)$", text, re.MULTILINE)
@@ -1108,7 +1116,7 @@ def validate_workflow_contract(text: str, policy: Policy) -> None:
     if not uses or any(re.fullmatch(r"[^@]+@[0-9a-f]{40}", item) is None for item in uses):
         raise _violation("workflow_action_pin_invalid")
     job_contracts = {
-        "api": 10,
+        "api": 12,
         "web": 10,
         "runtime-smoke": 10,
         "phase-gate": 5,

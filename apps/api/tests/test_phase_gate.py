@@ -653,7 +653,7 @@ def test_coordinated_external_to_human_reclassification_fails_closed(
         ("contents: read", "contents: write", "workflow_privilege_invalid"),
         ("  cancel-in-progress: true\n", "", "workflow_concurrency_invalid"),
         (
-            "EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}",
+            "EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}",
             "EXACT_HEAD_SHA: ${{ github.sha }}",
             "workflow_exact_head_invalid",
         ),
@@ -1018,8 +1018,18 @@ def test_additional_state_guards(
     [
         ("permissions:\n  contents: read", "permissions:", "workflow_permissions_invalid"),
         (
-            'branches: [main, "automation/**"]',
             "branches: [main]",
+            "branches: [develop]",
+            "workflow_trigger_invalid",
+        ),
+        (
+            "types: [opened, reopened, ready_for_review]",
+            "types: [opened, reopened, synchronize, ready_for_review]",
+            "workflow_trigger_invalid",
+        ),
+        (
+            "  pull_request:\n",
+            "  pull_request:\n  push:\n",
             "workflow_trigger_invalid",
         ),
         (

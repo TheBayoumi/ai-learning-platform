@@ -14,6 +14,9 @@ concurrency:
   group: product-deployment-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  VERCEL_FUNCTION_REGION: pdx1
+
 jobs:
   deploy:
     name: Connected product deployment
@@ -36,19 +39,140 @@ jobs:
           test "$EXACT_REF" = "refs/heads/main"
           test "$(git rev-parse HEAD)" = "$EXACT_SHA"
 
-      - name: Configure backend FastAPI project
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+
+      - name: Validate persistence activation and migrate
+        env:
+          PERSISTENCE_MODE: ${{ vars.AI_PLATFORM_PERSISTENCE_MODE || 'postgres' }}
+          AI_PLATFORM_DATABASE_URL: ${{ secrets.AI_PLATFORM_DATABASE_URL }}
+        run: |
+          case "$PERSISTENCE_MODE" in
+            signed_state)
+              ;;
+            postgres)
+              test -n "$AI_PLATFORM_DATABASE_URL"
+              uv sync --project apps/api --locked --all-groups
+              AI_PLATFORM_DATABASE_URL="$AI_PLATFORM_DATABASE_URL" \
+                uv run --project apps/api --locked alembic \
+                  --config apps/api/alembic.ini upgrade head
+              AI_PLATFORM_DATABASE_URL="$AI_PLATFORM_DATABASE_URL" \
+                uv run --project apps/api --locked python scripts/verify_recovery.py \
+                  --expected-revision 20260724_01 \
+                  --write-check
+              ;;
+            *)
+              echo "Unsupported persistence mode" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Validate optional tutor activation
+        env:
+          TUTOR_MODE: ${{ vars.AI_PLATFORM_TUTOR_MODE || 'disabled' }}
+        run: |
+          case "$TUTOR_MODE" in
+            disabled|vercel_ai_gateway)
+              ;;
+            *)
+              echo "Unsupported tutor mode" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Configure Vercel function topology
         env:
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
           TEAM_ID: team_bZWPrEPMa4sBoWU7syo3ZIRZ
+          FRONTEND_PROJECT_ID: prj_xAgw4qL8P9B1L7HUqVEISFE5QeXN
           BACKEND_PROJECT_NAME: ai-learning-platform-api
         run: |
           test -n "$VERCEL_API_TOKEN"
+          backend_payload=$(jq -n \
+            --arg region "$VERCEL_FUNCTION_REGION" \
+            '{framework:"fastapi",serverlessFunctionRegion:$region}')
           curl -fsS -X PATCH \
             "https://api.vercel.com/v9/projects/$BACKEND_PROJECT_NAME?teamId=$TEAM_ID" \
             -H "Authorization: Bearer $VERCEL_API_TOKEN" \
             -H "Content-Type: application/json" \
-            --data '{"framework":"fastapi","serverlessFunctionRegion":"fra1"}' \
-            | jq -e '.framework == "fastapi"' >/dev/null
+            --data "$backend_payload" \
+            | jq -e --arg region "$VERCEL_FUNCTION_REGION" \
+                '.framework == "fastapi" and .serverlessFunctionRegion == $region' >/dev/null
+
+          frontend_payload=$(jq -n \
+            --arg region "$VERCEL_FUNCTION_REGION" \
+            '{serverlessFunctionRegion:$region}')
+          curl -fsS -X PATCH \
+            "https://api.vercel.com/v9/projects/$FRONTEND_PROJECT_ID?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$frontend_payload" \
+            | jq -e --arg region "$VERCEL_FUNCTION_REGION" \
+                '.serverlessFunctionRegion == $region' >/dev/null
+          unset backend_payload frontend_payload
+
+      - name: Configure backend runtime environment
+        env:
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          TEAM_ID: team_bZWPrEPMa4sBoWU7syo3ZIRZ
+          BACKEND_PROJECT_NAME: ai-learning-platform-api
+          PERSISTENCE_MODE: ${{ vars.AI_PLATFORM_PERSISTENCE_MODE || 'postgres' }}
+          TUTOR_MODE: ${{ vars.AI_PLATFORM_TUTOR_MODE || 'disabled' }}
+          DATABASE_URL: ${{ secrets.AI_PLATFORM_DATABASE_URL }}
+        run: |
+          payload=$(jq -n \
+            --arg persistence_mode "$PERSISTENCE_MODE" \
+            --arg tutor_mode "$TUTOR_MODE" '[
+              {
+                key:"AI_PLATFORM_PERSISTENCE_MODE",
+                value:$persistence_mode,
+                type:"plain",
+                target:["preview","production"]
+              },
+              {
+                key:"AI_PLATFORM_TUTOR_MODE",
+                value:$tutor_mode,
+                type:"plain",
+                target:["preview","production"]
+              }
+            ]')
+          if test "$PERSISTENCE_MODE" = "postgres"; then
+            test -n "$DATABASE_URL"
+            payload=$(jq -n \
+              --arg persistence_mode "$PERSISTENCE_MODE" \
+              --arg tutor_mode "$TUTOR_MODE" \
+              --arg database_url "$DATABASE_URL" '[
+                {
+                  key:"AI_PLATFORM_PERSISTENCE_MODE",
+                  value:$persistence_mode,
+                  type:"plain",
+                  target:["preview","production"]
+                },
+                {
+                  key:"AI_PLATFORM_TUTOR_MODE",
+                  value:$tutor_mode,
+                  type:"plain",
+                  target:["preview","production"]
+                },
+                {
+                  key:"AI_PLATFORM_DATABASE_URL",
+                  value:$database_url,
+                  type:"sensitive",
+                  target:["preview","production"]
+                }
+              ]')
+          fi
+          curl -fsS -X POST \
+            "https://api.vercel.com/v10/projects/$BACKEND_PROJECT_NAME/env?upsert=true&teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$payload" >/dev/null
+          unset payload DATABASE_URL
 
       - name: Deploy and verify connected product
         env:
