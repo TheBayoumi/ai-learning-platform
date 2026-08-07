@@ -49,7 +49,7 @@ jobs:
         working-directory: apps/api
         run: uv sync --locked --all-groups
 
-      - name: Apply bounded typing repairs
+      - name: Apply bounded typing and isolation repairs
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -104,13 +104,23 @@ jobs:
           app_test = "apps/api/tests/test_app.py"
           replace_once(
               app_test,
-              "from pydantic import SecretStr, ValidationError\n",
-              "from pydantic import SecretStr, ValidationError\nfrom starlette.routing import Route\n",
+              "import pytest\nfrom pydantic import SecretStr, ValidationError\n",
+              "import pytest\nfrom fastapi.routing import APIRoute\nfrom pydantic import SecretStr, ValidationError\nfrom starlette.routing import Route\n",
           )
           replace_once(
               app_test,
               "    paths = {route.path for route in app.routes}\n",
-              "    paths = {route.path for route in app.routes if isinstance(route, Route)}\n",
+              "    paths = {\n        route.path\n        for route in app.routes\n        if isinstance(route, (APIRoute, Route))\n    }\n",
+          )
+          replace_once(
+              app_test,
+              "def test_signed_state_mode_does_not_require_database_url() -> None:\n    settings = Settings(environment=\"test\", persistence_mode=\"signed_state\")\n",
+              "def test_signed_state_mode_does_not_require_database_url(\n    monkeypatch: pytest.MonkeyPatch,\n) -> None:\n    monkeypatch.delenv(\"AI_PLATFORM_DATABASE_URL\", raising=False)\n    settings = Settings(environment=\"test\", persistence_mode=\"signed_state\")\n",
+          )
+          replace_once(
+              app_test,
+              "def test_postgres_persistence_requires_database_url() -> None:\n    with pytest.raises(\n",
+              "def test_postgres_persistence_requires_database_url(\n    monkeypatch: pytest.MonkeyPatch,\n) -> None:\n    monkeypatch.delenv(\"AI_PLATFORM_DATABASE_URL\", raising=False)\n    with pytest.raises(\n",
           )
           PY
 
@@ -136,7 +146,7 @@ jobs:
           tests/test_persistent_compatibility_failures.py
           tests/test_postgres_persistence.py
 
-      - name: Commit and push verified typing repairs
+      - name: Commit and push verified repairs
         run: |
           git diff --check
           git config user.name "github-actions[bot]"
@@ -145,5 +155,5 @@ jobs:
             apps/api/src/ai_learning_platform_api/persistence/postgres.py \
             apps/api/tests/test_persistent_compatibility_failures.py \
             apps/api/tests/test_app.py
-          git commit -m "fix(persistence): satisfy strict SQLAlchemy typing"
+          git commit -m "fix(persistence): satisfy strict typing and isolate settings tests"
           git push origin HEAD:product/p01-postgres-learner-persistence
