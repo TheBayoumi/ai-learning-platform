@@ -58,7 +58,7 @@
     "apps/web/server/contracts/generated/health-response.ts": "98cc1cea77196fbd8a82d664783ced3ecf6e9bf7723b612be6f03e3db7bfa8bc",
     "plans/V00-candidate-role-evidence.md": "597e36eeec0a61abb46607de8bc3405f283a9dea6265e98e516c02c6efe99877",
     "docs/validation/V00-candidate-role-evidence.md": "938617ef1337660c9152c701ee3380ea3e337a2f7a199e830630c31e22bc5870",
-    ".github/workflows/ci.yml": "64d5be2f84b3dbe5648f8f3b61936304b053baacaa01d28a66669cc94581a7f0",
+    ".github/workflows/ci.yml": "63dec76d7467d7b823f7e4852c376dabf978ed89498b17be43f4bb497dbd8643",
     "plans/F03-github-phase-gate-control-plane.md": "e7cad7c2f1925b3c383d25f40790d1fe1cdf2c2d30549ee3027dce8ee31415c8",
     "plans/autonomous-loop/controller-policy.json": "9d62dfb3d746222a475691bfe1e1397c9d88a12e370a791fa22cbbfc4895176b",
     "plans/autonomous-loop/goal.md": "11059b66c586af8fb911841c882363ff81fbe0d8fa0865faa235c6e4ee9f30ca",
