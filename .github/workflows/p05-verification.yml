@@ -1,0 +1,165 @@
+name: P05 topology and recovery verification
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: >-
+      github.event.pull_request.number == 14 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'product/p05-topology-and-recovery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ai_learning_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ai_learning_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AI_PLATFORM_DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ai_learning_platform
+    steps:
+      - name: Check out exact P05 branch
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: product/p05-topology-and-recovery
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply deterministic topology and savepoint fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          recovery = Path("scripts/verify_recovery.py")
+          text = recovery.read_text(encoding="utf-8")
+          text = text.replace(
+              "from sqlalchemy import text\nfrom sqlalchemy.exc import SQLAlchemyError\n",
+              "from sqlalchemy import text\nfrom sqlalchemy.exc import SQLAlchemyError\n"
+              "from sqlalchemy.ext.asyncio import AsyncConnection\n",
+              1,
+          )
+          text = text.replace(
+              "async def _verify_rollback_only_cascade(connection) -> None:\n"
+              "    transaction = await connection.begin()\n",
+              "async def _verify_rollback_only_cascade(\n"
+              "    connection: AsyncConnection,\n"
+              ") -> None:\n"
+              "    transaction = await connection.begin_nested()\n",
+              1,
+          )
+          recovery.write_text(text, encoding="utf-8", newline="\n")
+
+          route_exports = {
+              "apps/web/app/api/platform/[...path]/route.ts": 'export const runtime = "nodejs";\n',
+              "apps/web/app/status/page.tsx": "export const revalidate = 0;\n",
+          }
+          preferred = 'export const preferredRegion = "pdx1";\n'
+          for path, anchor in route_exports.items():
+              file_path = Path(path)
+              content = file_path.read_text(encoding="utf-8")
+              if preferred not in content:
+                  if content.count(anchor) != 1:
+                      raise SystemExit(f"preferred-region anchor mismatch: {path}")
+                  content = content.replace(anchor, anchor + preferred, 1)
+                  file_path.write_text(content, encoding="utf-8", newline="\n")
+
+          page = Path("apps/web/app/page.tsx")
+          content = page.read_text(encoding="utf-8")
+          if preferred not in content:
+              anchor = "export default"
+              if content.count(anchor) != 1:
+                  raise SystemExit("home-page preferred-region anchor mismatch")
+              content = content.replace(anchor, preferred + "\n" + anchor, 1)
+              page.write_text(content, encoding="utf-8", newline="\n")
+          PY
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Pin npm
+        run: npm install --global npm@11.18.0
+
+      - name: Refresh deterministic locks and formatting
+        working-directory: apps/api
+        run: |
+          uv lock
+          uv sync --locked --all-groups
+          uv run --locked ruff check --fix . ../../scripts
+          uv run --locked ruff format . ../../scripts
+
+      - name: Verify API, migrations, recovery, tests, and coverage
+        run: |
+          uv run --project apps/api --locked python -m ai_learning_platform_api.contracts.health_openapi check apps/api/openapi/health.openapi.json
+          uv run --project apps/api --locked python -m ai_learning_platform_api.contracts.health_typescript check apps/api/openapi/health.openapi.json apps/web/server/contracts/generated/health-response.ts
+          uv run --project apps/api --locked ruff format --check apps/api scripts
+          uv run --project apps/api --locked ruff check apps/api scripts
+          uv run --project apps/api --locked mypy apps/api/src apps/api/tests scripts
+          uv run --project apps/api --locked alembic --config apps/api/alembic.ini upgrade head
+          uv run --project apps/api --locked alembic --config apps/api/alembic.ini downgrade base
+          uv run --project apps/api --locked alembic --config apps/api/alembic.ini upgrade head
+          uv run --project apps/api --locked python scripts/verify_recovery.py \
+            --expected-revision 20260724_01 \
+            --write-check
+          uv run --project apps/api --locked python scripts/verify_topology.py
+          cd apps/api
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
+
+      - name: Verify web topology, tests, and production build
+        working-directory: apps/web
+        run: |
+          npm run verify:build-toolchain
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Verify repository and evidence hygiene
+        run: |
+          git diff --check
+          test ! -e .github/workflows/p04-verification.yml
+          grep -Fq 'aws-us-west-2' plans/P05-topology-and-recovery.md
+          grep -Fq 'br-raspy-sea-a6j6al0w' plans/P05-topology-and-recovery.md
+          if grep -RInE 'postgresql(\+psycopg)?://[^[:space:]]+:[^[:space:]]+@' plans scripts; then
+            echo "credential-like database URL found in committed operations evidence" >&2
+            exit 1
+          fi
+
+      - name: Commit deterministic verification updates
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/api apps/web scripts
+          git commit -m "chore(ops): apply verified topology and recovery formatting"
+          git push origin HEAD:product/p05-topology-and-recovery
