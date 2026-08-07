@@ -212,6 +212,16 @@ def create_persistent_compatibility_router(
 
     @router.get("/roles", response_model=list[RoleView], operation_id="list_roles")
     async def list_roles() -> list[RoleView]:
+        """Keep the original published role endpoint backward compatible."""
+        return service.list_roles()[:1]
+
+    @router.get(
+        "/career-tracks",
+        response_model=list[RoleView],
+        operation_id="list_career_tracks",
+    )
+    async def list_career_tracks() -> list[RoleView]:
+        """Return the complete durable-mode career catalog used by the routed application."""
         return service.list_roles()
 
     @router.post("/plans", response_model=PlanView, status_code=status.HTTP_201_CREATED)
