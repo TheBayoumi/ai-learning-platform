@@ -1,0 +1,145 @@
+name: P01 mypy repair
+
+on:
+  pull_request:
+    branches: [main]
+    types: [ready_for_review]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event.pull_request.number == 10
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ai_learning_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ai_learning_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AI_PLATFORM_DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ai_learning_platform
+    steps:
+      - name: Check out the PR branch
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: product/p01-postgres-learner-persistence
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.18"
+          python-version: "3.13.13"
+          enable-cache: true
+          working-directory: apps/api
+
+      - name: Synchronize dependencies
+        working-directory: apps/api
+        run: uv sync --locked --all-groups
+
+      - name: Apply bounded typing repairs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one match in {path}, found {count}")
+              target.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+
+          postgres = "apps/api/src/ai_learning_platform_api/persistence/postgres.py"
+          replace_once(
+              postgres,
+              "from sqlalchemy.dialects.postgresql import insert as postgresql_insert\n",
+              "from sqlalchemy.dialects.postgresql import insert as postgresql_insert\nfrom sqlalchemy.engine import RowMapping\n",
+          )
+          replace_once(
+              postgres,
+              "\n\nclass PostgresLearnerStateRepository",
+              "\n\ntype RowData = Mapping[str, Any] | RowMapping\n\n\nclass PostgresLearnerStateRepository",
+          )
+          replace_once(
+              postgres,
+              ") -> Mapping[str, Any] | None:\n",
+              ") -> RowMapping | None:\n",
+          )
+          replace_once(
+              postgres,
+              "def _idempotent_result(row: Mapping[str, Any], command_hash: str) -> StoredLearnerState:\n",
+              "def _idempotent_result(row: RowData, command_hash: str) -> StoredLearnerState:\n",
+          )
+          replace_once(
+              postgres,
+              "def _stored_state(row: Mapping[str, Any]) -> StoredLearnerState:\n",
+              "def _stored_state(row: RowData) -> StoredLearnerState:\n",
+          )
+
+          failures = "apps/api/tests/test_persistent_compatibility_failures.py"
+          replace_once(
+              failures,
+              "    assert captured.value.status_code == expected_status\n    assert captured.value.detail[\"code\"] == expected_code\n",
+              "    assert captured.value.status_code == expected_status\n    assert isinstance(captured.value.detail, dict)\n    assert captured.value.detail[\"code\"] == expected_code\n",
+          )
+          replace_once(
+              failures,
+              "    assert captured.value.status_code == 400\n    assert captured.value.detail[\"code\"] == \"INVALID_REQUEST_CONTEXT\"\n",
+              "    assert captured.value.status_code == 400\n    assert isinstance(captured.value.detail, dict)\n    assert captured.value.detail[\"code\"] == \"INVALID_REQUEST_CONTEXT\"\n",
+          )
+
+          app_test = "apps/api/tests/test_app.py"
+          replace_once(
+              app_test,
+              "from pydantic import SecretStr, ValidationError\n",
+              "from pydantic import SecretStr, ValidationError\nfrom starlette.routing import Route\n",
+          )
+          replace_once(
+              app_test,
+              "    paths = {route.path for route in app.routes}\n",
+              "    paths = {route.path for route in app.routes if isinstance(route, Route)}\n",
+          )
+          PY
+
+      - name: Verify formatting, lint, and strict typing
+        working-directory: apps/api
+        run: |
+          uv run --locked ruff format \
+            src/ai_learning_platform_api/persistence/postgres.py \
+            tests/test_persistent_compatibility_failures.py \
+            tests/test_app.py
+          uv run --locked ruff check . ../../scripts
+          uv run --locked mypy src tests ../../scripts
+
+      - name: Verify affected behavior
+        working-directory: apps/api
+        run: >-
+          uv run --locked pytest
+          tests/test_app.py
+          tests/test_persistent_compatibility_failures.py
+          tests/test_postgres_persistence.py
+
+      - name: Commit and push verified typing repairs
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/api/src/ai_learning_platform_api/persistence/postgres.py \
+            apps/api/tests/test_persistent_compatibility_failures.py \
+            apps/api/tests/test_app.py
+          git commit -m "fix(persistence): satisfy strict SQLAlchemy typing"
+          git push origin HEAD:product/p01-postgres-learner-persistence
