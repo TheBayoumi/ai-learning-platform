@@ -17,7 +17,11 @@ _POSTGRESQL_URL_PREFIX = "postgresql+psycopg://"
 class Settings(BaseSettings):
     """Validated runtime configuration with fail-closed production boundaries."""
 
-    model_config = SettingsConfigDict(env_prefix="AI_PLATFORM_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="AI_PLATFORM_",
+        extra="ignore",
+        populate_by_name=True,
+    )
 
     environment: Environment = "development"
     log_level: LogLevel = "INFO"
