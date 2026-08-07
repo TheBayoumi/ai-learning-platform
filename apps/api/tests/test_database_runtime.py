@@ -48,7 +48,10 @@ def test_settings_canonicalize_standard_postgres_url_before_runtime() -> None:
 
 
 def test_settings_reject_unsupported_database_driver() -> None:
-    with pytest.raises(ValidationError, match="database_url must use the postgresql\\+psycopg driver"):
+    with pytest.raises(
+        ValidationError,
+        match="database_url must use the postgresql\\+psycopg driver",
+    ):
         Settings(
             persistence_mode="postgres",
             database_url=SecretStr("postgresql+asyncpg://user:pass@db.example/neondb"),
