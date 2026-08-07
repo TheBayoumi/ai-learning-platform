@@ -104,18 +104,8 @@ jobs:
           app_test = "apps/api/tests/test_app.py"
           replace_once(
               app_test,
-              "import logging\n\nimport httpx\n",
-              "import logging\nfrom typing import Protocol, cast\n\nimport httpx\n",
-          )
-          replace_once(
-              app_test,
-              "\n\nasync def get_health(path: str) -> httpx.Response:\n",
-              "\n\nclass _RouteWithPath(Protocol):\n    path: str\n\n\nasync def get_health(path: str) -> httpx.Response:\n",
-          )
-          replace_once(
-              app_test,
               "    paths = {route.path for route in app.routes}\n",
-              "    paths = {\n        cast(_RouteWithPath, route).path\n        for route in app.routes\n        if hasattr(route, \"path\")\n    }\n",
+              "    paths = app.openapi().get(\"paths\")\n    assert isinstance(paths, dict)\n",
           )
           replace_once(
               app_test,
