@@ -113,12 +113,31 @@ def test_delete_account_cascades_only_the_current_anonymous_account() -> None:
         is not None
     )
 
-    async def counts() -> tuple[int, int, int, int]:
+    async def account_counts(account_id: str) -> tuple[int, int, int, int]:
         async with runtime.engine.connect() as connection:
-            account_count = await connection.scalar(select(func.count()).select_from(accounts))
-            state_count = await connection.scalar(select(func.count()).select_from(learner_states))
-            event_count = await connection.scalar(select(func.count()).select_from(learner_events))
-            outbox_count = await connection.scalar(select(func.count()).select_from(outbox_records))
+            account_count = await connection.scalar(
+                select(func.count()).select_from(accounts).where(accounts.c.id == account_id)
+            )
+            state_count = await connection.scalar(
+                select(func.count())
+                .select_from(learner_states)
+                .where(learner_states.c.account_id == account_id)
+            )
+            event_count = await connection.scalar(
+                select(func.count())
+                .select_from(learner_events)
+                .where(learner_events.c.account_id == account_id)
+            )
+            outbox_count = await connection.scalar(
+                select(func.count())
+                .select_from(
+                    outbox_records.join(
+                        learner_events,
+                        outbox_records.c.event_id == learner_events.c.id,
+                    )
+                )
+                .where(learner_events.c.account_id == account_id)
+            )
         return (
             int(account_count or 0),
             int(state_count or 0),
@@ -126,7 +145,8 @@ def test_delete_account_cascades_only_the_current_anonymous_account() -> None:
             int(outbox_count or 0),
         )
 
-    assert asyncio.run(counts()) == (1, 1, 1, 1)
+    assert asyncio.run(account_counts(_ACCOUNT_A)) == (0, 0, 0, 0)
+    assert asyncio.run(account_counts(_ACCOUNT_B)) == (1, 1, 1, 1)
     assert asyncio.run(repository.delete_account(account_id=_ACCOUNT_B)) is True
     asyncio.run(runtime.shutdown())
 
