@@ -24,7 +24,9 @@ class PlanRequest(StrictModel):
     """Inputs required to diagnose gaps and generate the first plan."""
 
     learner_name: Annotated[str, Field(min_length=2, max_length=80)]
-    target_role: Literal["junior-python-backend-engineer"] = "junior-python-backend-engineer"
+    target_role: Annotated[str, Field(min_length=2, max_length=80)] = (
+        "junior-python-backend-engineer"
+    )
     weekly_hours: Annotated[int, Field(ge=2, le=40)] = 8
     experience_summary: Annotated[str, Field(min_length=0, max_length=600)] = ""
     ratings: Annotated[list[CompetencyRating], Field(max_length=32)] = Field(default_factory=list)
@@ -194,7 +196,7 @@ class LearnerState(StrictModel):
     storage_mode: Literal["browser", "durable"] = "browser"
     learner_id: str
     learner_name: str
-    target_role: Literal["junior-python-backend-engineer"]
+    target_role: Annotated[str, Field(min_length=2, max_length=80)]
     weekly_hours: int
     experience_summary: str
     created_at: str
