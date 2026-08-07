@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 Environment = Literal["development", "test", "production"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 PersistenceMode = Literal["signed_state", "postgres"]
-TutorMode = Literal["auto", "disabled", "vercel_ai_gateway"]
+TutorMode = Literal["disabled", "vercel_ai_gateway"]
 
 _DEVELOPMENT_STATE_SECRET = "development-only-learner-state-secret-change-me"
 _POSTGRESQL_URL_PREFIX = "postgresql+psycopg://"
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     learner_state_secret: SecretStr = SecretStr(_DEVELOPMENT_STATE_SECRET)
     persistence_mode: PersistenceMode = "signed_state"
     database_url: SecretStr | None = None
-    tutor_mode: TutorMode = "auto"
+    tutor_mode: TutorMode = "disabled"
     tutor_model: Annotated[
         str,
         Field(min_length=3, max_length=160, pattern=r"^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
@@ -66,6 +66,9 @@ class Settings(BaseSettings):
                 raise ValueError("database_url must be configured for postgres persistence")
             if not database_url.startswith(_POSTGRESQL_URL_PREFIX):
                 raise ValueError("database_url must use the postgresql+psycopg driver")
+
+        if self.tutor_mode == "vercel_ai_gateway" and self.tutor_gateway_token() is None:
+            raise ValueError("a server-only AI Gateway credential is required when tutoring is enabled")
 
         return self
 
