@@ -104,6 +104,10 @@ class PersistentLearningService:
         stored = await self._load(account_id=account_id, learner_id=learner_id)
         return self._view(stored)
 
+    async def delete_account(self, *, account_id: str) -> bool:
+        """Delete the current anonymous durable account and all database-owned history."""
+        return await self._repository.delete_account(account_id=account_id)
+
     async def complete_activity(
         self,
         *,
