@@ -6,11 +6,13 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const UPSTREAM_TIMEOUT_MS = 8_000;
+const TUTOR_UPSTREAM_TIMEOUT_MS = 35_000;
 const MAX_REQUEST_BYTES = 96 * 1024;
 const MAX_RESPONSE_BYTES = 768 * 1024;
 const ACCOUNT_COOKIE = "ai_platform_account";
 const ACCOUNT_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const TUTOR_STREAM_PATH = "tutor/stream";
 const ALLOWED_PATHS = new Set([
   "roles",
   "plans",
@@ -18,7 +20,8 @@ const ALLOWED_PATHS = new Set([
   "plans/replan",
   "progress",
   "assessments/start",
-  "assessments/submit"
+  "assessments/submit",
+  TUTOR_STREAM_PATH
 ]);
 
 const GET_PATHS = new Set(["roles"]);
@@ -66,14 +69,18 @@ async function proxyRequest(
     }
   }
 
+  const isTutorStream = relativePath === TUTOR_STREAM_PATH;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    isTutorStream ? TUTOR_UPSTREAM_TIMEOUT_MS : UPSTREAM_TIMEOUT_MS
+  );
   try {
     const upstreamUrl = new URL(`/api/v1/${relativePath}`, readApiBaseUrl());
     const upstream = await fetch(upstreamUrl, {
       method,
       headers: {
-        accept: "application/json",
+        accept: isTutorStream ? "text/event-stream" : "application/json",
         ...(body === undefined ? {} : { "content-type": "application/json" }),
         ...(accountContext === null
           ? {}
@@ -89,6 +96,24 @@ async function proxyRequest(
       signal: controller.signal
     });
     const contentType = upstream.headers.get("content-type")?.toLowerCase() ?? "";
+
+    if (isTutorStream && upstream.ok) {
+      if (!contentType.startsWith("text/event-stream") || upstream.body === null) {
+        return errorResponse(
+          502,
+          "PLATFORM_UPSTREAM_INVALID",
+          "The tutor service returned an invalid stream."
+        );
+      }
+      const headers = responseHeaders("text/event-stream; charset=utf-8");
+      headers.set("x-accel-buffering", "no");
+      applyAccountCookie(headers, accountContext, request.url);
+      return new Response(upstream.body, {
+        status: upstream.status,
+        headers
+      });
+    }
+
     if (!contentType.startsWith("application/json")) {
       return errorResponse(
         502,
@@ -104,14 +129,8 @@ async function proxyRequest(
         "The learning service response exceeded the safety limit."
       );
     }
-    const headers = new Headers({
-      "cache-control": "no-store",
-      "content-type": "application/json; charset=utf-8",
-      "x-content-type-options": "nosniff"
-    });
-    if (accountContext?.created === true) {
-      headers.set("set-cookie", accountCookie(accountContext.accountId, request.url));
-    }
+    const headers = responseHeaders("application/json; charset=utf-8");
+    applyAccountCookie(headers, accountContext, request.url);
     return new Response(responseBody, {
       status: upstream.status,
       headers
@@ -158,6 +177,24 @@ function parseCookies(value: string): ReadonlyMap<string, string> {
 function accountCookie(accountId: string, requestUrl: string): string {
   const secure = new URL(requestUrl).protocol === "https:" ? "; Secure" : "";
   return `${ACCOUNT_COOKIE}=${accountId}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax${secure}`;
+}
+
+function responseHeaders(contentType: string): Headers {
+  return new Headers({
+    "cache-control": "no-store",
+    "content-type": contentType,
+    "x-content-type-options": "nosniff"
+  });
+}
+
+function applyAccountCookie(
+  headers: Headers,
+  accountContext: Readonly<{ accountId: string; created: boolean }> | null,
+  requestUrl: string
+): void {
+  if (accountContext?.created === true) {
+    headers.set("set-cookie", accountCookie(accountContext.accountId, requestUrl));
+  }
 }
 
 function errorResponse(status: number, code: string, message: string): Response {
