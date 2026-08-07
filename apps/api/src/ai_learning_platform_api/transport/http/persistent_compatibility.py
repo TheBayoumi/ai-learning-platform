@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Annotated, TypeVar
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, status
@@ -43,7 +43,6 @@ from ai_learning_platform_api.persistence.schemas import (
 )
 from ai_learning_platform_api.persistence.service import PersistentLearningService
 
-T = TypeVar("T")
 AccountHeader = Annotated[
     str,
     Header(alias="X-Platform-Account-Id", min_length=36, max_length=36),
@@ -296,7 +295,7 @@ def create_persistent_compatibility_router(
     return router
 
 
-async def _run(operation: Callable[[], Awaitable[T]]) -> T:
+async def _run[T](operation: Callable[[], Awaitable[T]]) -> T:
     try:
         return await operation()
     except LearnerStateNotFoundError as error:
