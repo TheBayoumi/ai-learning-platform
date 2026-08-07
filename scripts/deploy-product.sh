@@ -193,18 +193,18 @@ backend_deployment_url=$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' \
 test -n "$backend_deployment_url"
 
 phase="backend-candidate-verification"
+export VERCEL_TOKEN="$VERCEL_API_TOKEN"
 candidate_health="$RUNNER_TEMP/backend-candidate-health.json"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
-  vc curl /health/live --deployment "$backend_deployment_url" \
-    --token "$VERCEL_API_TOKEN" >"$candidate_health"
+  vc curl /health/live --deployment "$backend_deployment_url" >"$candidate_health"
 jq -e '.status == "ok"' "$candidate_health" >/dev/null
 
 candidate_roles="$RUNNER_TEMP/backend-candidate-roles.json"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
-  vc curl /api/v1/roles --deployment "$backend_deployment_url" \
-    --token "$VERCEL_API_TOKEN" >"$candidate_roles"
+  vc curl /api/v1/roles --deployment "$backend_deployment_url" >"$candidate_roles"
 jq -e 'length == 1 and .[0].id == "junior-python-backend-engineer"' \
   "$candidate_roles" >/dev/null
+unset VERCEL_TOKEN
 
 phase="backend-promotion"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
