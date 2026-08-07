@@ -69,16 +69,16 @@ def create_app(
 
     if include_product_routes:
         gateway_token = resolved_settings.tutor_gateway_token()
-        gateway = (
-            VercelAiGateway(
+        if resolved_settings.tutor_mode == "vercel_ai_gateway":
+            assert gateway_token is not None
+            gateway = VercelAiGateway(
                 token=gateway_token,
                 model=resolved_settings.tutor_model,
                 timeout_seconds=resolved_settings.tutor_timeout_seconds,
                 max_output_tokens=resolved_settings.tutor_max_output_tokens,
             )
-            if resolved_settings.tutor_mode != "disabled" and gateway_token is not None
-            else DisabledTutorGateway()
-        )
+        else:
+            gateway = DisabledTutorGateway()
 
         async def resolve_plan(account_id: str, state_token: str) -> PlanView:
             if compatibility_service is not None:
