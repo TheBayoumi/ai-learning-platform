@@ -3,6 +3,7 @@ set -euo pipefail
 
 : "${VERCEL_API_TOKEN:?VERCEL_API_TOKEN is required}"
 : "${VERCEL_AUTOMATION_BYPASS_SECRET:=}"
+: "${VERCEL_FUNCTION_REGION:?VERCEL_FUNCTION_REGION is required}"
 : "${TEAM_ID:?TEAM_ID is required}"
 : "${FRONTEND_PROJECT_ID:?FRONTEND_PROJECT_ID is required}"
 : "${BACKEND_PROJECT_NAME:?BACKEND_PROJECT_NAME is required}"
@@ -79,11 +80,15 @@ status=$(curl -sS -o "$project_response" -w '%{http_code}' \
   "https://api.vercel.com/v9/projects/$BACKEND_PROJECT_NAME?teamId=$TEAM_ID" \
   -H "Authorization: Bearer $VERCEL_API_TOKEN")
 if test "$status" = "404"; then
+  create_project_payload=$(jq -n \
+    --arg name "$BACKEND_PROJECT_NAME" \
+    --arg region "$VERCEL_FUNCTION_REGION" \
+    '{name:$name,framework:"fastapi",serverlessFunctionRegion:$region}')
   status=$(curl -sS -o "$project_response" -w '%{http_code}' \
     -X POST "https://api.vercel.com/v11/projects?teamId=$TEAM_ID" \
     "${auth[@]}" \
-    --data "$(jq -n --arg name "$BACKEND_PROJECT_NAME" \
-      '{name:$name,framework:"fastapi",serverlessFunctionRegion:"fra1"}')")
+    --data "$create_project_payload")
+  unset create_project_payload
 fi
 case "$status" in
   200|201) ;;
@@ -94,12 +99,17 @@ case "$status" in
 esac
 backend_project_id=$(jq -er '.id' "$project_response")
 
-# Keep the project preset explicit even when the project already existed.
+# Keep framework and compute topology explicit even when the project already existed.
+backend_project_payload=$(jq -n \
+  --arg region "$VERCEL_FUNCTION_REGION" \
+  '{framework:"fastapi",serverlessFunctionRegion:$region}')
 curl -fsS -X PATCH \
   "https://api.vercel.com/v9/projects/$backend_project_id?teamId=$TEAM_ID" \
   "${auth[@]}" \
-  --data '{"framework":"fastapi","serverlessFunctionRegion":"fra1"}' \
-  | jq -e '.framework == "fastapi"' >/dev/null
+  --data "$backend_project_payload" \
+  | jq -e --arg region "$VERCEL_FUNCTION_REGION" \
+      '.framework == "fastapi" and .serverlessFunctionRegion == $region' >/dev/null
+unset backend_project_payload
 
 env_response="$RUNNER_TEMP/backend-env.json"
 curl -fsS \
@@ -267,6 +277,28 @@ curl -fsS "${frontend_bypass[@]}" \
   --data-binary "@$progressed_resume_payload" \
   | jq -e '.sequence == 1 and .completed_count == 1' >/dev/null
 
+# Account deletion is part of the release contract, not an optional UI-only control.
+deleted="$RUNNER_TEMP/deployed-deletion.json"
+curl -fsS "${frontend_bypass[@]}" \
+  --cookie "$cookie_jar" \
+  --cookie-jar "$cookie_jar" \
+  -H "Content-Type: application/json" \
+  -X DELETE "$frontend_url/api/platform/account" \
+  --data '{"confirmation":"DELETE"}' >"$deleted"
+jq -e '.deleted == true and .scope == "current_anonymous_account"' "$deleted" >/dev/null
+
+post_delete_resume="$RUNNER_TEMP/post-delete-resume.json"
+post_delete_status=$(curl -sS "${frontend_bypass[@]}" \
+  --cookie "$cookie_jar" \
+  --cookie-jar "$cookie_jar" \
+  -H "Content-Type: application/json" \
+  -X POST "$frontend_url/api/platform/plans/resume" \
+  --data-binary "@$progressed_resume_payload" \
+  -o "$post_delete_resume" \
+  -w '%{http_code}')
+test "$post_delete_status" = "404"
+jq -e '.detail.code == "LEARNER_STATE_NOT_FOUND"' "$post_delete_resume" >/dev/null
+
 phase="evidence-publication"
 trap - ERR
 jq -n \
@@ -298,6 +330,8 @@ jq -n \
       resume:"ok",
       progress:"ok",
       post_progress_resume:"ok",
+      deletion:"ok",
+      post_delete_resume:"blocked",
       initial_readiness:$initial_readiness,
       progressed_readiness:$progressed_readiness
     }

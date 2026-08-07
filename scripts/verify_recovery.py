@@ -211,7 +211,12 @@ def _parse_args() -> argparse.Namespace:
         description="Verify a migrated PostgreSQL recovery candidate without exposing credentials."
     )
     parser.add_argument("--expected-revision", required=True)
-    parser.add_argument("--write-check", action="store_true")
+    parser.add_argument(
+        "--transaction-check",
+        "--write-check",
+        dest="write_check",
+        action="store_true",
+    )
     return parser.parse_args()
 
 

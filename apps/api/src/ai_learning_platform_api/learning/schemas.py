@@ -188,9 +188,10 @@ class AssessmentRecordView(StrictModel):
 
 
 class LearnerState(StrictModel):
-    """Signed stateless learner state carried by the browser."""
+    """Signed learner state carried by the browser and optionally owned by durable storage."""
 
     schema_version: Literal[1, 2, 3] = 3
+    storage_mode: Literal["browser", "durable"] = "browser"
     learner_id: str
     learner_name: str
     target_role: Literal["junior-python-backend-engineer"]
