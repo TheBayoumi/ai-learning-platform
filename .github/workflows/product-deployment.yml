@@ -89,7 +89,7 @@ jobs:
               AI_PLATFORM_DATABASE_URL="$AI_PLATFORM_DATABASE_URL" \
                 uv run --project apps/api --locked python scripts/verify_recovery.py \
                   --expected-revision 20260724_01 \
-                  --write-check
+                  --transaction-check
               ;;
             *)
               echo "Unsupported persistence mode" >&2

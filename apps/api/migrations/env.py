@@ -11,6 +11,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from ai_learning_platform_api.persistence.database import normalize_database_url
 from ai_learning_platform_api.persistence.models import metadata
 
 config = context.config
@@ -19,7 +20,10 @@ if config.config_file_name is not None:
 
 database_url = os.environ.get("AI_PLATFORM_DATABASE_URL")
 if database_url:
-    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
+    config.set_main_option(
+        "sqlalchemy.url",
+        normalize_database_url(database_url).replace("%", "%%"),
+    )
 
 target_metadata = metadata
 
