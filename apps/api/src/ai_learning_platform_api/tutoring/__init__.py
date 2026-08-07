@@ -15,9 +15,9 @@ from ai_learning_platform_api.tutoring.service import (
 )
 
 __all__ = [
+    "TUTOR_PROMPT_VERSION",
     "DisabledTutorGateway",
     "PreparedTutorTurn",
-    "TUTOR_PROMPT_VERSION",
     "TutorGateway",
     "TutorGatewayError",
     "TutorGatewayRequest",

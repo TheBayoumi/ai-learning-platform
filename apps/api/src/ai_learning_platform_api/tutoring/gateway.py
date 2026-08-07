@@ -110,8 +110,7 @@ class VercelAiGateway:
             "model": self._model,
             "instructions": request.instructions,
             "input": [
-                {"role": message.role, "content": message.content}
-                for message in request.messages
+                {"role": message.role, "content": message.content} for message in request.messages
             ],
             "max_output_tokens": self._max_output_tokens,
             "temperature": 0.2,

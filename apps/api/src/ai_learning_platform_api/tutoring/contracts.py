@@ -25,6 +25,4 @@ class TutorTurnRequest(StrictModel):
     state_token: Annotated[str, Field(min_length=20, max_length=65_536)]
     message: Annotated[str, Field(min_length=1, max_length=2_000)]
     move: TutorMove = "hint"
-    history: Annotated[list[TutorHistoryTurn], Field(max_length=6)] = Field(
-        default_factory=list
-    )
+    history: Annotated[list[TutorHistoryTurn], Field(max_length=6)] = Field(default_factory=list)

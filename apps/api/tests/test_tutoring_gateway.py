@@ -27,8 +27,7 @@ async def collect(gateway: VercelAiGateway) -> list[str]:
 
 def stream_response(*events: dict[str, object] | str) -> httpx.Response:
     body = "".join(
-        f"data: {event if isinstance(event, str) else json.dumps(event)}\n\n"
-        for event in events
+        f"data: {event if isinstance(event, str) else json.dumps(event)}\n\n" for event in events
     )
     return httpx.Response(
         200,
@@ -83,9 +82,7 @@ def test_vercel_gateway_streams_only_normalized_text_deltas() -> None:
         (httpx.Response(200, json={"text": "not a stream"}), "invalid stream"),
         (stream_response("not-json"), "invalid JSON"),
         (
-            stream_response(
-                {"type": "response.output_text.delta", "delta": "x" * 2_049}
-            ),
+            stream_response({"type": "response.output_text.delta", "delta": "x" * 2_049}),
             "oversized delta",
         ),
     ],
@@ -120,8 +117,7 @@ def test_vercel_gateway_bounds_total_output() -> None:
     async def exercise() -> None:
         async def handler(_: httpx.Request) -> httpx.Response:
             events: list[dict[str, object]] = [
-                {"type": "response.output_text.delta", "delta": "x" * 2_000}
-                for _ in range(7)
+                {"type": "response.output_text.delta", "delta": "x" * 2_000} for _ in range(7)
             ]
             return stream_response(*events)
 
