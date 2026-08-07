@@ -30,7 +30,7 @@ def _option(identifier: str, text: str) -> AssessmentOptionDefinition:
     return AssessmentOptionDefinition(identifier=identifier, text=text)
 
 
-ASSESSMENT_BANK_VERSION: Final = "2026.07-calibration-1"
+ASSESSMENT_BANK_VERSION: Final = "2026.08-calibration-2"
 
 ASSESSMENT_QUESTIONS: Final = (
     AssessmentQuestionDefinition(
@@ -62,9 +62,7 @@ ASSESSMENT_QUESTIONS: Final = (
         options=(
             _option("a", "Move all code into a larger router module."),
             _option("b", "Put pricing rules in Pydantic validators."),
-            _option(
-                "c", "Delegate domain decisions to a typed service behind an explicit adapter."
-            ),
+            _option("c", "Delegate domain decisions to a typed service behind an explicit adapter."),
             _option("d", "Replace exceptions with print statements."),
         ),
         correct_option_id="c",
@@ -157,10 +155,7 @@ ASSESSMENT_QUESTIONS: Final = (
         ),
         options=(
             _option("a", "Use one stage and delete files in the final command."),
-            _option(
-                "b",
-                "Use a multi-stage build and copy only runtime artifacts into a non-root image.",
-            ),
+            _option("b", "Use a multi-stage build and copy only runtime artifacts into a non-root image."),
             _option("c", "Store secrets in environment variables during image build."),
             _option("d", "Run the final container as root for compatibility."),
         ),
@@ -216,9 +211,7 @@ ASSESSMENT_QUESTIONS: Final = (
         ),
         options=(
             _option("a", "State a confident root cause so stakeholders are reassured."),
-            _option(
-                "b", "Separate confirmed impact, current hypotheses, mitigation, and next check."
-            ),
+            _option("b", "Separate confirmed impact, current hypotheses, mitigation, and next check."),
             _option("c", "Share every raw log line without interpretation."),
             _option("d", "Wait until the incident is fully resolved before communicating."),
         ),
@@ -226,6 +219,120 @@ ASSESSMENT_QUESTIONS: Final = (
         explanation=(
             "Separating known facts from hypotheses prevents speculation from becoming an asserted "
             "fact while still giving stakeholders actionable status."
+        ),
+    ),
+    AssessmentQuestionDefinition(
+        identifier="llm-output-boundary",
+        competency_id="llm-applications",
+        prompt=(
+            "An LLM returns JSON that will be used to update application state. Which boundary is "
+            "most important before the update occurs?"
+        ),
+        options=(
+            _option("a", "Trust the JSON whenever the model used a low temperature."),
+            _option("b", "Validate it against a deterministic schema and authorization rules."),
+            _option("c", "Store the raw response as the authoritative state."),
+            _option("d", "Ask the model whether its own response is safe."),
+        ),
+        correct_option_id="b",
+        explanation=(
+            "Model output remains untrusted input. Deterministic schema and authorization checks "
+            "must mediate any authoritative state mutation."
+        ),
+    ),
+    AssessmentQuestionDefinition(
+        identifier="rag-retrieval-miss",
+        competency_id="rag",
+        prompt=(
+            "A RAG answer is wrong because the relevant source never appeared in retrieved context. "
+            "Which subsystem should be investigated first?"
+        ),
+        options=(
+            _option("a", "Retrieval and ranking quality."),
+            _option("b", "The final answer font."),
+            _option("c", "The model's sampling temperature only."),
+            _option("d", "The browser cache."),
+        ),
+        correct_option_id="a",
+        explanation=(
+            "When the necessary evidence was never retrieved, retrieval or ranking is the first "
+            "failure boundary; generation cannot cite context it never received."
+        ),
+    ),
+    AssessmentQuestionDefinition(
+        identifier="ai-eval-hidden-set",
+        competency_id="ai-evaluation",
+        prompt=(
+            "Why should an AI feature keep a representative evaluation set hidden from prompt and "
+            "workflow tuning?"
+        ),
+        options=(
+            _option("a", "To make failures harder to debug."),
+            _option("b", "To estimate generalization instead of optimizing directly to known cases."),
+            _option("c", "To avoid defining task-specific success criteria."),
+            _option("d", "To eliminate the need for regression thresholds."),
+        ),
+        correct_option_id="b",
+        explanation=(
+            "A held-out set gives a less biased signal of whether changes generalize beyond the "
+            "examples used during tuning."
+        ),
+    ),
+    AssessmentQuestionDefinition(
+        identifier="data-modeling-grain",
+        competency_id="data-modeling",
+        prompt=(
+            "Before defining dimensions and metrics for an analytical fact table, what must be "
+            "made explicit first?"
+        ),
+        options=(
+            _option("a", "The row grain represented by one fact record."),
+            _option("b", "The dashboard background color."),
+            _option("c", "The longest column name."),
+            _option("d", "The BI tool used by one analyst."),
+        ),
+        correct_option_id="a",
+        explanation=(
+            "Explicit grain prevents incompatible events and metrics from being mixed into the "
+            "same fact table and anchors keys and aggregation semantics."
+        ),
+    ),
+    AssessmentQuestionDefinition(
+        identifier="pipeline-idempotency",
+        competency_id="data-pipelines",
+        prompt=(
+            "A batch ingestion task retries after failing halfway through. Which property prevents "
+            "the retry from duplicating already accepted records?"
+        ),
+        options=(
+            _option("a", "Idempotent writes or deterministic deduplication keys."),
+            _option("b", "A longer task name."),
+            _option("c", "Disabling all retries."),
+            _option("d", "Increasing log verbosity only."),
+        ),
+        correct_option_id="a",
+        explanation=(
+            "Idempotent writes or stable deduplication identity let retries converge on the same "
+            "accepted data state instead of multiplying records."
+        ),
+    ),
+    AssessmentQuestionDefinition(
+        identifier="data-quality-freshness",
+        competency_id="data-quality",
+        prompt=(
+            "A daily dataset is complete for old dates but has not received today's expected load. "
+            "Which quality dimension detects this most directly?"
+        ),
+        options=(
+            _option("a", "Freshness."),
+            _option("b", "Uniqueness."),
+            _option("c", "Column alphabetical order."),
+            _option("d", "Compression ratio."),
+        ),
+        correct_option_id="a",
+        explanation=(
+            "Freshness checks whether data arrived within the expected time window, independently "
+            "from whether historical rows are complete or unique."
         ),
     ),
 )
