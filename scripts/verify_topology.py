@@ -17,8 +17,10 @@ class TopologyVerificationError(RuntimeError):
     """The committed deployment topology does not match the selected region."""
 
 
-def verify_topology(root: Path = Path.cwd()) -> dict[str, object]:
-    workflow = (root / ".github/workflows/product-deployment.yml").read_text(
+def verify_topology(root: Path | None = None) -> dict[str, object]:
+    """Verify committed deployment-region controls from the selected repository root."""
+    repository_root = root if root is not None else Path.cwd()
+    workflow = (repository_root / ".github/workflows/product-deployment.yml").read_text(
         encoding="utf-8"
     )
     if f"VERCEL_FUNCTION_REGION: {_SELECTED_REGION}" not in workflow:
@@ -31,7 +33,7 @@ def verify_topology(root: Path = Path.cwd()) -> dict[str, object]:
     checked_files: list[str] = []
     expected_export = f'export const preferredRegion = "{_SELECTED_REGION}";'
     for relative_path in _REQUIRED_PREFERRED_REGION_FILES:
-        content = (root / relative_path).read_text(encoding="utf-8")
+        content = (repository_root / relative_path).read_text(encoding="utf-8")
         if expected_export not in content:
             raise TopologyVerificationError(
                 f"preferred_region_missing:{relative_path.as_posix()}"
