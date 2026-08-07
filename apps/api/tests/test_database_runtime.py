@@ -23,10 +23,7 @@ from ai_learning_platform_api.persistence.database import (
         ),
     ],
 )
-def test_normalize_database_url_uses_psycopg3(
-    database_url: str,
-    expected: str,
-) -> None:
+def test_normalize_database_url_uses_psycopg3(database_url: str, expected: str) -> None:
     assert normalize_database_url(database_url) == expected
 
 
