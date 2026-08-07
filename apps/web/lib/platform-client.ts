@@ -40,7 +40,7 @@ export async function platformRequest(path: string, options: RequestOptions = {}
 }
 
 export async function loadRoles(): Promise<readonly RoleView[]> {
-  const value = await platformRequest("roles");
+  const value = await platformRequest("career-tracks");
   if (!isRoleList(value)) {
     throw new Error("The career catalog did not match the expected contract.");
   }
