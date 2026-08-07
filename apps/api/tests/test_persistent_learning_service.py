@@ -8,7 +8,8 @@ from uuid import UUID
 
 import pytest
 
-from ai_learning_platform_api.learning.schemas import AssessmentAnswer
+from ai_learning_platform_api.learning.schemas import AssessmentAnswer, PlanRequest
+from ai_learning_platform_api.learning.service import LearningPlanService, SignedStateCodec
 from ai_learning_platform_api.persistence.contracts import (
     LearnerStateCommit,
     LearnerStateConflictError,
@@ -104,6 +105,7 @@ def test_full_durable_learning_cycle() -> None:
     created = asyncio.run(service.create_plan(account_id=_ACCOUNT_ID, request=_create_request()))
     assert created.version == 0
     assert created.plan.learner_name == "Mahmoud"
+    assert SignedStateCodec(_SECRET).decode(created.plan.state_token).storage_mode == "durable"
     learner_id = UUID(created.plan.learner_id)
 
     resumed = asyncio.run(service.resume_plan(account_id=_ACCOUNT_ID, learner_id=learner_id))
@@ -128,6 +130,7 @@ def test_full_durable_learning_cycle() -> None:
     )
     assert progressed.version == 1
     assert progressed.plan.completed_count == 1
+    assert SignedStateCodec(_SECRET).decode(progressed.plan.state_token).storage_mode == "durable"
 
     replanned = asyncio.run(
         service.replan(
@@ -171,6 +174,10 @@ def test_full_durable_learning_cycle() -> None:
     )
     assert submitted.version == 3
     assert submitted.submission.plan.sequence > replanned.plan.sequence
+    assert (
+        SignedStateCodec(_SECRET).decode(submitted.submission.plan.state_token).storage_mode
+        == "durable"
+    )
 
 
 def test_delete_account_removes_only_owned_memory_state() -> None:
@@ -187,27 +194,53 @@ def test_delete_account_removes_only_owned_memory_state() -> None:
         asyncio.run(service.resume_plan(account_id=_ACCOUNT_ID, learner_id=learner_id))
 
 
-def test_imports_valid_signed_state_and_is_idempotent() -> None:
-    source_repository = MemoryRepository()
-    source_service = _service(source_repository)
-    source = asyncio.run(
-        source_service.create_plan(
-            account_id=_ACCOUNT_ID,
-            request=_create_request("source-create-command"),
+def test_imports_legacy_browser_state_once_and_promotes_it_to_durable() -> None:
+    legacy = LearningPlanService(_SECRET).create_plan(
+        PlanRequest(
+            learner_name="Legacy Learner",
+            weekly_hours=8,
+            experience_summary="Pre-database browser state",
+            ratings=[],
         )
     )
+    codec = SignedStateCodec(_SECRET)
+    assert codec.decode(legacy.state_token).storage_mode == "browser"
 
     target_repository = MemoryRepository()
     target_service = _service(target_repository)
     request = PersistentPlanImportRequest(
         idempotency_key="import-command-0001",
-        state_token=source.plan.state_token,
+        state_token=legacy.state_token,
     )
     first = asyncio.run(target_service.import_plan(account_id=_ACCOUNT_ID, request=request))
     second = asyncio.run(target_service.import_plan(account_id=_ACCOUNT_ID, request=request))
 
     assert first == second
     assert first.version == 0
+    assert codec.decode(first.plan.state_token).storage_mode == "durable"
+
+
+def test_rejects_reimport_of_a_durable_token_after_state_is_missing() -> None:
+    source_repository = MemoryRepository()
+    source_service = _service(source_repository)
+    durable = asyncio.run(
+        source_service.create_plan(
+            account_id=_ACCOUNT_ID,
+            request=_create_request("durable-source-create"),
+        )
+    )
+
+    target_service = _service(MemoryRepository())
+    with pytest.raises(LearnerStateNotFoundError):
+        asyncio.run(
+            target_service.import_plan(
+                account_id="22222222-2222-4222-8222-222222222222",
+                request=PersistentPlanImportRequest(
+                    idempotency_key="durable-reimport-command",
+                    state_token=durable.plan.state_token,
+                ),
+            )
+        )
 
 
 def test_rejects_stale_version_and_cross_account_resume() -> None:
