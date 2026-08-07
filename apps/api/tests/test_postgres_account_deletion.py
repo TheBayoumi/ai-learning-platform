@@ -40,17 +40,14 @@ _ACCOUNT_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 
 @pytest.fixture(scope="module", autouse=True)
 def migrated_database() -> Iterator[None]:
+    """Ensure the schema exists without tearing it down for later integration modules."""
     if _DATABASE_URL is None:
         yield
         return
     root = Path(__file__).resolve().parents[1]
     configuration = Config(str(root / "alembic.ini"))
-    command.downgrade(configuration, "base")
     command.upgrade(configuration, "head")
-    try:
-        yield
-    finally:
-        command.downgrade(configuration, "base")
+    yield
 
 
 def state(name: str) -> LearnerState:
@@ -66,6 +63,9 @@ def test_delete_account_cascades_only_the_current_anonymous_account() -> None:
     repository = PostgresLearnerStateRepository(runtime.engine)
     state_a = state("Delete A")
     state_b = state("Keep B")
+
+    asyncio.run(repository.delete_account(account_id=_ACCOUNT_A))
+    asyncio.run(repository.delete_account(account_id=_ACCOUNT_B))
 
     asyncio.run(
         repository.commit(
@@ -135,6 +135,7 @@ def test_delete_account_cascades_only_the_current_anonymous_account() -> None:
         )
 
     assert asyncio.run(counts()) == (1, 1, 1, 1)
+    assert asyncio.run(repository.delete_account(account_id=_ACCOUNT_B)) is True
     asyncio.run(runtime.shutdown())
 
 
