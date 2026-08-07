@@ -1,5 +1,7 @@
 import "server-only";
 
+import Link from "next/link";
+
 import type { ApiAvailability } from "../server/health/runtime-health";
 import { AssessmentCalibration } from "./assessment-calibration";
 import { LearningPlatform } from "./learning-platform";
@@ -68,6 +70,11 @@ export function PlatformShell({ apiAvailability }: PlatformShellProps) {
           learner-attested evidence, and objective planning calibration. Tutor output is guidance,
           not accepted evidence or employment certification.
         </p>
+        <nav aria-label="Publication information">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/status">Status</Link>
+        </nav>
       </footer>
     </main>
   );
