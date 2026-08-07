@@ -9,7 +9,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import ValidationError
-from sqlalchemy import insert, select, update
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -24,6 +24,7 @@ from ai_learning_platform_api.persistence.contracts import (
     PersistenceUnavailableError,
     ReplayDivergenceError,
     StoredLearnerState,
+    validate_account_id,
 )
 from ai_learning_platform_api.persistence.models import (
     accounts,
@@ -68,6 +69,18 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
         if row is None:
             return None
         return _stored_state(row)
+
+    async def delete_account(self, *, account_id: str) -> bool:
+        """Delete one anonymous account and all dependent records by database cascade."""
+        validate_account_id(account_id)
+        try:
+            async with self._engine.begin() as connection:
+                result = await connection.execute(
+                    delete(accounts).where(accounts.c.id == account_id)
+                )
+                return result.rowcount == 1
+        except SQLAlchemyError as error:
+            raise PersistenceUnavailableError from error
 
     async def replay(
         self,
