@@ -98,6 +98,8 @@ class LearnerStateRepository(Protocol):
 
     async def commit(self, request: LearnerStateCommit) -> StoredLearnerState: ...
 
+    async def delete_account(self, *, account_id: str) -> bool: ...
+
 
 class LearnerStateReplayRepository(Protocol):
     """Audit boundary for reconstructing an aggregate from append-only events."""
@@ -108,6 +110,11 @@ class LearnerStateReplayRepository(Protocol):
         account_id: str,
         learner_id: UUID,
     ) -> StoredLearnerState | None: ...
+
+
+def validate_account_id(account_id: str) -> None:
+    """Validate one canonical anonymous-account identifier at public boundaries."""
+    _validate_account_id(account_id)
 
 
 def _validate_account_id(account_id: str) -> None:
