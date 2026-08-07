@@ -1,10 +1,13 @@
 :root {
   color-scheme: dark;
   --bg: #08100f;
+  --background: var(--bg);
   --surface: #101a18;
   --surface-2: #16221f;
   --surface-3: #1d2b27;
+  --surface-strong: var(--surface-2);
   --text: #f3f7f5;
+  --ink: var(--text);
   --muted: #9eada7;
   --line: #2b3a35;
   --accent: #b8f36b;
@@ -139,11 +142,6 @@ select {
   border-radius: 0.75rem;
   background: #0c1513;
   color: var(--text);
-}
-
-input,
-textarea,
-select {
   padding: 0.75rem 0.85rem;
 }
 
