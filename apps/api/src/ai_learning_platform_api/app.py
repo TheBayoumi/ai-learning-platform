@@ -24,6 +24,7 @@ from ai_learning_platform_api.transport.http.persistent_compatibility import (
     PersistentCompatibilityService,
     create_persistent_compatibility_router,
 )
+from ai_learning_platform_api.transport.http.privacy import create_privacy_router
 from ai_learning_platform_api.transport.http.tutoring import create_tutoring_router
 from ai_learning_platform_api.tutoring import (
     DisabledTutorGateway,
@@ -110,10 +111,10 @@ def create_app(
 
     app = FastAPI(
         title="AI Career Learning Platform API",
-        version="0.4.0" if include_product_routes else "0.0.0",
+        version="0.5.0" if include_product_routes else "0.0.0",
         description=(
             "Health, role diagnosis, personalized competency planning, durable learner state, "
-            "bounded AI tutoring, and assessment calibration for the first career-learning slice."
+            "bounded AI tutoring, anonymous data controls, and assessment calibration."
             if include_product_routes
             else "Role-neutral technical foundation endpoints only."
         ),
@@ -130,6 +131,13 @@ def create_app(
             app.include_router(create_learning_router(core_service))
         else:
             app.include_router(create_persistent_compatibility_router(compatibility_service))
+
+        async def delete_current_account(account_id: str) -> bool:
+            if persistent_service is None:
+                return False
+            return await persistent_service.delete_account(account_id=account_id)
+
+        app.include_router(create_privacy_router(delete_current_account))
         assert tutor_service is not None
         assert tutor_limiter is not None
         app.include_router(create_tutoring_router(tutor_service, tutor_limiter))
