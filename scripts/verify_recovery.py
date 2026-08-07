@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ai_learning_platform_api.persistence.database import DatabaseRuntime
 
@@ -79,8 +80,7 @@ async def verify_recovery(
 
             table_rows = await connection.execute(
                 text(
-                    "SELECT table_name FROM information_schema.tables "
-                    "WHERE table_schema = 'public'"
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
                 )
             )
             tables = {str(row[0]) for row in table_rows}
@@ -115,8 +115,10 @@ async def verify_recovery(
         await runtime.shutdown()
 
 
-async def _verify_rollback_only_cascade(connection) -> None:
-    transaction = await connection.begin()
+async def _verify_rollback_only_cascade(
+    connection: AsyncConnection,
+) -> None:
+    transaction = await connection.begin_nested()
     account_id = str(uuid4())
     learner_id = uuid4()
     event_id = uuid4()

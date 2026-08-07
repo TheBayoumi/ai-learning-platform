@@ -35,9 +35,7 @@ def verify_topology(root: Path | None = None) -> dict[str, object]:
     for relative_path in _REQUIRED_PREFERRED_REGION_FILES:
         content = (repository_root / relative_path).read_text(encoding="utf-8")
         if expected_export not in content:
-            raise TopologyVerificationError(
-                f"preferred_region_missing:{relative_path.as_posix()}"
-            )
+            raise TopologyVerificationError(f"preferred_region_missing:{relative_path.as_posix()}")
         checked_files.append(relative_path.as_posix())
 
     return {

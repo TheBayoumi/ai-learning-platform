@@ -4,6 +4,7 @@ import { readApiBaseUrl } from "../../../../server/config/api-base";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const preferredRegion = "pdx1";
 
 const UPSTREAM_TIMEOUT_MS = 8_000;
 const TUTOR_UPSTREAM_TIMEOUT_MS = 35_000;
