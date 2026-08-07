@@ -19,6 +19,13 @@ from ai_learning_platform_api.persistence.contracts import (
 )
 from ai_learning_platform_api.tutoring.contracts import TutorTurnRequest
 from ai_learning_platform_api.tutoring.gateway import TutorGatewayError
+from ai_learning_platform_api.tutoring.limits import (
+    TutorAdmissionError,
+    TutorCapacityError,
+    TutorRateLimitError,
+    TutorTurnLease,
+    TutorTurnLimiter,
+)
 from ai_learning_platform_api.tutoring.service import (
     PreparedTutorTurn,
     TutorService,
@@ -31,7 +38,10 @@ AccountHeader = Annotated[
 ]
 
 
-def create_tutoring_router(service: TutorService) -> APIRouter:
+def create_tutoring_router(
+    service: TutorService,
+    limiter: TutorTurnLimiter,
+) -> APIRouter:
     """Create a streaming tutor endpoint with preflight state validation."""
     router = APIRouter(prefix="/api/v1", tags=["tutoring"])
 
@@ -40,14 +50,20 @@ def create_tutoring_router(service: TutorService) -> APIRouter:
         request: TutorTurnRequest,
         account_header: AccountHeader,
     ) -> StreamingResponse:
-        prepared = await _prepare(
-            lambda: service.prepare(
-                account_id=_uuid(account_header),
-                request=request,
+        account_id = _uuid(account_header)
+        lease = await _admit(lambda: limiter.acquire(account_id))
+        try:
+            prepared = await _prepare(
+                lambda: service.prepare(
+                    account_id=account_id,
+                    request=request,
+                )
             )
-        )
+        except Exception:
+            await lease.release()
+            raise
         return StreamingResponse(
-            _events(service=service, prepared=prepared),
+            _events(service=service, prepared=prepared, lease=lease),
             media_type="text/event-stream",
             headers={
                 "cache-control": "no-store",
@@ -57,6 +73,40 @@ def create_tutoring_router(service: TutorService) -> APIRouter:
         )
 
     return router
+
+
+async def _admit(
+    operation: Callable[[], Awaitable[TutorTurnLease]],
+) -> TutorTurnLease:
+    try:
+        return await operation()
+    except TutorRateLimitError as error:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "TUTOR_RATE_LIMITED",
+                "message": "Too many tutor turns were requested. Try again shortly.",
+            },
+            headers={"Retry-After": str(error.retry_after_seconds)},
+        ) from error
+    except TutorCapacityError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "TUTOR_BUSY",
+                "message": "The tutor is at capacity. Try again shortly.",
+            },
+            headers={"Retry-After": str(error.retry_after_seconds)},
+        ) from error
+    except TutorAdmissionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "TUTOR_ADMISSION_FAILED",
+                "message": "The tutor cannot accept this turn right now.",
+            },
+            headers={"Retry-After": str(error.retry_after_seconds)},
+        ) from error
 
 
 async def _prepare(
@@ -107,33 +157,37 @@ async def _events(
     *,
     service: TutorService,
     prepared: PreparedTutorTurn,
+    lease: TutorTurnLease,
 ) -> AsyncIterator[str]:
-    yield _event(
-        "meta",
-        {
-            "model": prepared.model,
-            "prompt_version": prepared.prompt_version,
-            "authoritative": False,
-        },
-    )
-    produced_text = False
     try:
-        async for delta in service.stream(prepared):
-            produced_text = True
-            yield _event("delta", {"text": delta})
-        if not produced_text:
-            raise TutorGatewayError("tutor provider produced no text")
-        yield _event("done", {"status": "complete"})
-    except TutorGatewayError:
         yield _event(
-            "error",
+            "meta",
             {
-                "code": "TUTOR_PROVIDER_UNAVAILABLE",
-                "message": (
-                    "The tutor response was interrupted. Your learning state was not changed."
-                ),
+                "model": prepared.model,
+                "prompt_version": prepared.prompt_version,
+                "authoritative": False,
             },
         )
+        produced_text = False
+        try:
+            async for delta in service.stream(prepared):
+                produced_text = True
+                yield _event("delta", {"text": delta})
+            if not produced_text:
+                raise TutorGatewayError("tutor provider produced no text")
+            yield _event("done", {"status": "complete"})
+        except TutorGatewayError:
+            yield _event(
+                "error",
+                {
+                    "code": "TUTOR_PROVIDER_UNAVAILABLE",
+                    "message": (
+                        "The tutor response was interrupted. Your learning state was not changed."
+                    ),
+                },
+            )
+    finally:
+        await lease.release()
 
 
 def _event(name: str, payload: dict[str, object]) -> str:
