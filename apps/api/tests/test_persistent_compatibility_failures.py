@@ -111,6 +111,7 @@ def test_transport_maps_safe_failures(
         asyncio.run(_run(operation))
 
     assert captured.value.status_code == expected_status
+    assert isinstance(captured.value.detail, dict)
     assert captured.value.detail["code"] == expected_code
 
 
@@ -121,4 +122,5 @@ def test_request_context_uuid_is_canonicalized_and_rejects_invalid_values() -> N
         _uuid("invalid")
 
     assert captured.value.status_code == 400
+    assert isinstance(captured.value.detail, dict)
     assert captured.value.detail["code"] == "INVALID_REQUEST_CONTEXT"

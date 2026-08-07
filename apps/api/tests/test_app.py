@@ -30,7 +30,8 @@ def test_postgres_mode_wires_durable_compatibility_routes() -> None:
         database_url=SecretStr("postgresql+psycopg://db.example/platform"),
     )
     app = create_app(settings)
-    paths = {route.path for route in app.routes}
+    paths = app.openapi().get("paths")
+    assert isinstance(paths, dict)
 
     assert "/api/v1/plans" in paths
     assert "/api/v1/plans/resume" in paths
@@ -68,14 +69,20 @@ def test_invalid_environment_fails_settings_validation(monkeypatch: pytest.Monke
         Settings()
 
 
-def test_signed_state_mode_does_not_require_database_url() -> None:
+def test_signed_state_mode_does_not_require_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AI_PLATFORM_DATABASE_URL", raising=False)
     settings = Settings(environment="test", persistence_mode="signed_state")
 
     assert settings.persistence_mode == "signed_state"
     assert settings.database_url is None
 
 
-def test_postgres_persistence_requires_database_url() -> None:
+def test_postgres_persistence_requires_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AI_PLATFORM_DATABASE_URL", raising=False)
     with pytest.raises(
         ValidationError,
         match="database_url must be configured for postgres persistence",

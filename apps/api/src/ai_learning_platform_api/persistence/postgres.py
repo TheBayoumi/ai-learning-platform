@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 from pydantic import ValidationError
 from sqlalchemy import insert, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
@@ -30,6 +31,8 @@ from ai_learning_platform_api.persistence.models import (
     learner_states,
     outbox_records,
 )
+
+type RowData = Mapping[str, Any] | RowMapping
 
 
 class PostgresLearnerStateRepository(LearnerStateRepository):
@@ -251,7 +254,7 @@ async def _find_idempotent(
     *,
     account_id: str,
     idempotency_key: str,
-) -> Mapping[str, Any] | None:
+) -> RowMapping | None:
     result = await connection.execute(
         select(
             learner_events.c.account_id,
@@ -268,7 +271,7 @@ async def _find_idempotent(
     return result.mappings().one_or_none()
 
 
-def _idempotent_result(row: Mapping[str, Any], command_hash: str) -> StoredLearnerState:
+def _idempotent_result(row: RowData, command_hash: str) -> StoredLearnerState:
     if row["command_hash"] != command_hash:
         raise IdempotencyConflictError
     return _stored_state(
@@ -282,7 +285,7 @@ def _idempotent_result(row: Mapping[str, Any], command_hash: str) -> StoredLearn
     )
 
 
-def _stored_state(row: Mapping[str, Any]) -> StoredLearnerState:
+def _stored_state(row: RowData) -> StoredLearnerState:
     try:
         state = LearnerState.model_validate(row["state"])
     except ValidationError as error:
