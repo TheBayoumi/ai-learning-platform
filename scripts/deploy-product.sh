@@ -96,6 +96,31 @@ require_json_http_status() {
   fi
 }
 
+extract_first_json_value() {
+  local source=$1
+  local target=$2
+
+  python - "$source" "$target" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+for raw_line in source.read_text(encoding="utf-8", errors="replace").splitlines():
+    line = raw_line.strip()
+    if not line:
+        continue
+    try:
+        value = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    target.write_text(json.dumps(value, separators=(",", ":")) + "\n", encoding="utf-8")
+    raise SystemExit(0)
+raise SystemExit("vercel_candidate_json_missing")
+PY
+}
+
 phase="toolchain"
 node --version
 npm --version
@@ -194,14 +219,18 @@ test -n "$backend_deployment_url"
 
 phase="backend-candidate-verification"
 export VERCEL_TOKEN="$VERCEL_API_TOKEN"
+candidate_health_raw="$RUNNER_TEMP/backend-candidate-health.raw"
 candidate_health="$RUNNER_TEMP/backend-candidate-health.json"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
-  vc curl /health/live --deployment "$backend_deployment_url" >"$candidate_health"
+  vc curl /health/live --deployment "$backend_deployment_url" >"$candidate_health_raw"
+extract_first_json_value "$candidate_health_raw" "$candidate_health"
 jq -e '.status == "ok"' "$candidate_health" >/dev/null
 
+candidate_roles_raw="$RUNNER_TEMP/backend-candidate-roles.raw"
 candidate_roles="$RUNNER_TEMP/backend-candidate-roles.json"
 VERCEL_ORG_ID="$TEAM_ID" VERCEL_PROJECT_ID="$backend_project_id" \
-  vc curl /api/v1/roles --deployment "$backend_deployment_url" >"$candidate_roles"
+  vc curl /api/v1/roles --deployment "$backend_deployment_url" >"$candidate_roles_raw"
+extract_first_json_value "$candidate_roles_raw" "$candidate_roles"
 jq -e 'length == 1 and .[0].id == "junior-python-backend-engineer"' \
   "$candidate_roles" >/dev/null
 unset VERCEL_TOKEN
