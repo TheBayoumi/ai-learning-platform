@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
-from typing_extensions import Annotated
 
 from ai_learning_platform_api.learning.assessment import AssessmentError
 from ai_learning_platform_api.learning.service import LearningPlanError
@@ -75,7 +75,10 @@ async def _prepare(
     except LearnerStateNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "LEARNER_STATE_NOT_FOUND", "message": "The learning plan was not found."},
+            detail={
+                "code": "LEARNER_STATE_NOT_FOUND",
+                "message": "The learning plan was not found.",
+            },
         ) from error
     except LearnerStateConflictError as error:
         raise HTTPException(
@@ -126,13 +129,16 @@ async def _events(
             "error",
             {
                 "code": "TUTOR_PROVIDER_UNAVAILABLE",
-                "message": "The tutor response was interrupted. Your learning state was not changed.",
+                "message": (
+                    "The tutor response was interrupted. Your learning state was not changed."
+                ),
             },
         )
 
 
 def _event(name: str, payload: dict[str, object]) -> str:
-    return f"event: {name}\ndata: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n\n"
+    encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {name}\ndata: {encoded}\n\n"
 
 
 def _uuid(value: str) -> str:
