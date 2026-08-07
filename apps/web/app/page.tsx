@@ -23,7 +23,7 @@ const tracks = [
 
 const steps = [
   ["01", "Choose the work", "Select the career role you actually want to perform, not a generic course category."],
-  ["02", "Diagnose the gap", "Map current evidence and calibration signals against the role competency graph."],
+  ["02", "Rate your current evidence", "Map current evidence and calibration signals against the role competency graph."],
   ["03", "Build proof", "Work through learner-specific missions, projects, reviews, and spaced evidence cycles."],
   ["04", "Earn readiness", "Track what is proven, what is weak, and what still blocks credible role readiness."]
 ] as const;
@@ -48,7 +48,7 @@ export default async function HomePage() {
         </Link>
         <div className={styles.headerActions}>
           <span
-            className={`${styles.status} ${apiAvailability === "available" ? styles.statusOnline : ""}`}
+            className={`${styles.status} service-state-${apiAvailability} ${apiAvailability === "available" ? styles.statusOnline : ""}`}
             role="status"
           >
             {availabilityLabel}
@@ -57,16 +57,16 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <section className={styles.hero}>
+      <section className={styles.hero} aria-labelledby="learning-product-heading">
         <div>
           <p className="eyebrow">Career preparation that adapts to evidence</p>
-          <h1>Learn the role. Prove you can do the work.</h1>
+          <h1 id="learning-product-heading">Learn the role. Prove you can do the work.</h1>
           <p className={styles.heroLead}>
             Choose a target career, show what you already know, and let Career Atlas continuously
             rebuild the path around your gaps, projects, assessments, evidence, and available time.
           </p>
           <div className={styles.actions}>
-            <Link className="button button-primary" href="/onboarding">Choose your career track</Link>
+            <Link className="button button-primary" href="/onboarding">Build your personal path</Link>
             <Link className="button button-quiet" href="/app/roadmap">See the learning workspace</Link>
           </div>
         </div>
