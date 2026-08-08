@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from ai_learning_platform_api.learning.schemas import LearnerState
+from ai_learning_platform_api.learning.schemas import LearnerState, TaskExposureView
 
 _MAX_ACCOUNT_ID_LENGTH = 160
 _MAX_IDEMPOTENCY_KEY_LENGTH = 160
@@ -28,6 +28,10 @@ class LearnerStateNotFoundError(PersistenceError):
 
 class LearnerStateConflictError(PersistenceError):
     """The aggregate version changed before the requested commit completed."""
+
+
+class TaskExposureConflictError(LearnerStateConflictError):
+    """A served task collided with the durable cohort exposure index."""
 
 
 class IdempotencyConflictError(PersistenceError):
@@ -58,7 +62,7 @@ class StoredLearnerState:
 
 @dataclass(frozen=True, slots=True)
 class LearnerStateCommit:
-    """Atomic state, event, idempotency, and outbox commit request."""
+    """Atomic state, event, idempotency, exposure-index, and outbox commit request."""
 
     account_id: str
     learner_id: UUID
@@ -99,6 +103,17 @@ class LearnerStateRepository(Protocol):
     async def commit(self, request: LearnerStateCommit) -> StoredLearnerState: ...
 
     async def delete_account(self, *, account_id: str) -> bool: ...
+
+
+class TaskExposureIndexRepository(Protocol):
+    """History-wide cohort exposure query boundary used before serving new task instances."""
+
+    async def list_recent_task_exposures(
+        self,
+        *,
+        item_family_ids: tuple[str, ...],
+        limit: int = 512,
+    ) -> tuple[TaskExposureView, ...]: ...
 
 
 class LearnerStateReplayRepository(Protocol):
