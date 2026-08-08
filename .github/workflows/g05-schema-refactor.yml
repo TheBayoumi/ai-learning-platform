@@ -27,27 +27,12 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           root = Path('apps/api/src/ai_learning_platform_api')
           schemas = root / 'learning/schemas.py'
           text = schemas.read_text(encoding='utf-8')
-          old_activity = '''class ActivityView(StrictModel):
-              """One unique bounded work item in an adaptive learner plan."""
-
-              id: str
-              competency_id: str
-              competency_name: str
-              title: str
-              objective: str
-              deliverable: str
-              acceptance_criteria: list[str]
-              estimated_minutes: int
-              kind: Literal["build", "review"] = "build"
-              rationale: str = ""
-              generation: int = 0
-              available_from: str | None = None
-          '''.replace('          ', '')
-          new_activity = '''class ActivityView(StrictModel):
+          activity_block = '''class ActivityView(StrictModel):
               """One unique bounded work item with explicit G05 blueprint provenance."""
 
               id: str
@@ -92,28 +77,16 @@ jobs:
               high_stakes_eligible: bool = False
               served_at: str
           '''.replace('          ', '')
-          if old_activity not in text:
-              raise SystemExit('ActivityView block did not match expected source')
-          text = text.replace(old_activity, new_activity, 1)
-          old_plan = '''class LearnerPlanVersion(StrictModel):
-              """Immutable learner-specific curriculum snapshot bound to exact target/profile versions."""
-
-              plan_version_id: str
-              revision: Annotated[int, Field(ge=0)]
-              created_at: str
-              trigger: CurriculumTrigger
-              role_id: str
-              role_version: str
-              graph_version: str
-              evidence_policy_version: str
-              target_fingerprint: str
-              weekly_hours: Annotated[int, Field(ge=2, le=40)]
-              focus_competency_ids: list[str]
-              priorities: list[PlanPrioritySnapshot]
-              activities: list[ActivityView]
-              delta: PlanDeltaView
-          '''.replace('          ', '')
-          new_plan = '''class LearnerPlanVersion(StrictModel):
+          text, count = re.subn(
+              r'class ActivityView\(StrictModel\):.*?(?=\n\nclass PlanPrioritySnapshot)',
+              activity_block.rstrip(),
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f'ActivityView structural replacement count={count}')
+          plan_block = '''class LearnerPlanVersion(StrictModel):
               """Immutable learner-specific curriculum snapshot bound to exact target/profile versions."""
 
               plan_version_id: str
@@ -132,61 +105,90 @@ jobs:
               delta: PlanDeltaView
               task_exposures: list[TaskExposureView] = Field(default_factory=list, max_length=64)
           '''.replace('          ', '')
-          if old_plan not in text:
-              raise SystemExit('LearnerPlanVersion block did not match expected source')
-          schemas.write_text(text.replace(old_plan, new_plan, 1), encoding='utf-8')
+          text, count = re.subn(
+              r'class LearnerPlanVersion\(StrictModel\):.*?(?=\n\nclass EvidenceRecordView)',
+              plan_block.rstrip(),
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f'LearnerPlanVersion structural replacement count={count}')
+          schemas.write_text(text, encoding='utf-8')
 
           blueprints = root / 'learning/blueprints.py'
           text = blueprints.read_text(encoding='utf-8')
-          text = text.replace(
-              'from ai_learning_platform_api.learning.blueprint_contracts import (\n    TaskExposureView,\n    TrustedActivityView,\n)\n',
+          text, count = re.subn(
+              r'from ai_learning_platform_api\.learning\.blueprint_contracts import \(.*?\)\n',
               'from ai_learning_platform_api.learning.schemas import ActivityView, TaskExposureView\n',
+              text,
+              count=1,
+              flags=re.S,
           )
+          if count != 1:
+              raise SystemExit(f'blueprints import replacement count={count}')
           text = text.replace('TrustedActivityView', 'ActivityView')
           blueprints.write_text(text, encoding='utf-8')
 
           service = root / 'learning/blueprint_service.py'
           text = service.read_text(encoding='utf-8')
-          text = text.replace(
-              'from ai_learning_platform_api.learning.blueprint_contracts import (\n    TaskExposureView,\n    TrustedActivityView,\n    TrustedLearnerPlanVersion,\n)\n',
+          text, count = re.subn(
+              r'from ai_learning_platform_api\.learning\.blueprint_contracts import \(.*?\)\n',
               '',
+              text,
+              count=1,
+              flags=re.S,
           )
+          if count != 1:
+              raise SystemExit(f'blueprint service legacy import replacement count={count}')
           text = text.replace('TrustedActivityView', 'ActivityView')
           text = text.replace('TrustedLearnerPlanVersion', 'LearnerPlanVersion')
-          text = text.replace(
-              '    PlanView,\n    TargetView,\n    TrustedEvidenceVerdict,\n',
-              '    PlanView,\n    TargetView,\n    TaskExposureView,\n    TrustedEvidenceVerdict,\n',
-          )
-          text = text.replace(
-              '        prior_exposures = (\n            list(previous.task_exposures)\n            if isinstance(previous, LearnerPlanVersion)\n            else []\n        )\n',
+          if '    TaskExposureView,\n' not in text:
+              text = text.replace(
+                  '    TargetView,\n',
+                  '    TargetView,\n    TaskExposureView,\n',
+                  1,
+              )
+          text, count = re.subn(
+              r'        prior_exposures = \(.*?\n        \)\n',
               '        prior_exposures = list(previous.task_exposures) if previous is not None else []\n',
+              text,
+              count=1,
+              flags=re.S,
           )
+          if count != 1:
+              raise SystemExit(f'prior exposure replacement count={count}')
           text = text.replace(
-              '        trusted = ActivityView.model_validate(base.model_dump(mode="json"))\n        return attach_blueprint_identity(role=role, activity=trusted)\n',
+              '        trusted = ActivityView.model_validate(base.model_dump(mode="json"))\n'
+              '        return attach_blueprint_identity(role=role, activity=trusted)\n',
               '        return attach_blueprint_identity(role=role, activity=base)\n',
           )
           text = text.replace(
-              '        trusted_source = ActivityView.model_validate(source.model_dump(mode="json"))\n        review = ActivityView.model_validate(base.model_dump(mode="json"))\n',
+              '        trusted_source = ActivityView.model_validate(source.model_dump(mode="json"))\n'
+              '        review = ActivityView.model_validate(base.model_dump(mode="json"))\n',
               '        trusted_source = source\n        review = base\n',
           )
           text = text.replace(
               '            activity = ActivityView.model_validate(raw_activity.model_dump(mode="json"))\n',
               '            activity = raw_activity\n',
           )
-          old_tail = '''        payload = base_version.model_dump(mode="json")
-              payload["activities"] = [item.model_dump(mode="json") for item in finalized]
-              payload["task_exposures"] = [item.model_dump(mode="json") for item in exposure_history]
-              return LearnerPlanVersion.model_validate(payload)
-          '''.replace('          ', '')
-          new_tail = '''        return base_version.model_copy(
-              update={"activities": finalized, "task_exposures": exposure_history}
+          text, count = re.subn(
+              r'        payload = base_version\.model_dump\(mode="json"\)\n'
+              r'        payload\["activities"\].*?\n'
+              r'        payload\["task_exposures"\].*?\n'
+              r'        return LearnerPlanVersion\.model_validate\(payload\)\n',
+              '        return base_version.model_copy(\n'
+              '            update={"activities": finalized, "task_exposures": exposure_history}\n'
+              '        )\n',
+              text,
+              count=1,
           )
-          '''.replace('          ', '')
-          if old_tail not in text:
-              raise SystemExit('blueprint service plan tail did not match expected source')
-          text = text.replace(old_tail, new_tail, 1)
+          if count != 1:
+              raise SystemExit(f'plan tail replacement count={count}')
           text = text.replace(
-              '        if source is None or not isinstance(source, ActivityView):\n            raise UntrustedInstanceEvidenceError\n        if not source.high_stakes_eligible:\n',
+              '        if source is None or not isinstance(source, ActivityView):\n'
+              '            raise UntrustedInstanceEvidenceError\n'
+              '        if not source.high_stakes_eligible:\n',
               '        if source is None or not source.high_stakes_eligible:\n',
           )
           service.write_text(text, encoding='utf-8')
@@ -202,23 +204,30 @@ jobs:
 
           persistence = root / 'persistence/service.py'
           text = persistence.read_text(encoding='utf-8')
-          text = text.replace(
-              'from ai_learning_platform_api.learning.service import LearningPlanService, SignedStateCodec\n',
-              'from ai_learning_platform_api.learning import LearningPlanService\n'
-              'from ai_learning_platform_api.learning.service import SignedStateCodec\n',
+          old_import = (
+              'from ai_learning_platform_api.learning.service import LearningPlanService, SignedStateCodec\n'
           )
-          persistence.write_text(text, encoding='utf-8')
+          if old_import not in text:
+              raise SystemExit('persistence learning service import did not match expected source')
+          persistence.write_text(
+              text.replace(
+                  old_import,
+                  'from ai_learning_platform_api.learning import LearningPlanService\n'
+                  'from ai_learning_platform_api.learning.service import SignedStateCodec\n',
+                  1,
+              ),
+              encoding='utf-8',
+          )
 
           legacy = root / 'learning/blueprint_contracts.py'
           if legacy.exists():
               legacy.unlink()
           PY
-      - name: Apply canonical static fixes
+      - name: Apply canonical Ruff fixes
         working-directory: apps/api
         run: |
           uv run --locked ruff check --fix src tests
           uv run --locked ruff format src tests
-          uv run --locked mypy src tests ../../scripts
       - name: Commit canonical schema refactor
         run: |
           git diff --check
@@ -227,3 +236,6 @@ jobs:
           git add -A apps/api
           git commit -m 'Refactor G05 into canonical typed schemas'
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
+      - name: Verify strict typing after commit
+        working-directory: apps/api
+        run: uv run --locked mypy src tests ../../scripts
