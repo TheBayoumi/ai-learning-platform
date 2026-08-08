@@ -21,6 +21,10 @@ function isActive(pathname: string, href: string): boolean {
   return href === "/app" ? pathname === href : pathname.startsWith(href);
 }
 
+function claimLabel(value: string): string {
+  return value.replaceAll("_", " ");
+}
+
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const pathname = usePathname();
   const { plan, loading, error } = useCareerApp();
@@ -59,7 +63,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
           <div className={styles.topActions}>
             {plan !== null ? (
               <span className={styles.readiness}>
-                readiness <strong>{plan.readiness_percent}%</strong>
+                claim <strong>{claimLabel(plan.claim_state)}</strong>
               </span>
             ) : null}
             <Link className="button button-quiet" href="/onboarding">

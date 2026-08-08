@@ -61,6 +61,15 @@ export async function resumePlan(stateToken: string): Promise<PlanView> {
 export async function createPlan(body: Readonly<{
   learner_name: string;
   target_role: string;
+  target: Readonly<{
+    seniority: string;
+    labor_market: string;
+    timeline_weeks: number;
+    geography: string;
+    stack_overlays: readonly string[];
+    industry_overlay: string | null;
+    company_overlay: string | null;
+  }>;
   weekly_hours: number;
   experience_summary: string;
   ratings: readonly Readonly<{ competency_id: string; score: number }>[];

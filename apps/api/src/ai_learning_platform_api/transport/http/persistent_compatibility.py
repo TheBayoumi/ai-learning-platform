@@ -193,7 +193,8 @@ class PersistentCompatibilityService:
         account_id: str,
         state_token: str,
     ) -> PersistentPlanView:
-        supplied_state = self._codec.decode(state_token)
+        supplied_plan = self._core.resume(state_token)
+        supplied_state = self._codec.decode(supplied_plan.state_token)
         current = await self._persistent.resume_plan(
             account_id=account_id,
             learner_id=UUID(supplied_state.learner_id),

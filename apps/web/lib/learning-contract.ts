@@ -6,11 +6,28 @@ export interface CompetencyView {
   readonly weight: number;
 }
 
+export interface TargetView {
+  readonly role_id: string;
+  readonly role_version: string;
+  readonly seniority: string;
+  readonly labor_market: string;
+  readonly timeline_weeks: number;
+  readonly geography: string;
+  readonly stack_overlays: readonly string[];
+  readonly industry_overlay: string | null;
+  readonly company_overlay: string | null;
+  readonly validation_state: "provisional" | "approved";
+  readonly scope: string;
+  readonly exclusions: readonly string[];
+}
+
 export interface RoleView {
   readonly id: string;
   readonly version: string;
   readonly title: string;
   readonly summary: string;
+  readonly validation_state: "provisional" | "approved";
+  readonly default_target: TargetView;
   readonly competencies: readonly CompetencyView[];
 }
 
@@ -18,10 +35,10 @@ export interface PriorityCompetencyView {
   readonly id: string;
   readonly name: string;
   readonly category: string;
-  readonly mastery_percent: number;
-  readonly effective_percent: number;
+  readonly planning_signal_percent: number;
+  readonly diagnostic_signal_percent: number;
   readonly assessment_percent: number | null;
-  readonly gap_percent: number;
+  readonly priority_gap_percent: number;
   readonly focused: boolean;
 }
 
@@ -50,7 +67,7 @@ export interface EvidenceRecordView {
   readonly evidence_reference: string;
   readonly criteria_met: readonly string[];
   readonly confidence: number;
-  readonly provisional_mastery_delta: number;
+  readonly planning_signal_delta: number;
   readonly next_review_at: string;
 }
 
@@ -92,13 +109,22 @@ export interface AssessmentFeedbackView {
   readonly explanation: string;
 }
 
+export type ClaimState =
+  | "engineering_available"
+  | "validation_locked"
+  | "partial_profile_evidence"
+  | "ready_against_profile";
+
 export interface PlanView {
   readonly state_token: string;
   readonly learner_id: string;
   readonly learner_name: string;
   readonly role: RoleView;
-  readonly readiness_percent: number;
-  readonly evidence_readiness_percent: number;
+  readonly target: TargetView;
+  readonly claim_state: ClaimState;
+  readonly verified_readiness_percent: number | null;
+  readonly planning_signal_percent: number;
+  readonly diagnostic_signal_percent: number;
   readonly assessment_coverage_percent: number;
   readonly priority_competencies: readonly PriorityCompetencyView[];
   readonly current_activity: ActivityView | null;
@@ -144,6 +170,24 @@ function isCompetency(value: unknown): value is CompetencyView {
   );
 }
 
+function isTarget(value: unknown): value is TargetView {
+  return (
+    isRecord(value) &&
+    typeof value.role_id === "string" &&
+    typeof value.role_version === "string" &&
+    typeof value.seniority === "string" &&
+    typeof value.labor_market === "string" &&
+    typeof value.timeline_weeks === "number" &&
+    typeof value.geography === "string" &&
+    isStringArray(value.stack_overlays) &&
+    (value.industry_overlay === null || typeof value.industry_overlay === "string") &&
+    (value.company_overlay === null || typeof value.company_overlay === "string") &&
+    (value.validation_state === "provisional" || value.validation_state === "approved") &&
+    typeof value.scope === "string" &&
+    isStringArray(value.exclusions)
+  );
+}
+
 function isRole(value: unknown): value is RoleView {
   return (
     isRecord(value) &&
@@ -151,6 +195,8 @@ function isRole(value: unknown): value is RoleView {
     typeof value.version === "string" &&
     typeof value.title === "string" &&
     typeof value.summary === "string" &&
+    (value.validation_state === "provisional" || value.validation_state === "approved") &&
+    isTarget(value.default_target) &&
     Array.isArray(value.competencies) &&
     value.competencies.every(isCompetency)
   );
@@ -162,10 +208,10 @@ function isPriority(value: unknown): value is PriorityCompetencyView {
     typeof value.id === "string" &&
     typeof value.name === "string" &&
     typeof value.category === "string" &&
-    typeof value.mastery_percent === "number" &&
-    typeof value.effective_percent === "number" &&
+    typeof value.planning_signal_percent === "number" &&
+    typeof value.diagnostic_signal_percent === "number" &&
     (value.assessment_percent === null || typeof value.assessment_percent === "number") &&
-    typeof value.gap_percent === "number" &&
+    typeof value.priority_gap_percent === "number" &&
     typeof value.focused === "boolean"
   );
 }
@@ -200,7 +246,7 @@ function isEvidence(value: unknown): value is EvidenceRecordView {
     typeof value.evidence_reference === "string" &&
     isStringArray(value.criteria_met) &&
     typeof value.confidence === "number" &&
-    typeof value.provisional_mastery_delta === "number" &&
+    typeof value.planning_signal_delta === "number" &&
     typeof value.next_review_at === "string"
   );
 }
@@ -235,6 +281,15 @@ function isAssessmentQuestion(value: unknown): value is AssessmentQuestionView {
   );
 }
 
+function isClaimState(value: unknown): value is ClaimState {
+  return (
+    value === "engineering_available" ||
+    value === "validation_locked" ||
+    value === "partial_profile_evidence" ||
+    value === "ready_against_profile"
+  );
+}
+
 export function isRoleList(value: unknown): value is readonly RoleView[] {
   return Array.isArray(value) && value.length > 0 && value.every(isRole);
 }
@@ -246,8 +301,12 @@ export function isPlanView(value: unknown): value is PlanView {
     typeof value.learner_id === "string" &&
     typeof value.learner_name === "string" &&
     isRole(value.role) &&
-    typeof value.readiness_percent === "number" &&
-    typeof value.evidence_readiness_percent === "number" &&
+    isTarget(value.target) &&
+    isClaimState(value.claim_state) &&
+    (value.verified_readiness_percent === null ||
+      typeof value.verified_readiness_percent === "number") &&
+    typeof value.planning_signal_percent === "number" &&
+    typeof value.diagnostic_signal_percent === "number" &&
     typeof value.assessment_coverage_percent === "number" &&
     Array.isArray(value.priority_competencies) &&
     value.priority_competencies.every(isPriority) &&

@@ -22,10 +22,10 @@ const tracks = [
 ] as const;
 
 const steps = [
-  ["01", "Choose the work", "Select the career role you actually want to perform, not a generic course category."],
-  ["02", "Rate your current evidence", "Map current evidence and calibration signals against the role competency graph."],
-  ["03", "Build proof", "Work through learner-specific missions, projects, reviews, and spaced evidence cycles."],
-  ["04", "Earn readiness", "Track what is proven, what is weak, and what still blocks credible role readiness."]
+  ["01", "Resolve the Target", "Bind the plan to a role version, seniority, labor market, timeline, geography, and explicit overlays."],
+  ["02", "Rate your current evidence", "Use self-report only to decide where diagnosis and stronger evidence should start."],
+  ["03", "Build and verify proof", "Work through learner-specific missions, calibrations, reviews, and progressively stronger evidence checks."],
+  ["04", "Unlock readiness only from evidence", "Keep readiness locked until independent performance, retention, transfer, provenance, and realistic-work gates support it."]
 ] as const;
 
 export default async function HomePage() {
@@ -59,11 +59,12 @@ export default async function HomePage() {
 
       <section className={styles.hero} aria-labelledby="learning-product-heading">
         <div>
-          <p className="eyebrow">Career preparation that adapts to evidence</p>
+          <p className="eyebrow">Career preparation that separates planning signals from proof</p>
           <h1 id="learning-product-heading">Learn the role. Prove you can do the work.</h1>
           <p className={styles.heroLead}>
-            Choose a target career, show what you already know, and let Career Atlas continuously
-            rebuild the path around your gaps, projects, assessments, evidence, and available time.
+            Resolve the exact career Target, use self-report to prioritize diagnosis, and let Career
+            Atlas rebuild the path as stronger evidence, assessments, reviews, constraints, and
+            available time change. Readiness stays locked until the required proof exists.
           </p>
           <div className={styles.actions}>
             <Link className="button button-primary" href="/onboarding">Build your personal path</Link>
@@ -72,7 +73,7 @@ export default async function HomePage() {
         </div>
 
         <aside className={styles.heroPanel} aria-label="Available career tracks">
-          <p className={styles.panelLabel}>Starter career catalog</p>
+          <p className={styles.panelLabel}>Provisional engineering catalog</p>
           <div className={styles.trackList}>
             {tracks.map(([title, description]) => (
               <div className={styles.track} key={title}>
@@ -86,10 +87,11 @@ export default async function HomePage() {
 
       <section className={styles.workflow} aria-labelledby="workflow-title">
         <div className={styles.workflowHeader}>
-          <h2 id="workflow-title">One system from target role to credible readiness.</h2>
+          <h2 id="workflow-title">One control loop toward credible role evidence.</h2>
           <p>
-            Curriculum is a projection of your current evidence state. Completing work, failing a
-            calibration, changing capacity, or choosing a focus can change what comes next.
+            Curriculum is a projection of the resolved Target and current evidence state. Learner
+            attestation can change what comes next, but only independent validated evidence may
+            eventually support mastery and readiness.
           </p>
         </div>
         <div className={styles.steps}>
@@ -104,7 +106,7 @@ export default async function HomePage() {
       </section>
 
       <footer className={styles.footer}>
-        <span>Career Atlas uses evidence and calibration signals; it does not certify employment.</span>
+        <span>Career Atlas is validation-locked; it does not certify employment or current role readiness.</span>
         <nav aria-label="Publication information">
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>

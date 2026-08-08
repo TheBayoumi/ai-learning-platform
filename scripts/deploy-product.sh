@@ -210,6 +210,8 @@ phase="backend-public-verification"
 retry_json_endpoint "$backend_url/health/live" '.status == "ok"'
 retry_json_endpoint "$backend_url/api/v1/roles" \
   'length == 1 and .[0].id == "junior-python-backend-engineer"'
+retry_json_endpoint "$backend_url/api/v1/career-tracks" \
+  'length == 3 and all(.[]; .validation_state == "provisional" and (.default_target.role_id | length > 2))'
 
 phase="frontend-connection"
 if test "$GITHUB_REF" = "refs/heads/main"; then
@@ -264,6 +266,7 @@ if test "$page_status" != "200"; then
 fi
 grep -F "Career Atlas" "$page_file" >/dev/null
 grep -F "Learning service online" "$page_file" >/dev/null
+grep -F "Readiness stays locked" "$page_file" >/dev/null
 
 phase="deployed-plan-create"
 plan="$RUNNER_TEMP/deployed-plan.json"
@@ -275,6 +278,15 @@ plan_status=$(curl -sS "${frontend_access_headers[@]}" \
   --data '{
     "learner_name":"Deployment Evidence Learner",
     "target_role":"junior-python-backend-engineer",
+    "target":{
+      "seniority":"Entry-level / junior individual contributor",
+      "labor_market":"Egypt and MENA local roles or English-speaking remote roles",
+      "timeline_weeks":20,
+      "geography":"Egypt / MENA",
+      "stack_overlays":["Python","FastAPI","PostgreSQL","Automated testing"],
+      "industry_overlay":null,
+      "company_overlay":null
+    },
     "weekly_hours":8,
     "experience_summary":"Backend deployment verification",
     "ratings":[
@@ -286,6 +298,18 @@ plan_status=$(curl -sS "${frontend_access_headers[@]}" \
 require_json_http_status "plan-create" "201" "$plan_status" "$plan"
 jq -e '.state_token | length > 20' "$plan" >/dev/null
 jq -e '.current_activity.id | length > 5' "$plan" >/dev/null
+jq -e '
+  .target.role_id == "junior-python-backend-engineer"
+  and .target.role_version == "2026.07-provisional-1"
+  and .target.seniority == "Entry-level / junior individual contributor"
+  and .target.timeline_weeks == 20
+  and .claim_state == "validation_locked"
+  and .verified_readiness_percent == null
+  and (.planning_signal_percent | type) == "number"
+  and (.diagnostic_signal_percent | type) == "number"
+  and (has("readiness_percent") | not)
+  and (has("evidence_readiness_percent") | not)
+' "$plan" >/dev/null
 
 phase="deployed-plan-resume"
 resume_payload="$RUNNER_TEMP/resume-payload.json"
@@ -299,7 +323,13 @@ resume_status=$(curl -sS "${frontend_access_headers[@]}" \
   --data-binary "@$resume_payload" \
   -o "$resume_response" -w '%{http_code}')
 require_json_http_status "plan-resume" "200" "$resume_status" "$resume_response"
-jq -e '.sequence == 0 and .completed_count == 0' "$resume_response" >/dev/null
+jq -e '
+  .sequence == 0
+  and .completed_count == 0
+  and .claim_state == "validation_locked"
+  and .verified_readiness_percent == null
+  and .target.role_id == "junior-python-backend-engineer"
+' "$resume_response" >/dev/null
 
 phase="deployed-progress"
 progress_payload="$RUNNER_TEMP/progress-payload.json"
@@ -315,7 +345,13 @@ progress_status=$(curl -sS "${frontend_access_headers[@]}" \
   --data-binary "@$progress_payload" \
   -o "$progress" -w '%{http_code}')
 require_json_http_status "progress" "200" "$progress_status" "$progress"
-jq -e '.sequence == 1 and .completed_count == 1' "$progress" >/dev/null
+jq -e '
+  .sequence == 1
+  and .completed_count == 1
+  and .claim_state == "validation_locked"
+  and .verified_readiness_percent == null
+  and (.evidence_history[-1].planning_signal_delta | type) == "number"
+' "$progress" >/dev/null
 
 phase="deployed-progressed-resume"
 progressed_resume_payload="$RUNNER_TEMP/progressed-resume-payload.json"
@@ -330,7 +366,12 @@ progressed_resume_status=$(curl -sS "${frontend_access_headers[@]}" \
   -o "$progressed_resume_response" -w '%{http_code}')
 require_json_http_status \
   "post-progress-resume" "200" "$progressed_resume_status" "$progressed_resume_response"
-jq -e '.sequence == 1 and .completed_count == 1' "$progressed_resume_response" >/dev/null
+jq -e '
+  .sequence == 1
+  and .completed_count == 1
+  and .claim_state == "validation_locked"
+  and .verified_readiness_percent == null
+' "$progressed_resume_response" >/dev/null
 
 phase="deployed-account-deletion"
 # Account deletion is part of the release contract, not an optional UI-only control.
@@ -368,10 +409,12 @@ jq -n \
   --arg backend_url "$backend_url" \
   --arg frontend_project_id "$FRONTEND_PROJECT_ID" \
   --arg frontend_url "$frontend_url" \
-  --argjson initial_readiness "$(jq '.readiness_percent' "$plan")" \
-  --argjson progressed_readiness "$(jq '.readiness_percent' "$progress")" \
+  --arg claim_state "$(jq -r '.claim_state' "$plan")" \
+  --arg target_role "$(jq -r '.target.role_id' "$plan")" \
+  --argjson initial_planning_signal "$(jq '.planning_signal_percent' "$plan")" \
+  --argjson progressed_planning_signal "$(jq '.planning_signal_percent' "$progress")" \
   '{
-    schema_version:1,
+    schema_version:2,
     result:"PASSED",
     commit_sha:$commit_sha,
     environment:$environment,
@@ -381,7 +424,8 @@ jq -n \
       public_url:$backend_url,
       public_access:"ok",
       health:"ok",
-      role_catalog:"ok"
+      role_catalog:"ok",
+      career_track_catalog:"ok"
     },
     frontend:{project_id:$frontend_project_id,url:$frontend_url,page:"ok",proxy:"ok"},
     journey:{
@@ -391,7 +435,10 @@ jq -n \
       post_progress_resume:"ok",
       deletion:"ok",
       post_delete_resume:"blocked",
-      initial_readiness:$initial_readiness,
-      progressed_readiness:$progressed_readiness
+      target_role:$target_role,
+      claim_state:$claim_state,
+      verified_readiness:"locked",
+      initial_planning_signal:$initial_planning_signal,
+      progressed_planning_signal:$progressed_planning_signal
     }
   }' >"$EVIDENCE_PATH"

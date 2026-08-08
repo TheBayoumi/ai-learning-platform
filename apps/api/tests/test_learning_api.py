@@ -37,6 +37,9 @@ def test_role_catalog_exposes_versioned_python_backend_profile() -> None:
     assert len(roles) == 1
     assert roles[0]["id"] == "junior-python-backend-engineer"
     assert roles[0]["version"] == "2026.07-provisional-1"
+    assert roles[0]["validation_state"] == "provisional"
+    assert roles[0]["default_target"]["role_id"] == "junior-python-backend-engineer"
+    assert roles[0]["default_target"]["timeline_weeks"] == 20
     assert {item["id"] for item in roles[0]["competencies"]} >= {
         "python",
         "fastapi",
@@ -69,7 +72,10 @@ def test_create_resume_and_complete_evidence_cycle_round_trip() -> None:
     current = created["current_activity"]
     assert created["learner_name"] == "Mahmoud"
     assert created["role"]["id"] == "junior-python-backend-engineer"
-    assert created["readiness_percent"] > 0
+    assert created["target"]["role_version"] == "2026.07-provisional-1"
+    assert created["claim_state"] == "validation_locked"
+    assert created["verified_readiness_percent"] is None
+    assert created["planning_signal_percent"] > 0
     assert created["completed_count"] == 0
     assert created["total_count"] == 5
     assert created["plan_revision"] == 0
@@ -78,6 +84,7 @@ def test_create_resume_and_complete_evidence_cycle_round_trip() -> None:
     assert current["id"].startswith("activity-build-")
     assert current["kind"] == "build"
     assert current["rationale"]
+    assert "not verified mastery" in current["rationale"]
     assert "Mahmoud" in current["objective"]
 
     resumed_response = asyncio.run(
@@ -115,7 +122,9 @@ def test_create_resume_and_complete_evidence_cycle_round_trip() -> None:
     assert progressed["total_count"] == 6
     assert progressed["sequence"] == 1
     assert progressed["current_activity"]["id"] != current["id"]
-    assert progressed["readiness_percent"] >= created["readiness_percent"]
+    assert progressed["planning_signal_percent"] >= created["planning_signal_percent"]
+    assert progressed["verified_readiness_percent"] is None
+    assert progressed["claim_state"] == "validation_locked"
     assert progressed["state_token"] != created["state_token"]
     assert progressed["next_review_at"] is not None
     assert len(progressed["evidence_history"]) == 1
@@ -123,7 +132,7 @@ def test_create_resume_and_complete_evidence_cycle_round_trip() -> None:
     assert evidence["activity_id"] == current["id"]
     assert evidence["criteria_met"] == current["acceptance_criteria"][:2]
     assert evidence["confidence"] == 3
-    assert evidence["provisional_mastery_delta"] > 0
+    assert evidence["planning_signal_delta"] > 0
     assert evidence["evidence_reference"].endswith("/pull/7")
 
 
@@ -197,11 +206,12 @@ def test_replan_prioritizes_focus_and_preserves_evidence() -> None:
     assert replanned["weekly_hours"] == 6
     assert replanned["focus_competency_ids"] == ["fastapi", "postgresql"]
     assert replanned["evidence_history"] == progressed["evidence_history"]
-    assert replanned["total_count"] == 5  # one pending review plus four build missions
+    assert replanned["total_count"] == 5
     assert replanned["current_activity"]["competency_id"] == "fastapi"
     assert replanned["current_activity"]["generation"] == 1
     focused = [item for item in replanned["priority_competencies"] if item["focused"]]
     assert [item["id"] for item in focused] == ["fastapi", "postgresql"]
+    assert replanned["verified_readiness_percent"] is None
 
 
 def test_invalid_evidence_and_replan_focus_fail_closed() -> None:

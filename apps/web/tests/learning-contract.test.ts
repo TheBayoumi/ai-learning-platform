@@ -2,11 +2,28 @@ import { describe, expect, it } from "vitest";
 
 import { isPlanView, isRoleList, readPlatformError } from "../lib/learning-contract";
 
+const target = {
+  role_id: "junior-python-backend-engineer",
+  role_version: "2026.07-provisional-1",
+  seniority: "Entry-level / junior individual contributor",
+  labor_market: "Egypt and MENA local roles or English-speaking remote roles",
+  timeline_weeks: 20,
+  geography: "Egypt / MENA",
+  stack_overlays: ["Python", "FastAPI", "PostgreSQL"],
+  industry_overlay: null,
+  company_overlay: null,
+  validation_state: "provisional" as const,
+  scope: "Provisional adult B2C preparation.",
+  exclusions: ["No employment guarantee."]
+};
+
 const role = {
   id: "junior-python-backend-engineer",
   version: "2026.07-provisional-1",
   title: "Junior Python Backend Engineer",
   summary: "Role",
+  validation_state: "provisional" as const,
+  default_target: target,
   competencies: [
     {
       id: "python",
@@ -28,7 +45,7 @@ const activity = {
   acceptance_criteria: ["Typed", "Tested"],
   estimated_minutes: 90,
   kind: "build",
-  rationale: "Current gap and role weight",
+  rationale: "Current planning priority and role weight",
   generation: 0,
   available_from: null
 };
@@ -43,7 +60,7 @@ const evidence = {
   evidence_reference: "pull/7",
   criteria_met: ["Typed", "Tested"],
   confidence: 3,
-  provisional_mastery_delta: 18,
+  planning_signal_delta: 18,
   next_review_at: "2026-07-31T12:00:00+00:00"
 };
 
@@ -62,18 +79,21 @@ const validPlan = {
   learner_id: "learner-1",
   learner_name: "Mahmoud",
   role,
-  readiness_percent: 48,
-  evidence_readiness_percent: 25,
+  target,
+  claim_state: "validation_locked" as const,
+  verified_readiness_percent: null,
+  planning_signal_percent: 25,
+  diagnostic_signal_percent: 48,
   assessment_coverage_percent: 10,
   priority_competencies: [
     {
       id: "python",
       name: "Python engineering",
       category: "language",
-      mastery_percent: 25,
-      effective_percent: 48,
+      planning_signal_percent: 25,
+      diagnostic_signal_percent: 48,
       assessment_percent: 100,
-      gap_percent: 52,
+      priority_gap_percent: 52,
       focused: true
     }
   ],
@@ -90,12 +110,12 @@ const validPlan = {
 };
 
 describe("learning contract guards", () => {
-  it("accepts evidence, calibration, and blended plan projections", () => {
+  it("accepts resolved targets and validation-locked planning projections", () => {
     expect(isRoleList([role])).toBe(true);
     expect(isPlanView(validPlan)).toBe(true);
   });
 
-  it("rejects malformed nested adaptive data", () => {
+  it("rejects malformed nested adaptive data and fake readiness claims", () => {
     expect(isRoleList([{ ...role, competencies: [{ id: "python" }] }])).toBe(false);
     expect(
       isPlanView({
@@ -115,6 +135,7 @@ describe("learning contract guards", () => {
         assessment_history: [{ ...assessment, competency_scores: { python: "high" } }]
       })
     ).toBe(false);
+    expect(isPlanView({ ...validPlan, claim_state: "made-up" })).toBe(false);
   });
 
   it("extracts only the stable public error message", () => {

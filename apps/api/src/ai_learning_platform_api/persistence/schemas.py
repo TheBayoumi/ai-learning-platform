@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import Field
@@ -14,6 +14,7 @@ from ai_learning_platform_api.learning.schemas import (
     CompetencyRating,
     PlanView,
     StrictModel,
+    TargetRequest,
 )
 
 IdempotencyKey = Annotated[str, Field(min_length=16, max_length=160, pattern=r"^[^\s]+$")]
@@ -24,7 +25,10 @@ class PersistentPlanCreateRequest(StrictModel):
 
     idempotency_key: IdempotencyKey
     learner_name: Annotated[str, Field(min_length=2, max_length=80)]
-    target_role: Literal["junior-python-backend-engineer"] = "junior-python-backend-engineer"
+    target_role: Annotated[str, Field(min_length=2, max_length=80)] = (
+        "junior-python-backend-engineer"
+    )
+    target: TargetRequest | None = None
     weekly_hours: Annotated[int, Field(ge=2, le=40)] = 8
     experience_summary: Annotated[str, Field(min_length=0, max_length=600)] = ""
     ratings: Annotated[list[CompetencyRating], Field(max_length=32)] = Field(default_factory=list)
@@ -46,7 +50,7 @@ class PersistentMutationRequest(StrictModel):
 
 
 class PersistentProgressRequest(PersistentMutationRequest):
-    """Record learner-attested evidence against a durable aggregate."""
+    """Record learner-attested work against a durable aggregate."""
 
     activity_id: Annotated[str, Field(min_length=1, max_length=160)]
     reflection: Annotated[str, Field(min_length=0, max_length=1_000)] = ""
@@ -70,7 +74,7 @@ class PersistentAssessmentStartRequest(StrictModel):
 
 
 class PersistentAssessmentSubmitRequest(PersistentMutationRequest):
-    """Score and persist an assessment-informed state transition."""
+    """Score and persist an assessment-informed planning transition."""
 
     attempt_token: Annotated[str, Field(min_length=20, max_length=16_384)]
     answers: Annotated[list[AssessmentAnswer], Field(min_length=1, max_length=4)]

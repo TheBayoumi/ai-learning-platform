@@ -45,7 +45,7 @@ export function LearningView() {
       setCriteriaMet([]);
       setConfidence(0);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Evidence could not be recorded.");
+      setError(caught instanceof Error ? caught.message : "Work record could not be saved.");
     } finally {
       setBusy(false);
     }
@@ -59,7 +59,7 @@ export function LearningView() {
         description={
           activity === null
             ? "Use the roadmap to replan focus or wait for the next scheduled review."
-            : activity.rationale || "This mission is selected from your current role gaps and learning state."
+            : activity.rationale || "This mission is selected from your current planning priorities."
         }
       />
 
@@ -85,8 +85,12 @@ export function LearningView() {
           </article>
 
           <article className={styles.formCard}>
-            <span className={styles.label}>Evidence submission</span>
-            <h2>Record what you actually proved.</h2>
+            <span className={styles.label}>Work record</span>
+            <h2>Record what you did so the engine can decide what to verify next.</h2>
+            <p>
+              Checking criteria and confidence here is learner attestation. It can change planning
+              priority and schedule review, but it cannot grant verified mastery or readiness.
+            </p>
             <form className={styles.form} onSubmit={submit}>
               <div className={styles.checks}>
                 {activity.acceptance_criteria.map((criterion) => (
@@ -115,12 +119,12 @@ export function LearningView() {
                   maxLength={1000}
                   value={reflection}
                   onChange={(event) => setReflection(event.target.value)}
-                  placeholder="What did you build, what failed, what changed, and what can you now defend?"
+                  placeholder="What did you build, what failed, what changed, and what should the platform verify next?"
                 />
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="evidence-reference">Evidence reference</label>
+                <label htmlFor="evidence-reference">Work reference</label>
                 <input
                   id="evidence-reference"
                   maxLength={500}
@@ -131,7 +135,7 @@ export function LearningView() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="confidence">Confidence · {confidence}/4</label>
+                <label htmlFor="confidence">Self-reported confidence · {confidence}/4</label>
                 <input
                   id="confidence"
                   type="range"
@@ -144,7 +148,7 @@ export function LearningView() {
               </div>
 
               <button className="button button-primary" disabled={busy} type="submit">
-                {busy ? "Recording evidence…" : "Complete mission with evidence"}
+                {busy ? "Recording work…" : "Record mission completion"}
               </button>
             </form>
           </article>
