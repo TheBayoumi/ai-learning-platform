@@ -5,9 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ai_learning_platform_api.learning import LearningPlanService
-from ai_learning_platform_api.learning.blueprint_service import (
-    UntrustedInstanceEvidenceError,
-)
+from ai_learning_platform_api.learning.blueprint_service import UntrustedInstanceEvidenceError
 from ai_learning_platform_api.learning.blueprints import (
     BlueprintTrustError,
     attach_blueprint_identity,
@@ -23,6 +21,7 @@ from ai_learning_platform_api.learning.schemas import (
     CollisionFingerprintView,
     PlanRequest,
     ProgressRequest,
+    ReplanRequest,
     TrustedEvidenceVerdict,
 )
 from ai_learning_platform_api.learning.service import LearningPlanError
@@ -192,11 +191,11 @@ def test_rebind_rejects_unknown_role_missing_active_plan_and_missing_previous_sn
         )
 
     replanned = service.replan(
-        {
-            "state_token": plan.state_token,
-            "weekly_hours": plan.weekly_hours,
-            "focus_competency_ids": [],
-        }
+        ReplanRequest(
+            state_token=plan.state_token,
+            weekly_hours=plan.weekly_hours,
+            focus_competency_ids=[],
+        )
     )
     replanned_state = service._codec.decode(replanned.state_token)
     active = service._active_plan_version(replanned_state)
