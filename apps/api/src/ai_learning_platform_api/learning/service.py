@@ -103,9 +103,12 @@ def _urlsafe_encode(value: bytes) -> str:
 def _urlsafe_decode(value: str) -> bytes:
     padding = "=" * (-len(value) % 4)
     try:
-        return base64.urlsafe_b64decode(value + padding)
+        decoded = base64.urlsafe_b64decode(value + padding)
     except (ValueError, UnicodeEncodeError) as error:
         raise InvalidStateTokenError from error
+    if _urlsafe_encode(decoded) != value:
+        raise InvalidStateTokenError
+    return decoded
 
 
 def _parse_timestamp(value: str) -> datetime:
