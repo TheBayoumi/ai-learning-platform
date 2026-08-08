@@ -258,15 +258,27 @@ chmod 600 "$cookie_jar"
 
 phase="deployed-page-verification"
 page_file="$RUNNER_TEMP/deployed-page.html"
-page_status=$(curl -sS "${frontend_access_headers[@]}" \
-  -o "$page_file" -w '%{http_code}' "$frontend_url/")
-if test "$page_status" != "200"; then
-  printf 'deployment verification failed: page HTTP %s\n' "$page_status" >&2
+page_status="000"
+page_verified=false
+for attempt in {1..12}; do
+  page_status=$(curl -sS "${frontend_access_headers[@]}" \
+    -o "$page_file" -w '%{http_code}' "$frontend_url/" || printf '000')
+  if test "$page_status" = "200" \
+    && grep -F "Career Atlas" "$page_file" >/dev/null \
+    && grep -F "Learning service online" "$page_file" >/dev/null \
+    && grep -F "Readiness stays locked" "$page_file" >/dev/null; then
+    page_verified=true
+    break
+  fi
+  if (( attempt < 12 )); then
+    sleep 5
+  fi
+done
+if test "$page_verified" != "true"; then
+  printf 'deployment verification failed: exact public page contract unavailable after retries (HTTP %s)\n' \
+    "$page_status" >&2
   exit 1
 fi
-grep -F "Career Atlas" "$page_file" >/dev/null
-grep -F "Learning service online" "$page_file" >/dev/null
-grep -F "Readiness stays locked" "$page_file" >/dev/null
 
 phase="deployed-plan-create"
 plan="$RUNNER_TEMP/deployed-plan.json"
