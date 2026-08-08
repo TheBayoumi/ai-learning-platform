@@ -27,52 +27,23 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('apps/api/src/ai_learning_platform_api/learning/service.py')
           text = path.read_text(encoding='utf-8')
-          text = text.replace('import json\n', 'import json\nimport zlib\n', 1)
+          if 'import zlib\n' not in text:
+              text = text.replace('import json\n', 'import json\nimport zlib\n', 1)
           marker = '_REVIEW_INTERVAL_DAYS = {0: 1, 1: 2, 2: 4, 3: 7, 4: 14}\n'
-          constants = (
-              marker
-              + '_MAX_STATE_PAYLOAD_BYTES = 262_144\n'
-              + '_STATE_COMPRESSION_PREFIX = b"Z1"\n'
-          )
-          if marker not in text:
-              raise SystemExit('state codec constants marker missing')
-          text = text.replace(marker, constants, 1)
-          old = '''class SignedStateCodec:
-              """Canonical HMAC codec for browser-carried learner state."""
-
-              def __init__(self, secret: str) -> None:
-                  if len(secret.encode("utf-8")) < 32:
-                      raise ValueError("learner state secret must contain at least 32 UTF-8 bytes")
-                  self._secret = secret.encode("utf-8")
-
-              def encode(self, state: LearnerState) -> str:
-                  payload = json.dumps(
-                      state.model_dump(mode="json"),
-                      ensure_ascii=False,
-                      separators=(",", ":"),
-                      sort_keys=True,
-                  ).encode("utf-8")
-                  signature = hmac.new(self._secret, payload, hashlib.sha256).digest()
-                  return f"{_urlsafe_encode(payload)}.{_urlsafe_encode(signature)}"
-
-              def decode(self, token: str) -> LearnerState:
-                  if len(token) > 65_536 or token.count(".") != 1:
-                      raise InvalidStateTokenError
-                  encoded_payload, encoded_signature = token.split(".", maxsplit=1)
-                  payload = _urlsafe_decode(encoded_payload)
-                  signature = _urlsafe_decode(encoded_signature)
-                  expected = hmac.new(self._secret, payload, hashlib.sha256).digest()
-                  if not hmac.compare_digest(signature, expected):
-                      raise InvalidStateTokenError
-                  try:
-                      decoded = json.loads(payload)
-                      return LearnerState.model_validate(decoded)
-                  except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
-                      raise InvalidStateTokenError from error
-          '''.replace('          ', '')
+          if '_MAX_STATE_PAYLOAD_BYTES' not in text:
+              if marker not in text:
+                  raise SystemExit('state codec constants marker missing')
+              text = text.replace(
+                  marker,
+                  marker
+                  + '_MAX_STATE_PAYLOAD_BYTES = 262_144\n'
+                  + '_STATE_COMPRESSION_PREFIX = b"Z1"\n',
+                  1,
+              )
           new = '''def _decode_state_payload(packed: bytes) -> bytes:
               """Decode compressed state with an explicit output bound; raw JSON is legacy-only."""
               if packed.startswith(_STATE_COMPRESSION_PREFIX):
@@ -136,19 +107,27 @@ jobs:
                       return LearnerState.model_validate(decoded)
                   except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
                       raise InvalidStateTokenError from error
-          '''.replace('          ', '')
-          if old not in text:
-              raise SystemExit('SignedStateCodec block did not match expected source')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          '''.replace('          ', '').rstrip()
+          text, count = re.subn(
+              r'class SignedStateCodec:.*?(?=\n\nclass LearningPlanService:)',
+              new,
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f'SignedStateCodec structural replacement count={count}')
+          path.write_text(text, encoding='utf-8')
 
           test_path = Path('apps/api/tests/test_signed_state_codec_security.py')
           tests = test_path.read_text(encoding='utf-8')
-          tests = tests.replace(
-              'import base64\n',
-              'import base64\nimport hashlib\nimport hmac\nimport json\nimport zlib\n',
-              1,
-          )
-          tests += '''
+          if 'import zlib\n' not in tests:
+              tests = tests.replace(
+                  'import base64\n',
+                  'import base64\nimport hashlib\nimport hmac\nimport json\nimport zlib\n',
+                  1,
+              )
+              tests += '''
 
           def _raw_token(payload: bytes) -> str:
               encoded_payload = base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
