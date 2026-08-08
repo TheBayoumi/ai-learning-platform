@@ -57,13 +57,39 @@ describe("Career Atlas product architecture", () => {
     }
   });
 
-  it("backs onboarding with the API role catalog instead of selecting roles[0] as product state", () => {
+  it("resolves the Target before plan creation instead of treating a role ID as sufficient", () => {
     const onboarding = source("components/onboarding/onboarding.tsx");
 
     expect(onboarding).toContain("loadRoles()");
     expect(onboarding).toContain("selectedRoleId");
     expect(onboarding).toContain("target_role: selectedRole.id");
+    expect(onboarding).toContain("seniority: target.seniority");
+    expect(onboarding).toContain("labor_market: target.laborMarket");
+    expect(onboarding).toContain("timeline_weeks: target.timelineWeeks");
+    expect(onboarding).toContain("geography: target.geography");
+    expect(onboarding).toContain("stack_overlays: stackOverlays");
     expect(onboarding).not.toContain("const activeRole = roles[0]");
+  });
+
+  it("keeps unverified readiness and mastery claims out of learner-facing workspace code", () => {
+    const dashboard = source("components/app/dashboard-view.tsx");
+    const readiness = source("components/app/readiness-view.tsx");
+    const roadmap = source("components/app/roadmap-view.tsx");
+    const projects = source("components/app/projects-view.tsx");
+    const combined = [dashboard, readiness, roadmap, projects].join("\n");
+
+    for (const forbidden of [
+      "readiness_percent",
+      "evidence_readiness_percent",
+      "mastery_percent",
+      "effective_percent",
+      "provisional_mastery_delta"
+    ]) {
+      expect(combined).not.toContain(forbidden);
+    }
+    expect(readiness).toContain("Readiness conclusion");
+    expect(readiness).toContain('value="Locked"');
+    expect(dashboard).toContain("planning_signal_percent");
   });
 
   it("keeps assessment answer keys out of the routed client application", () => {
