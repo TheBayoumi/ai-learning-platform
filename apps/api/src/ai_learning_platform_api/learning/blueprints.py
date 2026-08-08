@@ -168,12 +168,15 @@ def semantic_similarity(left: Iterable[str], right: Iterable[str]) -> float:
 def collides(
     *,
     semantic_fingerprint: str,
+    semantic_signature: str,
     semantic_tokens: Iterable[str],
     exposures: Iterable[TaskExposureView],
 ) -> bool:
     """Reject exact or near-duplicate content against supplied exposure history."""
     for exposure in exposures:
         if exposure.semantic_fingerprint == semantic_fingerprint:
+            return True
+        if exposure.semantic_signature == semantic_signature:
             return True
         if (
             semantic_similarity(semantic_tokens, exposure.semantic_tokens)
@@ -225,9 +228,11 @@ def bind_learner_instance(
             f"f:{failure_index:02d}",
             f"c:{constraint_index:02d}",
         ]
+        semantic_signature = _digest("|".join(semantic_tokens), 24)
         fingerprint = _digest("|".join((*semantic_tokens, challenge)), 24)
         if collides(
             semantic_fingerprint=fingerprint,
+            semantic_signature=semantic_signature,
             semantic_tokens=semantic_tokens,
             exposures=prior,
         ):
@@ -245,6 +250,7 @@ def bind_learner_instance(
                 "objective": f"{activity.objective} {scenario}",
                 "instance_seed": full_seed[:32],
                 "semantic_fingerprint": fingerprint,
+                "semantic_signature": semantic_signature,
                 "semantic_tokens": semantic_tokens,
                 "scenario_tags": [
                     f"d:{domain_index:02d}",
@@ -271,6 +277,7 @@ def exposure_from_activity(
         rubric_version=activity.rubric_version,
         plan_version_id=plan_version_id,
         semantic_fingerprint=activity.semantic_fingerprint,
+        semantic_signature=activity.semantic_signature,
         semantic_tokens=list(activity.semantic_tokens),
         high_stakes_eligible=activity.high_stakes_eligible,
         served_at=served_at,

@@ -229,6 +229,7 @@ class ActivityView(StrictModel):
     rubric_version: str = ""
     instance_seed: str = ""
     semantic_fingerprint: str = ""
+    semantic_signature: str = ""
     semantic_tokens: list[str] = Field(default_factory=list, max_length=12)
     scenario_tags: list[str] = Field(default_factory=list, max_length=8)
     plan_version_id: str = ""
@@ -246,6 +247,7 @@ class TaskExposureView(StrictModel):
     rubric_version: str
     plan_version_id: str
     semantic_fingerprint: str
+    semantic_signature: str
     semantic_tokens: list[str] = Field(default_factory=list, max_length=12)
     high_stakes_eligible: bool = False
     served_at: str
@@ -319,6 +321,13 @@ class EvidenceRecordView(StrictModel):
         validation_alias=AliasChoices("planning_signal_delta", "provisional_mastery_delta")
     )
     next_review_at: str
+    source_item_family_id: str = ""
+    source_blueprint_id: str = ""
+    source_rubric_version: str = ""
+    source_plan_version_id: str = ""
+    source_semantic_fingerprint: str = ""
+    source_semantic_signature: str = ""
+    source_high_stakes_eligible: bool = False
 
 
 class EvidenceEvaluationRecord(StrictModel):

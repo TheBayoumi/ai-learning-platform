@@ -38,6 +38,12 @@ class UntrustedInstanceEvidenceError(LearningPlanError):
     code = "UNTRUSTED_TASK_INSTANCE"
 
 
+class EvidenceRubricMismatchError(LearningPlanError):
+    """Trusted evaluator verdict names a rubric other than the served task rubric."""
+
+    code = "EVIDENCE_RUBRIC_MISMATCH"
+
+
 class BlueprintLearningPlanService(BaseLearningPlanService):
     """Preserve the G03/G04 planner while enforcing G05 blueprint trust and uniqueness."""
 
@@ -143,6 +149,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
                         rubric_version=activity.rubric_version,
                         plan_version_id="pending",
                         semantic_fingerprint=activity.semantic_fingerprint,
+                        semantic_signature=activity.semantic_signature,
                         semantic_tokens=list(activity.semantic_tokens),
                         high_stakes_eligible=True,
                         served_at=created_at.isoformat(),
@@ -217,5 +224,6 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
 __all__ = [
     "BlueprintLearningPlanService",
     "BlueprintTrustError",
+    "EvidenceRubricMismatchError",
     "UntrustedInstanceEvidenceError",
 ]

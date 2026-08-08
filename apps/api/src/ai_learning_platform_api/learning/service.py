@@ -445,6 +445,13 @@ class LearningPlanService:
             reasoning="submitted" if request.reflection.strip() else "not_observed",
             planning_signal_delta=delta,
             next_review_at=review_at.isoformat(),
+            source_item_family_id=activity.item_family_id,
+            source_blueprint_id=activity.blueprint_id,
+            source_rubric_version=activity.rubric_version,
+            source_plan_version_id=activity.plan_version_id,
+            source_semantic_fingerprint=activity.semantic_fingerprint,
+            source_semantic_signature=activity.semantic_signature,
+            source_high_stakes_eligible=activity.high_stakes_eligible,
         )
         review_activity = self._review_activity(
             source=activity,
