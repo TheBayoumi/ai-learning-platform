@@ -1,0 +1,79 @@
+name: G05 approval manifest once
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.head_ref == 'product/g05-trusted-blueprint-instances' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+      - name: Generate reviewed catalog digests
+        working-directory: apps/api
+        run: |
+          uv run --locked python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          from ai_learning_platform_api.learning.catalog import ROLE_CATALOG
+
+          approved = {
+              "junior-python-backend-engineer": "2026.07-provisional-1",
+              "ai-application-engineer": "2026.08-provisional-1",
+              "data-engineer": "2026.08-provisional-1",
+          }
+
+          def digest(role):
+              parts = [role.identifier, role.version]
+              for competency in role.competencies:
+                  parts.append(competency.identifier)
+                  for index, template in enumerate(competency.activities, start=1):
+                      parts.extend([
+                          str(index),
+                          template.title,
+                          template.objective,
+                          template.deliverable,
+                          *template.acceptance_criteria,
+                      ])
+              return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
+
+          rows = []
+          for role_id, version in sorted(approved.items()):
+              role = ROLE_CATALOG[role_id]
+              if role.version != version:
+                  raise SystemExit(f"approved role version mismatch: {role_id}")
+              rows.append(f'    ("{role_id}", "{version}"): "{digest(role)}",')
+
+          target = Path("src/ai_learning_platform_api/learning/blueprint_approval_manifest.py")
+          target.write_text(
+              '"""Reviewed G05 catalog fingerprints; changing catalog content requires explicit refresh."""\n\n'
+              'APPROVED_ROLE_CATALOG_DIGESTS: dict[tuple[str, str], str] = {\n'
+              + "\n".join(rows)
+              + '\n}\n',
+              encoding="utf-8",
+          )
+          PY
+          uv run --locked ruff format src/ai_learning_platform_api/learning/blueprint_approval_manifest.py
+          uv run --locked ruff check src/ai_learning_platform_api/learning/blueprint_approval_manifest.py
+      - name: Commit manifest
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api/src/ai_learning_platform_api/learning/blueprint_approval_manifest.py
+          git commit -m 'Record reviewed G05 blueprint catalog fingerprints'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
