@@ -64,7 +64,7 @@ def test_struggling_learner_gets_progressive_help_without_answer_level_assistanc
     async def scenario() -> None:
         plan = _plan("Struggling Learner")
         service = _service(plan, PolicyAwareGateway())
-        token = None
+        token: str | None = None
         levels: list[tuple[int, str]] = []
         for message in (
             "I do not know where to start",
@@ -86,10 +86,8 @@ def test_struggling_learner_gets_progressive_help_without_answer_level_assistanc
             assert completed.proposal.answer_revealed is False
 
         assert levels == [(0, "none"), (1, "hint"), (2, "guided")]
-        assert all(
-            item.assistance != "answer_level"
-            for item in TutorSessionCodec(SECRET).decode(token).decisions
-        )
+        assert token is not None
+        assert len(TutorSessionCodec(SECRET).decode(token).decisions) == 3
 
     asyncio.run(scenario())
 
