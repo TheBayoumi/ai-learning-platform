@@ -6,20 +6,26 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
+from ai_learning_platform_api.learning import LearningPlanService
+from ai_learning_platform_api.learning.blueprints import collides
 from ai_learning_platform_api.learning.schemas import (
     AssessmentStartRequest,
     AssessmentSubmitRequest,
+    CollisionFingerprintView,
     PlanRequest,
+    PlanView,
     ProgressRequest,
     ReplanRequest,
 )
-from ai_learning_platform_api.learning.service import LearningPlanService, SignedStateCodec
+from ai_learning_platform_api.learning.service import SignedStateCodec
 from ai_learning_platform_api.persistence.contracts import (
     LearnerStateCommit,
     LearnerStateConflictError,
     LearnerStateNotFoundError,
     LearnerStateRepository,
     StoredLearnerState,
+    TaskExposureConflictError,
+    TaskExposureIndexRepository,
 )
 from ai_learning_platform_api.persistence.schemas import (
     PersistentAssessmentAttemptView,
@@ -35,6 +41,7 @@ from ai_learning_platform_api.persistence.schemas import (
 )
 
 Clock = Callable[[], datetime]
+_MAX_EXPOSURE_COMMIT_ATTEMPTS = 3
 
 
 class PersistentLearningService:
@@ -45,11 +52,13 @@ class PersistentLearningService:
         *,
         secret: str,
         repository: LearnerStateRepository,
+        exposure_repository: TaskExposureIndexRepository | None = None,
         clock: Clock | None = None,
     ) -> None:
         self._core = LearningPlanService(secret)
         self._codec = SignedStateCodec(secret)
         self._repository = repository
+        self._exposure_repository = exposure_repository
         self._clock = clock if clock is not None else lambda: datetime.now(UTC)
 
     async def create_plan(
@@ -68,17 +77,13 @@ class PersistentLearningService:
                 ratings=request.ratings,
             )
         )
-        state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
-        stored = await self._repository.commit(
-            LearnerStateCommit(
-                account_id=account_id,
-                learner_id=UUID(state.learner_id),
-                expected_version=None,
-                idempotency_key=request.idempotency_key,
-                event_type="learner.plan.created",
-                state=state,
-                occurred_at=self._now(),
-            )
+        stored, _ = await self._commit_generated_plan(
+            account_id=account_id,
+            learner_id=UUID(plan.learner_id),
+            expected_version=None,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.plan.created",
+            plan=plan,
         )
         return self._view(stored)
 
@@ -91,10 +96,11 @@ class PersistentLearningService:
         supplied_state = self._codec.decode(request.state_token)
         if supplied_state.storage_mode != "browser":
             raise LearnerStateNotFoundError
-        normalized = self._core.resume(request.state_token)
-        state = self._codec.decode(normalized.state_token).model_copy(
-            update={"storage_mode": "durable"}
-        )
+        plan = self._core.resume(request.state_token)
+        # Import is a storage-mode transition, not a curriculum transition. Already-served
+        # browser tasks and their evidence provenance must never be rewritten during import.
+        await self._validate_import_exposures(plan)
+        state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
         stored = await self._repository.commit(
             LearnerStateCommit(
                 account_id=account_id,
@@ -113,7 +119,7 @@ class PersistentLearningService:
         return self._view(stored)
 
     async def delete_account(self, *, account_id: str) -> bool:
-        """Delete the current anonymous durable account and all database-owned history."""
+        """Delete personal history; repository-owned unlinkable collision tombstones remain."""
         return await self._repository.delete_account(account_id=account_id)
 
     async def complete_activity(
@@ -127,6 +133,8 @@ class PersistentLearningService:
             learner_id=request.learner_id,
             expected_version=request.expected_version,
         )
+        # Completing an already-served task creates evidence/review state but no new build
+        # instance, so cohort deduplication must not rebind the active task snapshot here.
         plan = self._core.complete_activity(
             ProgressRequest(
                 state_token=self._codec.encode(stored.state),
@@ -163,13 +171,15 @@ class PersistentLearningService:
         )
         if plan.sequence == stored.state.sequence:
             return self._view(stored)
-        return await self._commit_plan(
+        committed, _ = await self._commit_generated_plan(
             account_id=account_id,
-            stored=stored,
-            state_token=plan.state_token,
+            learner_id=stored.learner_id,
+            expected_version=stored.version,
             idempotency_key=request.idempotency_key,
             event_type="learner.evidence.evaluated",
+            plan=plan,
         )
+        return self._view(committed)
 
     async def replan(
         self,
@@ -189,13 +199,15 @@ class PersistentLearningService:
                 focus_competency_ids=request.focus_competency_ids,
             )
         )
-        return await self._commit_plan(
+        committed, _ = await self._commit_generated_plan(
             account_id=account_id,
-            stored=stored,
-            state_token=plan.state_token,
+            learner_id=stored.learner_id,
+            expected_version=stored.version,
             idempotency_key=request.idempotency_key,
             event_type="learner.plan.replanned",
+            plan=plan,
         )
+        return self._view(committed)
 
     async def start_assessment(
         self,
@@ -230,21 +242,107 @@ class PersistentLearningService:
                 answers=request.answers,
             )
         )
-        committed = await self._repository.commit(
-            LearnerStateCommit(
-                account_id=account_id,
-                learner_id=stored.learner_id,
-                expected_version=stored.version,
-                idempotency_key=request.idempotency_key,
-                event_type="learner.assessment.submitted",
-                state=self._codec.decode(submission.plan.state_token),
-                occurred_at=self._now(),
-            )
+        committed, committed_plan = await self._commit_generated_plan(
+            account_id=account_id,
+            learner_id=stored.learner_id,
+            expected_version=stored.version,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.assessment.submitted",
+            plan=submission.plan,
         )
         return PersistentAssessmentSubmissionView(
-            submission=submission.model_copy(update={"plan": self._view(committed).plan}),
+            submission=submission.model_copy(
+                update={
+                    "plan": committed_plan.model_copy(
+                        update={"state_token": self._codec.encode(committed.state)}
+                    )
+                }
+            ),
             version=committed.version,
         )
+
+    async def _collision_history(self, plan: PlanView) -> tuple[CollisionFingerprintView, ...]:
+        if self._exposure_repository is None:
+            return ()
+        item_family_ids = tuple(
+            sorted(
+                {
+                    item.item_family_id
+                    for item in plan.active_plan_version.task_exposures
+                    if item.item_family_id
+                }
+            )
+        )
+        if not item_family_ids:
+            return ()
+        return await self._exposure_repository.list_task_collision_fingerprints(
+            item_family_ids=item_family_ids
+        )
+
+    async def _validate_import_exposures(self, plan: PlanView) -> None:
+        """Fail closed instead of retroactively changing already-served browser tasks."""
+        collisions = await self._collision_history(plan)
+        if not collisions:
+            return
+        for exposure in plan.active_plan_version.task_exposures:
+            if collides(
+                semantic_fingerprint=exposure.semantic_fingerprint,
+                semantic_signature=exposure.semantic_signature,
+                semantic_tokens=exposure.semantic_tokens,
+                exposures=collisions,
+            ):
+                raise TaskExposureConflictError
+
+    async def _deduplicate_new_plan(self, plan: PlanView) -> PlanView:
+        """Rebind newly generated builds against the complete unlinkable cohort history."""
+        collisions = await self._collision_history(plan)
+        if not collisions:
+            return plan
+        return self._core.rebind_external_exposures(
+            state_token=plan.state_token,
+            external_exposures=collisions,
+        )
+
+    async def _commit_generated_plan(
+        self,
+        *,
+        account_id: str,
+        learner_id: UUID,
+        expected_version: int | None,
+        idempotency_key: str,
+        event_type: str,
+        plan: PlanView,
+    ) -> tuple[StoredLearnerState, PlanView]:
+        """Reserve newly generated work with bounded reread/rebind retry on exposure races."""
+        candidate = await self._deduplicate_new_plan(plan)
+        for attempt in range(_MAX_EXPOSURE_COMMIT_ATTEMPTS):
+            state = self._codec.decode(candidate.state_token).model_copy(
+                update={"storage_mode": "durable"}
+            )
+            try:
+                stored = await self._repository.commit(
+                    LearnerStateCommit(
+                        account_id=account_id,
+                        learner_id=learner_id,
+                        expected_version=expected_version,
+                        idempotency_key=idempotency_key,
+                        event_type=event_type,
+                        state=state,
+                        occurred_at=self._now(),
+                    )
+                )
+                return stored, candidate
+            except TaskExposureConflictError:
+                if (
+                    self._exposure_repository is None
+                    or attempt + 1 >= _MAX_EXPOSURE_COMMIT_ATTEMPTS
+                ):
+                    raise
+                # The conflicting transaction has become visible in the durable fingerprint
+                # authority. Reread it, deterministically rebind the new plan, and retry the same
+                # atomic command. Import/completion never enter this path.
+                candidate = await self._deduplicate_new_plan(candidate)
+        raise TaskExposureConflictError
 
     async def _commit_plan(
         self,

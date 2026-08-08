@@ -3,7 +3,7 @@
   "program": "mission-aligned-product-completion",
   "mission_dod": "plans/product-completion-definition-of-done.md",
   "execution_dod": "plans/adaptive-product-definition-of-done.md",
-  "active_phase": "G04",
+  "active_phase": "G05",
   "engineering_claim_only": true,
   "validation_track_remains_external": true,
   "required_checks": [
@@ -164,8 +164,8 @@
     {
       "id": "G04",
       "name": "Tutor policy loop",
-      "status": "VALIDATING",
-      "branch": "product/g04-tutor-policy-loop",
+      "status": "PASSED",
+      "branch": "main",
       "dependencies": [
         "G03"
       ],
@@ -206,15 +206,19 @@
       "human_simulation_evidence": [
         "apps/api/tests/test_g04_human_simulation.py"
       ],
-      "accepted_sha": null,
-      "production_acceptance": [],
+      "accepted_sha": "d257ded7119ee83ac4dfe752b741f332d8b46f4e",
+      "production_acceptance": [
+        "Quality Gates run 31261154324: API/Web/Runtime/Phase/Gate projection all passed on exact PR head d257ded7119ee83ac4dfe752b741f332d8b46f4e",
+        "API quality run 31261154324 passed 602 tests with coverage gate, strict mypy, migration, topology, and recovery checks",
+        "Product deployment run 31261242576 passed on merged main SHA 6cf739ec4173e65aba053e8cdad8a2338ec18c81"
+      ],
       "next_phase": "G05"
     },
     {
       "id": "G05",
       "name": "Trusted blueprint and unique-instance system",
-      "status": "NOT_STARTED",
-      "branch": null,
+      "status": "VALIDATING",
+      "branch": "product/g05-trusted-blueprint-instances",
       "dependencies": [
         "G04"
       ],
@@ -228,14 +232,50 @@
         "D",
         "E"
       ],
-      "implementation_evidence": [],
-      "test_evidence": [],
+      "implementation_evidence": [
+        "apps/api/src/ai_learning_platform_api/learning/schemas.py",
+        "apps/api/src/ai_learning_platform_api/learning/blueprints.py",
+        "apps/api/src/ai_learning_platform_api/learning/blueprint_service.py",
+        "apps/api/src/ai_learning_platform_api/learning/__init__.py",
+        "apps/api/src/ai_learning_platform_api/learning/service.py",
+        "apps/api/src/ai_learning_platform_api/learning/evidence.py",
+        "apps/api/src/ai_learning_platform_api/tutoring/service.py",
+        "apps/api/src/ai_learning_platform_api/persistence/contracts.py",
+        "apps/api/src/ai_learning_platform_api/persistence/models.py",
+        "apps/api/src/ai_learning_platform_api/persistence/postgres.py",
+        "apps/api/src/ai_learning_platform_api/persistence/service.py",
+        "apps/api/migrations/versions/20260808_02_task_exposure_index.py",
+        ".github/workflows/product-deployment.yml",
+        "apps/api/src/ai_learning_platform_api/learning/blueprint_approval_manifest.py"
+      ],
+      "test_evidence": [
+        "apps/api/tests/test_g05_blueprint_instances.py",
+        "apps/api/tests/test_g05_human_simulation.py",
+        "apps/api/tests/test_g05_durable_exposure_index.py",
+        "apps/api/tests/test_signed_state_codec_security.py",
+        "apps/api/tests/test_tutoring_service.py",
+        "apps/api/tests/test_product_gate.py",
+        ".github/workflows/ci.yml",
+        "apps/api/tests/test_g05_trust_edge_cases.py",
+        "apps/api/tests/test_g05_exposure_race.py"
+      ],
       "human_simulations": [
         "same-track two-learner pair",
         "repeated regeneration",
-        "returning learner"
+        "returning learner",
+        "untrusted-content learner",
+        "cross-learner collision learner",
+        "deletion and collision-tombstone learner",
+        "delayed-review learner",
+        "concurrent exposure-race learner",
+        "catalog objective-change learner"
       ],
-      "human_simulation_evidence": [],
+      "human_simulation_evidence": [
+        "apps/api/tests/test_g05_human_simulation.py",
+        "apps/api/tests/test_g05_durable_exposure_index.py",
+        "apps/api/tests/test_g05_trust_edge_cases.py",
+        "apps/api/tests/test_g05_exposure_race.py"
+      ],
       "accepted_sha": null,
       "production_acceptance": [],
       "next_phase": "G06"

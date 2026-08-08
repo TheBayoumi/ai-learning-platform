@@ -67,6 +67,7 @@ def apply_trusted_verdict(
         evaluator_id=verdict.evaluator_id,
         evaluator_version=verdict.evaluator_version,
         rubric_version=verdict.rubric_version,
+        instance_contract_hash=verdict.instance_contract_hash,
         confidence=verdict.confidence,
         findings=list(verdict.findings),
         misconception_codes=list(verdict.misconception_codes),
@@ -101,7 +102,7 @@ def apply_trusted_verdict(
 
     updated = state.model_copy(
         update={
-            "schema_version": 5,
+            "schema_version": 6,
             "evidence_history": evidence_history,
             "evidence_evaluations": [*state.evidence_evaluations, evaluation][-_MAX_EVALUATIONS:],
             "competency_evidence": {

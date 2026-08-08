@@ -105,6 +105,8 @@ def verdict(
     independence: str = "unverified",
     assistance: str = "unknown",
     reasoning: str = "not_observed",
+    rubric_version: str = "role-rubric-v1",
+    instance_contract_hash: str = "",
     misconceptions: list[str] | None = None,
 ) -> TrustedEvidenceVerdict:
     return TrustedEvidenceVerdict.model_validate(
@@ -117,7 +119,8 @@ def verdict(
             "reasoning": reasoning,
             "evaluator_id": "deterministic-rubric-evaluator",
             "evaluator_version": "g02-v1",
-            "rubric_version": "role-rubric-v1",
+            "rubric_version": rubric_version,
+            "instance_contract_hash": instance_contract_hash,
             "confidence": 92,
             "findings": ["The artifact behavior matches the evaluated criterion."],
             "misconception_codes": misconceptions or [],
@@ -373,6 +376,8 @@ def test_durable_trusted_evaluation_commits_a_versioned_evidence_event() -> None
                     independence="independent",
                     assistance="none",
                     reasoning="verified",
+                    rubric_version=evidence.source_rubric_version,
+                    instance_contract_hash=evidence.source_instance_contract_hash,
                 ),
             ),
         )

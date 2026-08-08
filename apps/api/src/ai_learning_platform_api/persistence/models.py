@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -84,6 +85,64 @@ learner_events = Table(
         "learner_id",
         "aggregate_version",
         name="uq_learner_events_learner_version",
+    ),
+)
+
+task_exposures = Table(
+    "task_exposures",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    Column(
+        "account_id",
+        String(160),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    ),
+    Column(
+        "learner_id",
+        UUID(as_uuid=True),
+        ForeignKey("learner_states.learner_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    ),
+    Column("instance_id", String(160), nullable=False, unique=True),
+    Column("item_family_id", String(80), nullable=False, index=True),
+    Column("item_family_version", String(40), nullable=False),
+    Column("blueprint_id", String(80), nullable=False, index=True),
+    Column("blueprint_version", String(40), nullable=False),
+    Column("rubric_version", String(80), nullable=False),
+    Column("plan_version_id", String(120), nullable=False),
+    Column("semantic_signature", String(64), nullable=False),
+    Column("semantic_fingerprint", String(64), nullable=False),
+    Column("semantic_tokens", JSONB, nullable=False),
+    Column("instance_contract_hash", String(80), nullable=False),
+    Column("high_stakes_eligible", Boolean, nullable=False),
+    Column("served_at", DateTime(timezone=True), nullable=False, index=True),
+    UniqueConstraint(
+        "blueprint_id",
+        "semantic_signature",
+        name="uq_task_exposures_blueprint_semantic",
+    ),
+)
+
+# Privacy-preserving cohort collision history. It intentionally contains no account, learner,
+# instance, plan, rubric, or artifact identifier, so account deletion removes personal history
+# while previously served semantic scenarios remain unavailable to future learners.
+task_collision_fingerprints = Table(
+    "task_collision_fingerprints",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    Column("item_family_id", String(80), nullable=False, index=True),
+    Column("blueprint_id", String(80), nullable=False, index=True),
+    Column("semantic_signature", String(64), nullable=False),
+    Column("semantic_fingerprint", String(64), nullable=False),
+    Column("semantic_tokens", JSONB, nullable=False),
+    Column("served_at", DateTime(timezone=True), nullable=False, index=True),
+    UniqueConstraint(
+        "blueprint_id",
+        "semantic_signature",
+        name="uq_task_collision_fingerprints_blueprint_semantic",
     ),
 )
 

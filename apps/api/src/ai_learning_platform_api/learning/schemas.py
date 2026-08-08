@@ -142,6 +142,7 @@ class TrustedEvidenceVerdict(StrictModel):
     evaluator_id: Annotated[str, Field(min_length=2, max_length=120)]
     evaluator_version: Annotated[str, Field(min_length=1, max_length=80)]
     rubric_version: Annotated[str, Field(min_length=1, max_length=80)]
+    instance_contract_hash: Annotated[str, Field(max_length=80)] = ""
     confidence: Annotated[int, Field(ge=0, le=100)]
     findings: Annotated[list[str], Field(max_length=12)] = Field(default_factory=list)
     misconception_codes: Annotated[list[str], Field(max_length=12)] = Field(default_factory=list)
@@ -206,7 +207,7 @@ class PriorityCompetencyView(StrictModel):
 
 
 class ActivityView(StrictModel):
-    """One unique bounded work item in an adaptive learner plan."""
+    """One unique bounded work item with explicit G05 blueprint provenance."""
 
     id: str
     competency_id: str
@@ -220,6 +221,54 @@ class ActivityView(StrictModel):
     rationale: str = ""
     generation: int = 0
     available_from: str | None = None
+    item_family_id: str = ""
+    item_family_version: str = ""
+    item_family_trust: Literal["legacy_unverified", "trusted"] = "legacy_unverified"
+    blueprint_id: str = ""
+    blueprint_version: str = ""
+    blueprint_trust: Literal["legacy_unverified", "trusted"] = "legacy_unverified"
+    blueprint_approval_id: str = ""
+    blueprint_approved_by: str = ""
+    blueprint_approval_version: str = ""
+    rubric_version: str = ""
+    instance_seed: str = ""
+    semantic_fingerprint: str = ""
+    semantic_signature: str = ""
+    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)
+    scenario_tags: list[str] = Field(default_factory=list, max_length=8)
+    instance_requirements: list[str] = Field(default_factory=list, max_length=8)
+    instance_contract_hash: str = ""
+    plan_version_id: str = ""
+    high_stakes_eligible: bool = False
+
+
+class TaskExposureView(StrictModel):
+    """Persisted served-instance exposure for replay and collision rejection."""
+
+    instance_id: str
+    item_family_id: str
+    item_family_version: str
+    blueprint_id: str
+    blueprint_version: str
+    rubric_version: str
+    plan_version_id: str
+    semantic_fingerprint: str
+    semantic_signature: str
+    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)
+    instance_contract_hash: str = ""
+    high_stakes_eligible: bool = False
+    served_at: str
+
+
+class CollisionFingerprintView(StrictModel):
+    """Unlinkable cohort-history fingerprint retained after learner data deletion."""
+
+    item_family_id: str
+    blueprint_id: str
+    semantic_fingerprint: str
+    semantic_signature: str
+    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)
+    served_at: str
 
 
 class PlanPrioritySnapshot(StrictModel):
@@ -265,6 +314,7 @@ class LearnerPlanVersion(StrictModel):
     priorities: list[PlanPrioritySnapshot]
     activities: list[ActivityView]
     delta: PlanDeltaView
+    task_exposures: list[TaskExposureView] = Field(default_factory=list, max_length=16)
 
 
 class EvidenceRecordView(StrictModel):
@@ -289,6 +339,17 @@ class EvidenceRecordView(StrictModel):
         validation_alias=AliasChoices("planning_signal_delta", "provisional_mastery_delta")
     )
     next_review_at: str
+    source_item_family_id: str = ""
+    source_item_family_version: str = ""
+    source_blueprint_id: str = ""
+    source_blueprint_version: str = ""
+    source_blueprint_approval_id: str = ""
+    source_rubric_version: str = ""
+    source_instance_contract_hash: str = ""
+    source_plan_version_id: str = ""
+    source_semantic_fingerprint: str = ""
+    source_semantic_signature: str = ""
+    source_high_stakes_eligible: bool = False
 
 
 class EvidenceEvaluationRecord(StrictModel):
@@ -305,6 +366,7 @@ class EvidenceEvaluationRecord(StrictModel):
     evaluator_id: str
     evaluator_version: str
     rubric_version: str
+    instance_contract_hash: str = ""
     confidence: int
     findings: list[str]
     misconception_codes: list[str]
@@ -394,7 +456,6 @@ class LearnerState(StrictModel):
     created_at: str
     sequence: int
     planning_signal: dict[str, int] = Field(default_factory=dict)
-    # Legacy schema 1-3 field. New transitions clear it after migrating it into planning_signal.
     mastery: dict[str, int] = Field(default_factory=dict)
     completed_activity_ids: list[str]
     activities: list[ActivityView]

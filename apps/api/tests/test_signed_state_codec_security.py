@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
+import json
+import zlib
 
 import pytest
 
@@ -63,3 +67,31 @@ def test_signed_state_canonical_round_trip_still_succeeds() -> None:
     state = codec.decode(token)
 
     assert codec.encode(state) == token
+
+
+def _raw_token(payload: bytes) -> str:
+    encoded_payload = base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
+    signature = hmac.new(SECRET.encode(), payload, hashlib.sha256).digest()
+    encoded_signature = base64.urlsafe_b64encode(signature).rstrip(b"=").decode("ascii")
+    return f"{encoded_payload}.{encoded_signature}"
+
+
+def test_signed_state_decodes_legacy_raw_json_token() -> None:
+    codec, token = _canonical_token()
+    state = codec.decode(token)
+    payload = json.dumps(
+        state.model_dump(mode="json"),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+
+    assert codec.decode(_raw_token(payload)) == state
+
+
+def test_signed_state_rejects_compressed_payload_over_output_bound() -> None:
+    codec = SignedStateCodec(SECRET)
+    packed = b"Z1" + zlib.compress(b"x" * 300_000, level=9)
+
+    with pytest.raises(InvalidStateTokenError):
+        codec.decode(_raw_token(packed))
