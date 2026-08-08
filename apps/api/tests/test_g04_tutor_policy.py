@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from ai_learning_platform_api.learning.schemas import PlanRequest, ReplanRequest
+from ai_learning_platform_api.learning.schemas import PlanRequest, PlanView, ReplanRequest
 from ai_learning_platform_api.learning.service import LearningPlanService
 from ai_learning_platform_api.tutoring.contracts import TutorTurnRequest
 from ai_learning_platform_api.tutoring.policy import (
@@ -16,7 +16,7 @@ from ai_learning_platform_api.tutoring.policy import (
 SECRET = "g04-tutor-policy-secret-with-at-least-thirty-two-bytes"
 
 
-def _plan():
+def _plan() -> PlanView:
     return LearningPlanService(SECRET).create_plan(PlanRequest(learner_name="Tutor Learner"))
 
 
@@ -79,7 +79,6 @@ def test_assistance_escalates_only_after_delivered_prior_policy_decisions() -> N
     assert (first.decision.hint_level, first.decision.assistance) == (0, "none")
     assert (second.decision.hint_level, second.decision.assistance) == (1, "hint")
     assert (third.decision.hint_level, third.decision.assistance) == (2, "guided")
-    assert third.decision.assistance != "answer_level"
 
 
 def test_same_policy_inputs_replay_to_same_decision_id() -> None:
@@ -145,7 +144,7 @@ def test_noncanonical_or_modified_session_token_is_rejected() -> None:
 def test_session_ledger_is_bounded_under_many_delivered_turns() -> None:
     plan = _plan()
     policy = TutorPolicyEngine(SECRET)
-    token = None
+    token: str | None = None
     for index in range(40):
         result = policy.decide(
             plan=plan,
@@ -162,6 +161,7 @@ def test_session_ledger_is_bounded_under_many_delivered_turns() -> None:
         )
         assert len(token) < 32_768
 
+    assert token is not None
     decoded = TutorSessionCodec(SECRET).decode(token)
     assert len(decoded.decisions) == 12
     assert json.loads(json.dumps(decoded.model_dump(mode="json")))["schema_version"] == 1
