@@ -4,6 +4,17 @@ export type EvidenceIndependence = "unverified" | "assisted" | "independent";
 export type AssistanceLevel = "unknown" | "none" | "hint" | "guided" | "answer_level";
 export type ReasoningState = "not_observed" | "submitted" | "verified";
 export type CompetencyEvidenceStatus = "unverified" | "partial" | "independent";
+export type VerificationClass =
+  | "independent"
+  | "retention_7d"
+  | "retention_30d"
+  | "transfer";
+export type ReadinessBlockerCode =
+  | "independent_evidence_missing"
+  | "disputed_evidence_present"
+  | "proof_classes_incomplete"
+  | "verified_work_provenance_missing"
+  | "active_misconception";
 export type CurriculumTrigger =
   | "initial"
   | "assessment"
@@ -229,6 +240,45 @@ export type ClaimState =
   | "partial_profile_evidence"
   | "ready_against_profile";
 
+export interface CompetencyReadinessView {
+  readonly competency_id: string;
+  readonly competency_name: string;
+  readonly mandatory: boolean;
+  readonly evidence_status: CompetencyEvidenceStatus;
+  readonly accepted_evidence_ids: readonly string[];
+  readonly disputed_evidence_ids: readonly string[];
+  readonly satisfied_proof_classes: readonly VerificationClass[];
+  readonly missing_proof_classes: readonly VerificationClass[];
+  readonly verified_work_evidence_ids: readonly string[];
+  readonly active_misconception_codes: readonly string[];
+  readonly blocker_codes: readonly ReadinessBlockerCode[];
+  readonly engineering_complete: boolean;
+}
+
+export interface ReadinessProjectionView {
+  readonly role_id: string;
+  readonly role_version: string;
+  readonly graph_version: string;
+  readonly evidence_policy_version: string;
+  readonly target_role_id: string;
+  readonly target_role_version: string;
+  readonly target_validation_state: "provisional" | "approved";
+  readonly role_validation_state: "provisional" | "approved";
+  readonly claim_state: "validation_locked";
+  readonly engineering_evidence_complete: boolean;
+  readonly external_approval_required: boolean;
+  readonly mandatory_competency_ids: readonly string[];
+  readonly mandatory_gap_ids: readonly string[];
+  readonly disputed_evidence_ids: readonly string[];
+  readonly stale_evidence_ids: readonly string[];
+  readonly verified_work_evidence_ids: readonly string[];
+  readonly active_overlays: readonly string[];
+  readonly unresolved_overlay_deltas: readonly string[];
+  readonly exclusions: readonly string[];
+  readonly uncertainties: readonly string[];
+  readonly competencies: readonly CompetencyReadinessView[];
+}
+
 export interface PlanView {
   readonly state_token: string;
   readonly learner_id: string;
@@ -237,6 +287,7 @@ export interface PlanView {
   readonly target: TargetView;
   readonly claim_state: ClaimState;
   readonly verified_readiness_percent: number | null;
+  readonly readiness_projection: ReadinessProjectionView | null;
   readonly planning_signal_percent: number;
   readonly diagnostic_signal_percent: number;
   readonly assessment_coverage_percent: number;
@@ -559,6 +610,69 @@ function isAssessmentQuestion(value: unknown): value is AssessmentQuestionView {
   );
 }
 
+function isVerificationClass(value: unknown): value is VerificationClass {
+  return ["independent", "retention_7d", "retention_30d", "transfer"].includes(String(value));
+}
+
+function isReadinessBlocker(value: unknown): value is ReadinessBlockerCode {
+  return [
+    "independent_evidence_missing",
+    "disputed_evidence_present",
+    "proof_classes_incomplete",
+    "verified_work_provenance_missing",
+    "active_misconception"
+  ].includes(String(value));
+}
+
+function isCompetencyReadiness(value: unknown): value is CompetencyReadinessView {
+  return (
+    isRecord(value) &&
+    typeof value.competency_id === "string" &&
+    typeof value.competency_name === "string" &&
+    value.mandatory === true &&
+    isEvidenceStatus(value.evidence_status) &&
+    isStringArray(value.accepted_evidence_ids) &&
+    isStringArray(value.disputed_evidence_ids) &&
+    Array.isArray(value.satisfied_proof_classes) &&
+    value.satisfied_proof_classes.every(isVerificationClass) &&
+    Array.isArray(value.missing_proof_classes) &&
+    value.missing_proof_classes.every(isVerificationClass) &&
+    isStringArray(value.verified_work_evidence_ids) &&
+    isStringArray(value.active_misconception_codes) &&
+    Array.isArray(value.blocker_codes) &&
+    value.blocker_codes.every(isReadinessBlocker) &&
+    typeof value.engineering_complete === "boolean"
+  );
+}
+
+function isReadinessProjection(value: unknown): value is ReadinessProjectionView {
+  return (
+    isRecord(value) &&
+    typeof value.role_id === "string" &&
+    typeof value.role_version === "string" &&
+    typeof value.graph_version === "string" &&
+    typeof value.evidence_policy_version === "string" &&
+    typeof value.target_role_id === "string" &&
+    typeof value.target_role_version === "string" &&
+    (value.target_validation_state === "provisional" || value.target_validation_state === "approved") &&
+    (value.role_validation_state === "provisional" || value.role_validation_state === "approved") &&
+    value.claim_state === "validation_locked" &&
+    typeof value.engineering_evidence_complete === "boolean" &&
+    value.external_approval_required === true &&
+    isStringArray(value.mandatory_competency_ids) &&
+    isStringArray(value.mandatory_gap_ids) &&
+    isStringArray(value.disputed_evidence_ids) &&
+    isStringArray(value.stale_evidence_ids) &&
+    isStringArray(value.verified_work_evidence_ids) &&
+    isStringArray(value.active_overlays) &&
+    isStringArray(value.unresolved_overlay_deltas) &&
+    isStringArray(value.exclusions) &&
+    isStringArray(value.uncertainties) &&
+    Array.isArray(value.competencies) &&
+    value.competencies.every(isCompetencyReadiness)
+  );
+}
+
 function isClaimState(value: unknown): value is ClaimState {
   return (
     value === "engineering_available" ||
@@ -583,6 +697,8 @@ export function isPlanView(value: unknown): value is PlanView {
     isClaimState(value.claim_state) &&
     (value.verified_readiness_percent === null ||
       typeof value.verified_readiness_percent === "number") &&
+    (value.readiness_projection === null ||
+      isReadinessProjection(value.readiness_projection)) &&
     typeof value.planning_signal_percent === "number" &&
     typeof value.diagnostic_signal_percent === "number" &&
     typeof value.assessment_coverage_percent === "number" &&

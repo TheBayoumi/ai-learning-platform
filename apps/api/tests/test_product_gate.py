@@ -115,7 +115,7 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
         text=True,
         timeout=10,
     ).stdout.strip()
-    head_ref = os.environ.get("GITHUB_HEAD_REF") or "product/g07-work-provenance-simulations"
+    head_ref = os.environ.get("GITHUB_HEAD_REF") or "product/g08-readiness-projection"
 
     phases = product_gate.validate_product_state(
         repository_root,
@@ -126,7 +126,7 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
     )
     active = next(phase for phase in phases if phase.status in product_gate.ACTIVE_STATUSES)
 
-    assert active.identifier == "G07"
+    assert active.identifier == "G08"
     assert active.status in product_gate.ACTIVE_STATUSES
     assert active.branch == head_ref
 

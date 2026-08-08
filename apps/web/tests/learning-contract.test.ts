@@ -168,6 +168,49 @@ const assessment = {
   competency_scores: { python: 100 }
 };
 
+const readinessProjection = {
+  role_id: role.id,
+  role_version: role.version,
+  graph_version: role.graph_version,
+  evidence_policy_version: role.evidence_policy_version,
+  target_role_id: target.role_id,
+  target_role_version: target.role_version,
+  target_validation_state: "provisional" as const,
+  role_validation_state: "provisional" as const,
+  claim_state: "validation_locked" as const,
+  engineering_evidence_complete: false,
+  external_approval_required: true,
+  mandatory_competency_ids: ["python"],
+  mandatory_gap_ids: ["python"],
+  disputed_evidence_ids: [],
+  stale_evidence_ids: [],
+  verified_work_evidence_ids: [],
+  active_overlays: ["stack:Python"],
+  unresolved_overlay_deltas: ["stack:Python"],
+  exclusions: target.exclusions,
+  uncertainties: ["role_profile_external_validation_pending"],
+  competencies: [
+    {
+      competency_id: "python",
+      competency_name: "Python engineering",
+      mandatory: true,
+      evidence_status: "independent" as const,
+      accepted_evidence_ids: [evidence.evidence_id],
+      disputed_evidence_ids: [],
+      satisfied_proof_classes: ["independent"] as const,
+      missing_proof_classes: ["retention_7d", "retention_30d", "transfer"] as const,
+      verified_work_evidence_ids: [],
+      active_misconception_codes: ["boundary-condition-omission"],
+      blocker_codes: [
+        "proof_classes_incomplete",
+        "verified_work_provenance_missing",
+        "active_misconception"
+      ] as const,
+      engineering_complete: false
+    }
+  ]
+};
+
 const validPlan = {
   state_token: "signed-token",
   learner_id: "learner-1",
@@ -176,6 +219,7 @@ const validPlan = {
   target,
   claim_state: "validation_locked" as const,
   verified_readiness_percent: null,
+  readiness_projection: readinessProjection,
   planning_signal_percent: 25,
   diagnostic_signal_percent: 48,
   assessment_coverage_percent: 10,
@@ -254,6 +298,15 @@ describe("learning contract guards", () => {
       })
     ).toBe(false);
     expect(isPlanView({ ...validPlan, claim_state: "made-up" })).toBe(false);
+    expect(
+      isPlanView({
+        ...validPlan,
+        readiness_projection: {
+          ...readinessProjection,
+          claim_state: "ready_against_profile"
+        }
+      })
+    ).toBe(false);
     expect(isRoleList([{ ...role, graph_version: 42 }])).toBe(false);
     expect(
       isPlanView({

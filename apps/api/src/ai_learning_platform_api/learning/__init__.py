@@ -1,7 +1,7 @@
 """Learner diagnosis, planning, signed state, and trusted served-instance domain."""
 
-from ai_learning_platform_api.learning.provenance_service import (
-    ProvenanceLearningPlanService as LearningPlanService,
+from ai_learning_platform_api.learning.readiness_service import (
+    ReadinessLearningPlanService as LearningPlanService,
 )
 
 __all__ = ["LearningPlanService"]

@@ -34,6 +34,13 @@ WorkProvenanceStatus = Literal[
     "challenge_issued", "captured", "verified", "reviewed_blocked", "rejected", "disputed"
 ]
 Sha256Hex = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+ReadinessBlockerCode = Literal[
+    "independent_evidence_missing",
+    "disputed_evidence_present",
+    "proof_classes_incomplete",
+    "verified_work_provenance_missing",
+    "active_misconception",
+]
 CompetencyEvidenceStatus = Literal["unverified", "partial", "independent"]
 MisconceptionStatus = Literal["active", "resolved"]
 ReviewStage = Literal["evidence_follow_up", "retention_candidate"]
@@ -298,6 +305,49 @@ class WorkProvenanceState(StrictModel):
     evaluated_at: str | None = None
     issues: Annotated[list[str], Field(max_length=24)] = Field(default_factory=list)
     eligible_for_readiness: bool = False
+
+
+class CompetencyReadinessView(StrictModel):
+    """Exact non-compensatory readiness blockers for one mandatory competency."""
+
+    competency_id: str
+    competency_name: str
+    mandatory: bool = True
+    evidence_status: CompetencyEvidenceStatus
+    accepted_evidence_ids: list[str] = Field(default_factory=list)
+    disputed_evidence_ids: list[str] = Field(default_factory=list)
+    satisfied_proof_classes: list[VerificationClass] = Field(default_factory=list)
+    missing_proof_classes: list[VerificationClass] = Field(default_factory=list)
+    verified_work_evidence_ids: list[str] = Field(default_factory=list)
+    active_misconception_codes: list[str] = Field(default_factory=list)
+    blocker_codes: list[ReadinessBlockerCode] = Field(default_factory=list)
+    engineering_complete: bool
+
+
+class ReadinessProjectionView(StrictModel):
+    """Deterministic exact-profile readiness evidence projection without a score."""
+
+    role_id: str
+    role_version: str
+    graph_version: str
+    evidence_policy_version: str
+    target_role_id: str
+    target_role_version: str
+    target_validation_state: Literal["provisional", "approved"]
+    role_validation_state: Literal["provisional", "approved"]
+    claim_state: Literal["validation_locked"] = "validation_locked"
+    engineering_evidence_complete: bool
+    external_approval_required: bool = True
+    mandatory_competency_ids: list[str]
+    mandatory_gap_ids: list[str]
+    disputed_evidence_ids: list[str]
+    stale_evidence_ids: list[str]
+    verified_work_evidence_ids: list[str]
+    active_overlays: list[str]
+    unresolved_overlay_deltas: list[str]
+    exclusions: list[str]
+    uncertainties: list[str]
+    competencies: list[CompetencyReadinessView]
 
 
 class CompetencyView(StrictModel):
@@ -646,6 +696,7 @@ class PlanView(StrictModel):
     qualifications: list[CompetencyQualificationView] = Field(default_factory=list)
     verification_probes: list[VerificationProbeView] = Field(default_factory=list)
     work_provenance: list[WorkProvenanceState] = Field(default_factory=list)
+    readiness_projection: ReadinessProjectionView | None = None
     active_misconceptions: list[MisconceptionRecord]
     review_state: list[ReviewState]
     current_activity: ActivityView | None
