@@ -1,0 +1,456 @@
+name: G05 durable exposure index wiring
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    if: github.head_ref == 'product/g05-trusted-blueprint-instances' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: ai_learning
+          POSTGRES_USER: ai_learning
+          POSTGRES_PASSWORD: ai_learning
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U ai_learning -d ai_learning"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://ai_learning:ai_learning@localhost:55432/ai_learning
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+      - name: Wire history-wide exposure index
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          blueprint_service = Path('apps/api/src/ai_learning_platform_api/learning/blueprint_service.py')
+          text = blueprint_service.read_text(encoding='utf-8')
+          text = text.replace(
+              'from ai_learning_platform_api.learning.catalog import RoleDefinition\n',
+              'from ai_learning_platform_api.learning.catalog import ROLE_CATALOG, RoleDefinition\n',
+              1,
+          )
+          text = text.replace(
+              'from ai_learning_platform_api.learning.planner import CurriculumDecision, target_fingerprint\n',
+              'from ai_learning_platform_api.learning.planner import (\n'
+              '    CurriculumDecision,\n'
+              '    plan_version_id,\n'
+              '    target_fingerprint,\n'
+              ')\n',
+              1,
+          )
+          marker = '    def evaluate_evidence(\n'
+          method = '''    def rebind_external_exposures(
+              self,
+              *,
+              state_token: str,
+              external_exposures: tuple[TaskExposureView, ...],
+          ) -> PlanView:
+              """Rebind active build instances against durable cohort history before serving."""
+              if not external_exposures:
+                  return self.resume(state_token)
+              state = self._codec.decode(state_token)
+              role = ROLE_CATALOG.get(state.target_role)
+              if role is None:
+                  raise LearningPlanError
+              state = self._upgrade_state(state, role)
+              active = self._active_plan_version(state)
+              prior_exposures = [
+                  item
+                  for item in active.task_exposures
+                  if item.plan_version_id != active.plan_version_id
+              ]
+              collision_scope = [*external_exposures, *prior_exposures]
+              rebound: list[ActivityView] = []
+              for position, activity in enumerate(active.activities, start=1):
+                  candidate = activity
+                  if activity.kind == "build":
+                      candidate = bind_learner_instance(
+                          role=role,
+                          activity=activity,
+                          learner_id=state.learner_id,
+                          target_fingerprint=target_fingerprint(state.target),
+                          revision=active.revision,
+                          position=position,
+                          exposures=collision_scope,
+                      )
+                      collision_scope.append(
+                          exposure_from_activity(
+                              activity=candidate,
+                              plan_version_id="pending",
+                              served_at=active.created_at,
+                          )
+                      )
+                  rebound.append(candidate)
+              next_id = plan_version_id(
+                  learner_id=state.learner_id,
+                  role_version=role.version,
+                  revision=active.revision,
+                  target_hash=active.target_fingerprint,
+                  trigger=active.trigger,
+                  activity_ids=[item.id for item in rebound],
+                  priority_ids=[item.competency_id for item in active.priorities],
+              )
+              finalized = [
+                  item.model_copy(update={"plan_version_id": next_id}) for item in rebound
+              ]
+              current_exposures = [
+                  exposure_from_activity(
+                      activity=item,
+                      plan_version_id=next_id,
+                      served_at=active.created_at,
+                  )
+                  for item in finalized
+                  if item.kind == "build"
+              ]
+              updated_version = active.model_copy(
+                  update={
+                      "plan_version_id": next_id,
+                      "activities": finalized,
+                      "task_exposures": [*prior_exposures, *current_exposures][-_MAX_TASK_EXPOSURES:],
+                  }
+              )
+              versions = [
+                  updated_version if item.plan_version_id == active.plan_version_id else item
+                  for item in state.plan_versions
+              ]
+              updated_state = state.model_copy(
+                  update={
+                      "activities": finalized,
+                      "plan_versions": versions,
+                      "active_plan_version_id": next_id,
+                  }
+              )
+              return self._project(updated_state, role)
+
+'''
+          import textwrap
+          method = textwrap.dedent(method)
+          if 'def rebind_external_exposures(' not in text:
+              if marker not in text:
+                  raise SystemExit('blueprint evaluator marker missing')
+              text = text.replace(marker, method + marker, 1)
+          blueprint_service.write_text(text, encoding='utf-8')
+
+          postgres = Path('apps/api/src/ai_learning_platform_api/persistence/postgres.py')
+          text = postgres.read_text(encoding='utf-8')
+          text = text.replace(
+              'from uuid import UUID, uuid4\n',
+              'from uuid import NAMESPACE_URL, UUID, uuid4, uuid5\n',
+              1,
+          )
+          text = text.replace(
+              'from ai_learning_platform_api.learning.schemas import LearnerState\n',
+              'from ai_learning_platform_api.learning.schemas import LearnerState, TaskExposureView\n',
+              1,
+          )
+          text = text.replace(
+              '    LearnerStateNotFoundError,\n',
+              '    LearnerStateNotFoundError,\n    TaskExposureConflictError,\n',
+              1,
+          )
+          text = text.replace(
+              'from ai_learning_platform_api.persistence.models import (\n    accounts,\n',
+              'from ai_learning_platform_api.persistence.models import (\n    accounts,\n',
+              1,
+          )
+          if '    task_exposures,\n' not in text:
+              text = text.replace('    outbox_records,\n', '    outbox_records,\n    task_exposures,\n', 1)
+          method_marker = '    async def commit(self, request: LearnerStateCommit) -> StoredLearnerState:\n'
+          method_text = '''    async def list_recent_task_exposures(
+              self,
+              *,
+              item_family_ids: tuple[str, ...],
+              limit: int = 512,
+          ) -> tuple[TaskExposureView, ...]:
+              """Return recent cross-learner exposures for the requested trusted item families."""
+              if not item_family_ids:
+                  return ()
+              bounded_limit = max(1, min(limit, 2048))
+              statement = (
+                  select(
+                      task_exposures.c.instance_id,
+                      task_exposures.c.item_family_id,
+                      task_exposures.c.item_family_version,
+                      task_exposures.c.blueprint_id,
+                      task_exposures.c.blueprint_version,
+                      task_exposures.c.rubric_version,
+                      task_exposures.c.plan_version_id,
+                      task_exposures.c.semantic_signature,
+                      task_exposures.c.semantic_fingerprint,
+                      task_exposures.c.semantic_tokens,
+                      task_exposures.c.high_stakes_eligible,
+                      task_exposures.c.served_at,
+                  )
+                  .where(task_exposures.c.item_family_id.in_(item_family_ids))
+                  .order_by(task_exposures.c.served_at.desc())
+                  .limit(bounded_limit)
+              )
+              try:
+                  async with self._engine.connect() as connection:
+                      rows = (await connection.execute(statement)).mappings().all()
+              except SQLAlchemyError as error:
+                  raise PersistenceUnavailableError from error
+              return tuple(
+                  TaskExposureView(
+                      instance_id=str(row["instance_id"]),
+                      item_family_id=str(row["item_family_id"]),
+                      item_family_version=str(row["item_family_version"]),
+                      blueprint_id=str(row["blueprint_id"]),
+                      blueprint_version=str(row["blueprint_version"]),
+                      rubric_version=str(row["rubric_version"]),
+                      plan_version_id=str(row["plan_version_id"]),
+                      semantic_signature=str(row["semantic_signature"]),
+                      semantic_fingerprint=str(row["semantic_fingerprint"]),
+                      semantic_tokens=[str(item) for item in row["semantic_tokens"]],
+                      high_stakes_eligible=bool(row["high_stakes_eligible"]),
+                      served_at=row["served_at"].isoformat(),
+                  )
+                  for row in rows
+              )
+
+'''
+          method_text = textwrap.dedent(method_text)
+          if 'async def list_recent_task_exposures(' not in text:
+              if method_marker not in text:
+                  raise SystemExit('postgres commit marker missing')
+              text = text.replace(method_marker, method_text + method_marker, 1)
+          write_marker = '                    await _write_snapshot(connection, request, next_version)\n'
+          if 'await _write_task_exposures(connection, request)' not in text:
+              if write_marker not in text:
+                  raise SystemExit('postgres snapshot write marker missing')
+              text = text.replace(
+                  write_marker,
+                  write_marker + '                    await _write_task_exposures(connection, request)\n',
+                  1,
+              )
+          except_marker = '''        except IntegrityError as error:
+              recovered = await self._recover_idempotent(request)
+              if recovered is not None:
+                  return recovered
+              raise LearnerStateConflictError from error
+          '''.replace('          ', '')
+          except_replacement = '''        except IntegrityError as error:
+              recovered = await self._recover_idempotent(request)
+              if recovered is not None:
+                  return recovered
+              if _is_task_exposure_collision(error):
+                  raise TaskExposureConflictError from error
+              raise LearnerStateConflictError from error
+          '''.replace('          ', '')
+          if except_marker not in text:
+              raise SystemExit('postgres integrity handler missing')
+          text = text.replace(except_marker, except_replacement, 1)
+          helper_marker = '\n\ndef _serialize_state(state: LearnerState) -> dict[str, Any]:\n'
+          helpers = '''
+
+          async def _write_task_exposures(
+              connection: AsyncConnection,
+              request: LearnerStateCommit,
+          ) -> None:
+              active = next(
+                  (
+                      item
+                      for item in request.state.plan_versions
+                      if item.plan_version_id == request.state.active_plan_version_id
+                  ),
+                  None,
+              )
+              if active is None:
+                  return
+              for exposure in active.task_exposures:
+                  if exposure.plan_version_id != active.plan_version_id:
+                      continue
+                  await connection.execute(
+                      insert(task_exposures).values(
+                          id=uuid5(NAMESPACE_URL, f"task-exposure:{exposure.instance_id}"),
+                          account_id=request.account_id,
+                          learner_id=request.learner_id,
+                          instance_id=exposure.instance_id,
+                          item_family_id=exposure.item_family_id,
+                          item_family_version=exposure.item_family_version,
+                          blueprint_id=exposure.blueprint_id,
+                          blueprint_version=exposure.blueprint_version,
+                          rubric_version=exposure.rubric_version,
+                          plan_version_id=exposure.plan_version_id,
+                          semantic_signature=exposure.semantic_signature,
+                          semantic_fingerprint=exposure.semantic_fingerprint,
+                          semantic_tokens=list(exposure.semantic_tokens),
+                          high_stakes_eligible=exposure.high_stakes_eligible,
+                          served_at=datetime.fromisoformat(exposure.served_at),
+                      )
+                  )
+
+
+          def _is_task_exposure_collision(error: IntegrityError) -> bool:
+              diagnostics = getattr(error.orig, "diag", None)
+              return getattr(diagnostics, "constraint_name", None) in {
+                  "uq_task_exposures_blueprint_semantic",
+                  "uq_task_exposures_instance_id",
+              }
+          '''
+          helpers = textwrap.dedent(helpers)
+          if '_is_task_exposure_collision(' not in text:
+              if helper_marker not in text:
+                  raise SystemExit('postgres serialize marker missing')
+              text = text.replace(helper_marker, helpers + helper_marker, 1)
+          postgres.write_text(text, encoding='utf-8')
+
+          persistence = Path('apps/api/src/ai_learning_platform_api/persistence/service.py')
+          text = persistence.read_text(encoding='utf-8')
+          text = text.replace(
+              '    LearnerStateRepository,\n',
+              '    LearnerStateRepository,\n    TaskExposureIndexRepository,\n',
+              1,
+          )
+          constructor = '''    def __init__(
+              self,
+              *,
+              secret: str,
+              repository: LearnerStateRepository,
+              clock: Callable[[], datetime] | None = None,
+          ) -> None:
+              self._core = LearningPlanService(secret, clock=clock)
+              self._repository = repository
+              self._clock = clock or _utc_now
+          '''.replace('          ', '')
+          replacement = '''    def __init__(
+              self,
+              *,
+              secret: str,
+              repository: LearnerStateRepository,
+              exposure_repository: TaskExposureIndexRepository | None = None,
+              clock: Callable[[], datetime] | None = None,
+          ) -> None:
+              self._core = LearningPlanService(secret, clock=clock)
+              self._repository = repository
+              self._exposure_repository = exposure_repository
+              self._clock = clock or _utc_now
+          '''.replace('          ', '')
+          if constructor not in text:
+              raise SystemExit('persistence constructor marker missing')
+          text = text.replace(constructor, replacement, 1)
+          for expression in (
+              'plan = self._core.create_plan(request)',
+              'plan = self._core.import_browser_plan(state)',
+              'plan = self._core.replan(request)',
+              'plan = self._core.evaluate_evidence(state_token=stored_token, verdict=verdict)',
+              'result = self._core.submit_assessment(request)',
+          ):
+              if expression not in text:
+                  raise SystemExit(f'persistence plan expression missing: {expression}')
+          text = text.replace(
+              '        plan = self._core.create_plan(request)\n',
+              '        plan = self._core.create_plan(request)\n        plan = await self._deduplicate_plan(plan)\n',
+              1,
+          )
+          text = text.replace(
+              '        plan = self._core.import_browser_plan(state)\n',
+              '        plan = self._core.import_browser_plan(state)\n        plan = await self._deduplicate_plan(plan)\n',
+              1,
+          )
+          text = text.replace(
+              '        plan = self._core.replan(request)\n',
+              '        plan = self._core.replan(request)\n        plan = await self._deduplicate_plan(plan)\n',
+              1,
+          )
+          text = text.replace(
+              '        plan = self._core.evaluate_evidence(state_token=stored_token, verdict=verdict)\n',
+              '        plan = self._core.evaluate_evidence(state_token=stored_token, verdict=verdict)\n'
+              '        plan = await self._deduplicate_plan(plan)\n',
+              1,
+          )
+          text = text.replace(
+              '        result = self._core.submit_assessment(request)\n',
+              '        result = self._core.submit_assessment(request)\n'
+              '        plan = await self._deduplicate_plan(result.plan)\n'
+              '        result = result.model_copy(update={"plan": plan})\n',
+              1,
+          )
+          helper_marker = '    async def _commit(\n'
+          helper = '''    async def _deduplicate_plan(self, plan: PlanView) -> PlanView:
+              if self._exposure_repository is None:
+                  return plan
+              item_family_ids = tuple(
+                  sorted(
+                      {
+                          item.item_family_id
+                          for item in plan.active_plan_version.activities
+                          if item.kind == "build" and item.item_family_id
+                      }
+                  )
+              )
+              if not item_family_ids:
+                  return plan
+              exposures = await self._exposure_repository.list_recent_task_exposures(
+                  item_family_ids=item_family_ids,
+                  limit=512,
+              )
+              return self._core.rebind_external_exposures(
+                  state_token=plan.state_token,
+                  external_exposures=exposures,
+              )
+
+'''
+          helper = textwrap.dedent(helper)
+          if 'async def _deduplicate_plan(' not in text:
+              if helper_marker not in text:
+                  raise SystemExit('persistence commit helper marker missing')
+              text = text.replace(helper_marker, helper + helper_marker, 1)
+          persistence.write_text(text, encoding='utf-8')
+
+          app = Path('apps/api/src/ai_learning_platform_api/app.py')
+          text = app.read_text(encoding='utf-8')
+          marker = '''        persistent_service = PersistentLearningService(
+              secret=secret,
+              repository=PostgresLearnerStateRepository(database_runtime.engine),
+          )
+          '''.replace('          ', '')
+          replacement = '''        postgres_repository = PostgresLearnerStateRepository(database_runtime.engine)
+              persistent_service = PersistentLearningService(
+                  secret=secret,
+                  repository=postgres_repository,
+                  exposure_repository=postgres_repository,
+              )
+          '''.replace('          ', '')
+          if marker not in text:
+              raise SystemExit('app persistent service marker missing')
+          app.write_text(text.replace(marker, replacement, 1), encoding='utf-8')
+          PY
+      - name: Verify migrations, typing, and focused behavior
+        working-directory: apps/api
+        run: |
+          uv run --locked ruff check --fix src tests ../../migrations/versions
+          uv run --locked ruff format src tests ../../migrations/versions
+          uv run --locked mypy src tests ../../scripts
+          uv run --locked alembic upgrade head
+          uv run --locked pytest tests/test_g05_blueprint_instances.py tests/test_g05_human_simulation.py tests/test_persistent_learning_service.py
+      - name: Commit durable index wiring
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api
+          git commit -m 'Wire durable history-wide G05 exposure index'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
