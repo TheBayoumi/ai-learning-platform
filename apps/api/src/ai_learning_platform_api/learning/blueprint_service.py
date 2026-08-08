@@ -17,19 +17,19 @@ from ai_learning_platform_api.learning.schemas import (
     ActivityView,
     CurriculumTrigger,
     LearnerPlanVersion,
+    LearnerState,
     PlanView,
     TargetView,
     TaskExposureView,
     TrustedEvidenceVerdict,
 )
-from ai_learning_platform_api.learning.service import (
-    LearningPlanError,
-)
+from ai_learning_platform_api.learning.service import LearningPlanError
 from ai_learning_platform_api.learning.service import (
     LearningPlanService as BaseLearningPlanService,
 )
 
-_MAX_TASK_EXPOSURES = 64
+_MAX_TASK_EXPOSURES = 16
+_MAX_PLAN_VERSIONS = 3
 
 
 class UntrustedInstanceEvidenceError(LearningPlanError):
@@ -71,35 +71,33 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         generation: int,
         available_from: datetime,
     ) -> ActivityView:
-        base = BaseLearningPlanService._review_activity(
+        review = BaseLearningPlanService._review_activity(
             source=source,
             learner_name=learner_name,
             generation=generation,
             available_from=available_from,
         )
-        trusted_source = source
-        review = base
         seed = hashlib.sha256(
             f"review|{source.id}|{generation}|{available_from.isoformat()}".encode()
-        ).hexdigest()
+        ).hexdigest()[:32]
         return review.model_copy(
             update={
-                "item_family_id": trusted_source.item_family_id,
-                "item_family_version": trusted_source.item_family_version,
-                "item_family_trust": trusted_source.item_family_trust,
-                "blueprint_id": trusted_source.blueprint_id,
-                "blueprint_version": trusted_source.blueprint_version,
-                "blueprint_trust": trusted_source.blueprint_trust,
-                "rubric_version": trusted_source.rubric_version,
+                "item_family_id": source.item_family_id,
+                "item_family_version": source.item_family_version,
+                "item_family_trust": source.item_family_trust,
+                "blueprint_id": source.blueprint_id,
+                "blueprint_version": source.blueprint_version,
+                "blueprint_trust": source.blueprint_trust,
+                "rubric_version": source.rubric_version,
                 "instance_seed": seed,
                 "semantic_fingerprint": hashlib.sha256(
-                    f"review|{trusted_source.semantic_fingerprint}|{generation}".encode()
-                ).hexdigest()[:32],
+                    f"review|{source.semantic_fingerprint}|{generation}".encode()
+                ).hexdigest()[:24],
                 "semantic_tokens": [
-                    f"review:{trusted_source.blueprint_id}",
-                    f"source:{trusted_source.semantic_fingerprint}",
+                    f"r:{hashlib.sha256(source.blueprint_id.encode()).hexdigest()[:8]}",
+                    f"s:{source.semantic_fingerprint[:8]}",
                 ],
-                "scenario_tags": ["delayed-review", f"source:{source.id}"],
+                "scenario_tags": ["review", f"g:{generation}"],
                 "high_stakes_eligible": False,
             }
         )
@@ -177,12 +175,23 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
                 served_at=created_at.isoformat(),
             )
             for activity in finalized
-            if activity.instance_seed and activity.semantic_fingerprint
+            if activity.kind == "build" and activity.instance_seed and activity.semantic_fingerprint
         ]
         exposure_history = [*prior_exposures, *current_exposures][-_MAX_TASK_EXPOSURES:]
         return base_version.model_copy(
             update={"activities": finalized, "task_exposures": exposure_history}
         )
+
+    @staticmethod
+    def _append_plan_version(
+        state: LearnerState,
+        version: LearnerPlanVersion,
+    ) -> list[LearnerPlanVersion]:
+        """Keep immutable curriculum snapshots while avoiding cumulative ledger duplication."""
+        archived = [
+            item.model_copy(update={"task_exposures": []}) for item in state.plan_versions
+        ]
+        return [*archived, version][-_MAX_PLAN_VERSIONS:]
 
     def evaluate_evidence(
         self,
