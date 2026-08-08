@@ -18,12 +18,14 @@ from ai_learning_platform_api.learning.catalog import (
     CompetencyDefinition,
     RoleDefinition,
 )
+from ai_learning_platform_api.learning.evidence import apply_trusted_verdict
 from ai_learning_platform_api.learning.schemas import (
     ActivityView,
     AssessmentAttemptView,
     AssessmentStartRequest,
     AssessmentSubmissionView,
     AssessmentSubmitRequest,
+    CompetencyEvidenceState,
     CompetencyView,
     EvidenceRecordView,
     LearnerState,
@@ -33,6 +35,7 @@ from ai_learning_platform_api.learning.schemas import (
     ProgressRequest,
     ReplanRequest,
     RoleView,
+    TrustedEvidenceVerdict,
 )
 from ai_learning_platform_api.learning.targeting import default_target_for, resolve_target
 
@@ -198,7 +201,7 @@ class LearningPlanService:
             generation=0,
         )
         state = LearnerState(
-            schema_version=4,
+            schema_version=5,
             learner_id=str(self._id_factory()),
             learner_name=request.learner_name.strip(),
             target_role=request.target_role,
@@ -214,6 +217,10 @@ class LearningPlanService:
             plan_revision=0,
             focus_competency_ids=[],
             evidence_history=[],
+            competency_evidence={
+                item.identifier: CompetencyEvidenceState(competency_id=item.identifier)
+                for item in role.competencies
+            },
         )
         return self._project(state, role)
 
@@ -281,7 +288,7 @@ class LearningPlanService:
         )
         updated = state.model_copy(
             update={
-                "schema_version": 4,
+                "schema_version": 5,
                 "sequence": state.sequence + 1,
                 "plan_revision": revision,
                 "assessment_scores": assessment_scores,
@@ -329,6 +336,11 @@ class LearningPlanService:
             planning_signal.get(activity.competency_id, 0) + delta,
         )
         evidence = EvidenceRecordView(
+            evidence_id=self._evidence_id(
+                state.learner_id,
+                activity.id,
+                now.isoformat(),
+            ),
             activity_id=activity.id,
             competency_id=activity.competency_id,
             competency_name=activity.competency_name,
@@ -338,6 +350,11 @@ class LearningPlanService:
             evidence_reference=request.evidence_reference.strip(),
             criteria_met=criteria_met,
             confidence=request.confidence,
+            source="learner_attested",
+            disposition="recorded",
+            independence="unverified",
+            assistance="unknown",
+            reasoning="submitted" if request.reflection.strip() else "not_observed",
             planning_signal_delta=delta,
             next_review_at=review_at.isoformat(),
         )
@@ -350,13 +367,40 @@ class LearningPlanService:
         activities = [*state.activities, review_activity]
         updated = state.model_copy(
             update={
-                "schema_version": 4,
+                "schema_version": 5,
                 "sequence": state.sequence + 1,
                 "planning_signal": planning_signal,
                 "mastery": {},
                 "completed_activity_ids": completed,
                 "activities": activities,
                 "evidence_history": [*state.evidence_history, evidence][-_MAX_EVIDENCE_HISTORY:],
+            }
+        )
+        return self._project(updated, role)
+
+    def evaluate_evidence(
+        self,
+        *,
+        state_token: str,
+        verdict: TrustedEvidenceVerdict,
+    ) -> PlanView:
+        """Apply one server-side trusted verdict without granting readiness."""
+        state = self._codec.decode(state_token)
+        role = ROLE_CATALOG.get(state.target_role)
+        if role is None:
+            raise InvalidStateTokenError
+        state = self._upgrade_state(state, role)
+        transition = apply_trusted_verdict(
+            state=state,
+            verdict=verdict,
+            occurred_at=self._now(),
+        )
+        if not transition.changed:
+            return self._project(state, role)
+        updated = transition.state.model_copy(
+            update={
+                "schema_version": 5,
+                "sequence": state.sequence + 1,
             }
         )
         return self._project(updated, role)
@@ -394,7 +438,7 @@ class LearningPlanService:
         )
         updated = state.model_copy(
             update={
-                "schema_version": 4,
+                "schema_version": 5,
                 "weekly_hours": request.weekly_hours,
                 "sequence": state.sequence + 1,
                 "plan_revision": revision,
@@ -447,6 +491,12 @@ class LearningPlanService:
             and activity.available_from is not None
             and _parse_timestamp(activity.available_from) > now
         )
+        evidence_review_dates = sorted(
+            _parse_timestamp(item.due_at)
+            for item in state.review_state.values()
+            if _parse_timestamp(item.due_at) > now
+        )
+        all_review_dates = sorted([*future_reviews, *evidence_review_dates])
         current_completed = sum(1 for item in state.activities if item.id in completed)
         assert state.target is not None
         return PlanView(
@@ -469,10 +519,22 @@ class LearningPlanService:
                     diagnostic_signal_percent=diagnostic_signal.get(item.identifier, 0),
                     assessment_percent=state.assessment_scores.get(item.identifier),
                     priority_gap_percent=100 - diagnostic_signal.get(item.identifier, 0),
+                    evidence_status=state.competency_evidence[item.identifier].status,
                     focused=item.identifier in state.focus_competency_ids,
                 )
                 for item in priorities
             ],
+            competency_evidence=[
+                state.competency_evidence[item.identifier] for item in role.competencies
+            ],
+            evidence_evaluations=list(state.evidence_evaluations[-24:]),
+            active_misconceptions=[
+                item for item in state.misconceptions if item.status == "active"
+            ],
+            review_state=sorted(
+                state.review_state.values(),
+                key=lambda item: (item.due_at, item.competency_id),
+            ),
             current_activity=current,
             completed_count=current_completed,
             total_count=len(state.activities),
@@ -482,7 +544,7 @@ class LearningPlanService:
             focus_competency_ids=list(state.focus_competency_ids),
             evidence_history=list(state.evidence_history[-12:]),
             assessment_history=list(state.assessment_history[-8:]),
-            next_review_at=future_reviews[0].isoformat() if future_reviews else None,
+            next_review_at=all_review_dates[0].isoformat() if all_review_dates else None,
         )
 
     @staticmethod
@@ -594,6 +656,13 @@ class LearningPlanService:
         )
 
     @staticmethod
+    def _evidence_id(learner_id: str, activity_id: str, submitted_at: str) -> str:
+        digest = hashlib.sha256(
+            f"{learner_id}|{activity_id}|{submitted_at}".encode("utf-8")
+        ).hexdigest()[:24]
+        return f"evidence-{digest}"
+
+    @staticmethod
     def _learner_seed(learner_name: str, target_role: str, context: str) -> str:
         return hashlib.sha256(
             "|".join(
@@ -615,19 +684,42 @@ class LearningPlanService:
     def _is_available(activity: ActivityView, now: datetime) -> bool:
         return activity.available_from is None or _parse_timestamp(activity.available_from) <= now
 
-    @staticmethod
-    def _upgrade_state(state: LearnerState, role: RoleDefinition) -> LearnerState:
-        """Migrate legacy signed state into schema v4 without promoting it to verified mastery."""
+    @classmethod
+    def _upgrade_state(cls, state: LearnerState, role: RoleDefinition) -> LearnerState:
+        """Migrate legacy signed state into schema v5 without inventing trusted evidence."""
         planning_signal = (
             dict(state.planning_signal) if state.planning_signal else dict(state.mastery)
         )
         target = state.target if state.target is not None else default_target_for(role)
+        evidence_history = [
+            item
+            if item.evidence_id
+            else item.model_copy(
+                update={
+                    "evidence_id": cls._evidence_id(
+                        state.learner_id,
+                        item.activity_id,
+                        item.submitted_at,
+                    )
+                }
+            )
+            for item in state.evidence_history
+        ]
+        competency_evidence = {
+            item.identifier: state.competency_evidence.get(
+                item.identifier,
+                CompetencyEvidenceState(competency_id=item.identifier),
+            )
+            for item in role.competencies
+        }
         return state.model_copy(
             update={
-                "schema_version": 4,
+                "schema_version": 5,
                 "target": target,
                 "planning_signal": planning_signal,
                 "mastery": {},
+                "evidence_history": evidence_history,
+                "competency_evidence": competency_evidence,
             }
         )
 
