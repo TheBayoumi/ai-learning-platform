@@ -31,57 +31,149 @@ jobs:
           schemas = Path('apps/api/src/ai_learning_platform_api/learning/schemas.py')
           text = schemas.read_text(encoding='utf-8')
           activity_marker = '    semantic_fingerprint: str = ""\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n'
-          activity_replacement = '    semantic_fingerprint: str = ""\n    semantic_signature: str = ""\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n'
-          if activity_marker not in text:
-              raise SystemExit('Activity semantic marker missing')
-          text = text.replace(activity_marker, activity_replacement, 1)
+          if activity_marker in text:
+              text = text.replace(
+                  activity_marker,
+                  '    semantic_fingerprint: str = ""\n    semantic_signature: str = ""\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n',
+                  1,
+              )
           exposure_marker = '    semantic_fingerprint: str\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n'
-          exposure_replacement = '    semantic_fingerprint: str\n    semantic_signature: str\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n'
-          if exposure_marker not in text:
-              raise SystemExit('Task exposure semantic marker missing')
-          text = text.replace(exposure_marker, exposure_replacement, 1)
+          if exposure_marker in text:
+              text = text.replace(
+                  exposure_marker,
+                  '    semantic_fingerprint: str\n    semantic_signature: str\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n',
+                  1,
+              )
           evidence_marker = '    next_review_at: str\n\n\nclass EvidenceEvaluationRecord'
-          evidence_replacement = '''    next_review_at: str
-              source_item_family_id: str = ""
-              source_blueprint_id: str = ""
-              source_rubric_version: str = ""
-              source_plan_version_id: str = ""
-              source_semantic_fingerprint: str = ""
-              source_semantic_signature: str = ""
-              source_high_stakes_eligible: bool = False
-
-
-          class EvidenceEvaluationRecord'''.replace('          ', '')
-          if evidence_marker not in text:
-              raise SystemExit('Evidence provenance marker missing')
-          schemas.write_text(text.replace(evidence_marker, evidence_replacement, 1), encoding='utf-8')
+          if evidence_marker in text:
+              text = text.replace(
+                  evidence_marker,
+                  '    next_review_at: str\n'
+                  '    source_item_family_id: str = ""\n'
+                  '    source_blueprint_id: str = ""\n'
+                  '    source_rubric_version: str = ""\n'
+                  '    source_plan_version_id: str = ""\n'
+                  '    source_semantic_fingerprint: str = ""\n'
+                  '    source_semantic_signature: str = ""\n'
+                  '    source_high_stakes_eligible: bool = False\n\n\n'
+                  'class EvidenceEvaluationRecord',
+                  1,
+              )
+          schemas.write_text(text, encoding='utf-8')
 
           service = Path('apps/api/src/ai_learning_platform_api/learning/service.py')
           text = service.read_text(encoding='utf-8')
           record_marker = '            next_review_at=review_at.isoformat(),\n        )\n'
-          record_replacement = '''            next_review_at=review_at.isoformat(),
-              source_item_family_id=activity.item_family_id,
-              source_blueprint_id=activity.blueprint_id,
-              source_rubric_version=activity.rubric_version,
-              source_plan_version_id=activity.plan_version_id,
-              source_semantic_fingerprint=activity.semantic_fingerprint,
-              source_semantic_signature=activity.semantic_signature,
-              source_high_stakes_eligible=activity.high_stakes_eligible,
+          if record_marker in text:
+              text = text.replace(
+                  record_marker,
+                  '            next_review_at=review_at.isoformat(),\n'
+                  '            source_item_family_id=activity.item_family_id,\n'
+                  '            source_blueprint_id=activity.blueprint_id,\n'
+                  '            source_rubric_version=activity.rubric_version,\n'
+                  '            source_plan_version_id=activity.plan_version_id,\n'
+                  '            source_semantic_fingerprint=activity.semantic_fingerprint,\n'
+                  '            source_semantic_signature=activity.semantic_signature,\n'
+                  '            source_high_stakes_eligible=activity.high_stakes_eligible,\n'
+                  '        )\n',
+                  1,
+              )
+          service.write_text(text, encoding='utf-8')
+
+          blueprints = Path('apps/api/src/ai_learning_platform_api/learning/blueprints.py')
+          text = blueprints.read_text(encoding='utf-8')
+          if 'semantic_signature: str,' not in text:
+              text = text.replace(
+                  '    semantic_fingerprint: str,\n    semantic_tokens: Iterable[str],\n',
+                  '    semantic_fingerprint: str,\n    semantic_signature: str,\n    semantic_tokens: Iterable[str],\n',
+                  1,
+              )
+              text = text.replace(
+                  '        if exposure.semantic_fingerprint == semantic_fingerprint:\n            return True\n',
+                  '        if exposure.semantic_fingerprint == semantic_fingerprint:\n            return True\n'
+                  '        if exposure.semantic_signature == semantic_signature:\n            return True\n',
+                  1,
+              )
+              text = text.replace(
+                  '        fingerprint = _digest("|".join((*semantic_tokens, challenge)), 24)\n',
+                  '        semantic_signature = _digest("|".join(semantic_tokens), 24)\n'
+                  '        fingerprint = _digest("|".join((*semantic_tokens, challenge)), 24)\n',
+                  1,
+              )
+              text = text.replace(
+                  '            semantic_fingerprint=fingerprint,\n            semantic_tokens=semantic_tokens,\n',
+                  '            semantic_fingerprint=fingerprint,\n            semantic_signature=semantic_signature,\n            semantic_tokens=semantic_tokens,\n',
+                  1,
+              )
+              text = text.replace(
+                  '                "semantic_fingerprint": fingerprint,\n                "semantic_tokens": semantic_tokens,\n',
+                  '                "semantic_fingerprint": fingerprint,\n'
+                  '                "semantic_signature": semantic_signature,\n'
+                  '                "semantic_tokens": semantic_tokens,\n',
+                  1,
+              )
+              text = text.replace(
+                  '        semantic_fingerprint=activity.semantic_fingerprint,\n        semantic_tokens=list(activity.semantic_tokens),\n',
+                  '        semantic_fingerprint=activity.semantic_fingerprint,\n'
+                  '        semantic_signature=activity.semantic_signature,\n'
+                  '        semantic_tokens=list(activity.semantic_tokens),\n',
+                  1,
+              )
+          blueprints.write_text(text, encoding='utf-8')
+
+          blueprint_service = Path('apps/api/src/ai_learning_platform_api/learning/blueprint_service.py')
+          text = blueprint_service.read_text(encoding='utf-8')
+          text = text.replace(
+              '                        semantic_fingerprint=activity.semantic_fingerprint,\n                        semantic_tokens=list(activity.semantic_tokens),\n',
+              '                        semantic_fingerprint=activity.semantic_fingerprint,\n'
+              '                        semantic_signature=activity.semantic_signature,\n'
+              '                        semantic_tokens=list(activity.semantic_tokens),\n',
           )
+          if 'class EvidenceRubricMismatchError' not in text:
+              marker = 'class BlueprintLearningPlanService(BaseLearningPlanService):\n'
+              error_class = (
+                  'class EvidenceRubricMismatchError(LearningPlanError):\n'
+                  '    """Trusted evaluator verdict names a rubric other than the served task rubric."""\n\n'
+                  '    code = "EVIDENCE_RUBRIC_MISMATCH"\n\n\n'
+              )
+              text = text.replace(marker, error_class + marker, 1)
+          old_eval = '''        activities = [
+              activity for version in state.plan_versions for activity in version.activities
+          ]
+              source = next((item for item in activities if item.id == evidence.activity_id), None)
+              if source is None or not source.high_stakes_eligible:
+                  raise UntrustedInstanceEvidenceError
+              return super().evaluate_evidence(state_token=state_token, verdict=verdict)
           '''.replace('          ', '')
-          if record_marker not in text:
-              raise SystemExit('Evidence construction marker missing')
-          service.write_text(text.replace(record_marker, record_replacement, 1), encoding='utf-8')
+          if old_eval in text:
+              text = text.replace(
+                  old_eval,
+                  '        if not evidence.source_high_stakes_eligible:\n'
+                  '            raise UntrustedInstanceEvidenceError\n'
+                  '        if not evidence.source_blueprint_id or not evidence.source_rubric_version:\n'
+                  '            raise UntrustedInstanceEvidenceError\n'
+                  '        if verdict.rubric_version != evidence.source_rubric_version:\n'
+                  '            raise EvidenceRubricMismatchError\n'
+                  '        return super().evaluate_evidence(state_token=state_token, verdict=verdict)\n',
+                  1,
+              )
+          if '"EvidenceRubricMismatchError"' not in text:
+              text = text.replace(
+                  '    "BlueprintTrustError",\n',
+                  '    "BlueprintTrustError",\n    "EvidenceRubricMismatchError",\n',
+                  1,
+              )
+          blueprint_service.write_text(text, encoding='utf-8')
           PY
       - name: Verify and commit
         working-directory: apps/api
         run: |
-          uv run --locked ruff check --fix src/ai_learning_platform_api/learning/schemas.py src/ai_learning_platform_api/learning/service.py
-          uv run --locked ruff format src/ai_learning_platform_api/learning/schemas.py src/ai_learning_platform_api/learning/service.py
+          uv run --locked ruff check --fix src
+          uv run --locked ruff format src
           uv run --locked mypy src tests ../../scripts
           git diff --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/ai_learning_platform_api/learning/schemas.py src/ai_learning_platform_api/learning/service.py
-          git commit -m 'Preserve immutable G05 source provenance'
+          git add src/ai_learning_platform_api/learning
+          git commit -m 'Preserve immutable G05 source and rubric provenance'
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
