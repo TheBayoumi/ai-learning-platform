@@ -12,6 +12,8 @@ from pydantic import ValidationError
 
 from ai_learning_platform_api.learning.schemas import PlanView
 from ai_learning_platform_api.tutoring.contracts import (
+    TutorAssistance,
+    TutorMove,
     TutorPolicyDecision,
     TutorSessionState,
     TutorTurnRequest,
@@ -102,6 +104,8 @@ class TutorPolicyEngine:
             ),
             None,
         )
+        selected_move: TutorMove
+        assistance: TutorAssistance
         if evidence is not None and evidence.status == "independent":
             selected_move = "review"
             hint_level = 0
@@ -198,8 +202,8 @@ class TutorPolicyEngine:
         learner_id: str,
         plan_version_id: str,
         activity_id: str,
-        requested_move: str,
-        selected_move: str,
+        requested_move: TutorMove,
+        selected_move: TutorMove,
         hint_level: int,
         history_count: int,
     ) -> str:
