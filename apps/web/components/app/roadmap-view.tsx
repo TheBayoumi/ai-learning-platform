@@ -40,27 +40,27 @@ export function RoadmapView() {
     <div className={styles.page}>
       <PageHeader
         eyebrow="Roadmap"
-        title={`${plan.role.title} competency map`}
-        description="The role graph is stable enough to define the work. Your order through it is not: evidence, assessment, focus, reviews, and capacity continuously change the active sequence."
+        title={`${plan.role.title} planning map`}
+        description="This is a work-priority projection against the resolved Target—not a mastery map. Self-report, learner-attested work, calibration, focus, reviews, and capacity can change the sequence while readiness stays validation-locked."
       />
 
       {error !== null ? <div className="error-banner" role="alert"><p>{error}</p></div> : null}
 
       <section className={styles.grid2}>
         <article className={styles.card}>
-          <span className={styles.label}>Current competency state</span>
+          <span className={styles.label}>Current planning priorities</span>
           <ul className={styles.competencyList}>
             {plan.priority_competencies.map((competency) => (
               <li key={competency.id}>
                 <span className={styles.itemTitle}>
                   <strong>{competency.name}</strong>
                   <small>
-                    {competency.category} · gap {competency.gap_percent}%
-                    {competency.assessment_percent === null ? " · not calibrated" : ` · assessment ${competency.assessment_percent}%`}
+                    {competency.category} · priority gap {competency.priority_gap_percent}%
+                    {competency.assessment_percent === null ? " · not calibrated" : ` · calibration ${competency.assessment_percent}%`}
                   </small>
-                  <span className={styles.progress}><span style={{ width: `${competency.effective_percent}%` }} /></span>
+                  <span className={styles.progress}><span style={{ width: `${competency.diagnostic_signal_percent}%` }} /></span>
                 </span>
-                <span className={styles.score}>{competency.effective_percent}%</span>
+                <span className={styles.score}>{competency.diagnostic_signal_percent}% signal</span>
               </li>
             ))}
           </ul>
@@ -68,10 +68,10 @@ export function RoadmapView() {
 
         <article className={styles.formCard}>
           <span className={styles.label}>Replan controls</span>
-          <h2>Change constraints, not fake progress.</h2>
+          <h2>Change constraints and priorities, not evidence claims.</h2>
           <p>
-            Replanning regenerates active build work while preserving completed evidence, assessment history,
-            and pending spaced reviews.
+            Replanning regenerates active build work while preserving recorded work, calibration history,
+            and pending spaced reviews. It cannot promote mastery or readiness.
           </p>
           <form className={styles.form} onSubmit={submit}>
             <div className={styles.field}>
