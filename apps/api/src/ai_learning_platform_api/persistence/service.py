@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from ai_learning_platform_api.learning import LearningPlanService
+from ai_learning_platform_api.learning.blueprints import collides
 from ai_learning_platform_api.learning.schemas import (
     AssessmentStartRequest,
     AssessmentSubmitRequest,
@@ -22,6 +23,7 @@ from ai_learning_platform_api.persistence.contracts import (
     LearnerStateNotFoundError,
     LearnerStateRepository,
     StoredLearnerState,
+    TaskExposureConflictError,
     TaskExposureIndexRepository,
 )
 from ai_learning_platform_api.persistence.schemas import (
@@ -98,7 +100,9 @@ class PersistentLearningService:
         if supplied_state.storage_mode != "browser":
             raise LearnerStateNotFoundError
         plan = self._core.resume(request.state_token)
-        plan = await self._deduplicate_new_plan(plan)
+        # Import is a storage-mode transition, not a curriculum transition. Already-served
+        # browser tasks and their evidence provenance must never be rewritten during import.
+        await self._validate_import_exposures(plan)
         state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
         stored = await self._repository.commit(
             LearnerStateCommit(
@@ -257,21 +261,41 @@ class PersistentLearningService:
             version=committed.version,
         )
 
-    async def _deduplicate_new_plan(self, plan: PlanView) -> PlanView:
-        """Rebind newly generated builds against the complete unlinkable cohort history."""
+    async def _collision_history(self, plan: PlanView) -> tuple:
         if self._exposure_repository is None:
-            return plan
-        build_activities = [
-            item for item in plan.active_plan_version.activities if item.kind == "build"
-        ]
+            return ()
         item_family_ids = tuple(
-            sorted({item.item_family_id for item in build_activities if item.item_family_id})
+            sorted(
+                {
+                    item.item_family_id
+                    for item in plan.active_plan_version.task_exposures
+                    if item.item_family_id
+                }
+            )
         )
         if not item_family_ids:
-            return plan
-        collisions = await self._exposure_repository.list_task_collision_fingerprints(
+            return ()
+        return await self._exposure_repository.list_task_collision_fingerprints(
             item_family_ids=item_family_ids
         )
+
+    async def _validate_import_exposures(self, plan: PlanView) -> None:
+        """Fail closed instead of retroactively changing already-served browser tasks."""
+        collisions = await self._collision_history(plan)
+        if not collisions:
+            return
+        for exposure in plan.active_plan_version.task_exposures:
+            if collides(
+                semantic_fingerprint=exposure.semantic_fingerprint,
+                semantic_signature=exposure.semantic_signature,
+                semantic_tokens=exposure.semantic_tokens,
+                exposures=collisions,
+            ):
+                raise TaskExposureConflictError
+
+    async def _deduplicate_new_plan(self, plan: PlanView) -> PlanView:
+        """Rebind newly generated builds against the complete unlinkable cohort history."""
+        collisions = await self._collision_history(plan)
         if not collisions:
             return plan
         return self._core.rebind_external_exposures(
