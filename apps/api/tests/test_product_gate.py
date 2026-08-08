@@ -12,7 +12,7 @@ from ai_learning_platform_api.automation import product_gate
 
 OLD_SHA = "1" * 40
 HEAD_SHA = "2" * 40
-HEAD_REF = "product/g02-evidence-state"
+HEAD_REF = "product/g04-tutor-policy-loop"
 
 
 def _phase(identifier: str, status: str) -> dict[str, object]:
@@ -126,7 +126,7 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
     )
     active = next(phase for phase in phases if phase.status in product_gate.ACTIVE_STATUSES)
 
-    assert active.identifier == "G03"
+    assert active.identifier == "G04"
     assert active.status in product_gate.ACTIVE_STATUSES
     assert active.branch == head_ref
 
