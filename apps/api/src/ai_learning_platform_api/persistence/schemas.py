@@ -15,6 +15,7 @@ from ai_learning_platform_api.learning.schemas import (
     PlanView,
     StrictModel,
     TargetRequest,
+    TrustedEvidenceVerdict,
 )
 
 IdempotencyKey = Annotated[str, Field(min_length=16, max_length=160, pattern=r"^[^\s]+$")]
@@ -57,6 +58,12 @@ class PersistentProgressRequest(PersistentMutationRequest):
     evidence_reference: Annotated[str, Field(min_length=0, max_length=500)] = ""
     criteria_met: Annotated[list[str], Field(max_length=16)] = Field(default_factory=list)
     confidence: Annotated[int, Field(ge=0, le=4)] = 0
+
+
+class PersistentEvidenceEvaluationRequest(PersistentMutationRequest):
+    """Commit one server-side trusted evaluator verdict to the durable aggregate."""
+
+    verdict: TrustedEvidenceVerdict
 
 
 class PersistentReplanRequest(PersistentMutationRequest):
