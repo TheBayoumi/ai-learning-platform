@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  normalize:
+  diagnose:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
@@ -23,7 +23,7 @@ jobs:
           version: 0.11.18
           python-version: 3.13.13
           working-directory: apps/api
-      - name: Apply locked Ruff fixes and self-delete
+      - name: Persist exact locked-Ruff diagnostics
         shell: bash
         run: |
           uv sync --project apps/api --locked --all-groups
@@ -37,13 +37,14 @@ jobs:
             apps/api/tests/test_evidence_state.py
             apps/api/tests/test_tutoring_service.py
           )
-          uv run --project apps/api --locked ruff check --fix "${files[@]}"
-          uv run --project apps/api --locked ruff format "${files[@]}"
-          uv run --project apps/api --locked ruff check "${files[@]}"
-          rm .github/workflows/g02-ruff-normalize.yml
+          set +e
+          uv run --project apps/api --locked ruff check "${files[@]}" >g02-ruff-diagnostics.txt 2>&1
+          status=$?
+          set -e
+          printf '\nRUFF_EXIT_STATUS=%s\n' "$status" >>g02-ruff-diagnostics.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add g02-ruff-diagnostics.txt
           git diff --cached --check
-          git commit -m "Normalize G02 evidence state with locked Ruff"
+          git commit -m "Capture exact G02 Ruff diagnostics"
           git push origin HEAD:product/g02-deterministic-evidence-state
