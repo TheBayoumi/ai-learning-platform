@@ -1,0 +1,126 @@
+name: G02 service integration
+
+on:
+  push:
+    branches:
+      - product/g02-deterministic-evidence-state
+    paths:
+      - .github/workflows/g02-service-integrate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: product/g02-deterministic-evidence-state
+          fetch-depth: 0
+      - name: Integrate deterministic evidence state and self-delete
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("apps/api/src/ai_learning_platform_api/learning/service.py")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_once(before: str, after: str, label: str) -> None:
+              global text
+              count = text.count(before)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1 match, found {count}")
+              text = text.replace(before, after)
+
+          replace_once(
+              "from ai_learning_platform_api.learning.catalog import (\n    ROLE_CATALOG,\n    CompetencyDefinition,\n    RoleDefinition,\n)\n",
+              "from ai_learning_platform_api.learning.catalog import (\n    ROLE_CATALOG,\n    CompetencyDefinition,\n    RoleDefinition,\n)\nfrom ai_learning_platform_api.learning.evidence import apply_trusted_verdict\n",
+              "evidence import",
+          )
+          replace_once(
+              "    CompetencyView,\n    EvidenceRecordView,\n",
+              "    CompetencyEvidenceState,\n    CompetencyView,\n    EvidenceRecordView,\n",
+              "competency evidence import",
+          )
+          replace_once(
+              "    ReplanRequest,\n    RoleView,\n)",
+              "    ReplanRequest,\n    RoleView,\n    TrustedEvidenceVerdict,\n)",
+              "verdict import",
+          )
+
+          # All new state transitions are schema v5.
+          text = text.replace('"schema_version": 4', '"schema_version": 5')
+          text = text.replace("schema_version=4,", "schema_version=5,")
+
+          replace_once(
+              "            focus_competency_ids=[],\n            evidence_history=[],\n        )",
+              "            focus_competency_ids=[],\n            evidence_history=[],\n            competency_evidence={\n                item.identifier: CompetencyEvidenceState(competency_id=item.identifier)\n                for item in role.competencies\n            },\n        )",
+              "initial competency evidence",
+          )
+
+          replace_once(
+              "        evidence = EvidenceRecordView(\n            activity_id=activity.id,\n",
+              "        evidence = EvidenceRecordView(\n            evidence_id=self._evidence_id(\n                state.learner_id,\n                activity.id,\n                now.isoformat(),\n            ),\n            activity_id=activity.id,\n",
+              "evidence id",
+          )
+          replace_once(
+              "            confidence=request.confidence,\n            planning_signal_delta=delta,\n",
+              "            confidence=request.confidence,\n            source=\"learner_attested\",\n            disposition=\"recorded\",\n            independence=\"unverified\",\n            assistance=\"unknown\",\n            reasoning=\"submitted\" if request.reflection.strip() else \"not_observed\",\n            planning_signal_delta=delta,\n",
+              "attestation semantics",
+          )
+
+          marker = "    def replan(self, request: ReplanRequest) -> PlanView:\n"
+          if marker not in text:
+              raise SystemExit("replan marker missing")
+          evaluate_method = '''    def evaluate_evidence(\n        self,\n        *,\n        state_token: str,\n        verdict: TrustedEvidenceVerdict,\n    ) -> PlanView:\n        \"\"\"Apply one server-side trusted verdict without granting readiness.\"\"\"\n        state = self._codec.decode(state_token)\n        role = ROLE_CATALOG.get(state.target_role)\n        if role is None:\n            raise InvalidStateTokenError\n        state = self._upgrade_state(state, role)\n        transition = apply_trusted_verdict(\n            state=state,\n            verdict=verdict,\n            occurred_at=self._now(),\n        )\n        if not transition.changed:\n            return self._project(state, role)\n        updated = transition.state.model_copy(\n            update={\n                \"schema_version\": 5,\n                \"sequence\": state.sequence + 1,\n            }\n        )\n        return self._project(updated, role)\n\n'''
+          text = text.replace(marker, evaluate_method + marker, 1)
+
+          replace_once(
+              "                    assessment_percent=state.assessment_scores.get(item.identifier),\n                    priority_gap_percent=100 - diagnostic_signal.get(item.identifier, 0),\n                    focused=item.identifier in state.focus_competency_ids,\n",
+              "                    assessment_percent=state.assessment_scores.get(item.identifier),\n                    priority_gap_percent=100 - diagnostic_signal.get(item.identifier, 0),\n                    evidence_status=state.competency_evidence[item.identifier].status,\n                    focused=item.identifier in state.focus_competency_ids,\n",
+              "priority evidence status",
+          )
+          replace_once(
+              "            priority_competencies=[\n",
+              "            priority_competencies=[\n",
+              "project marker",
+          )
+          replace_once(
+              "            current_activity=current,\n",
+              "            competency_evidence=[\n                state.competency_evidence[item.identifier] for item in role.competencies\n            ],\n            evidence_evaluations=list(state.evidence_evaluations[-24:]),\n            active_misconceptions=[\n                item for item in state.misconceptions if item.status == \"active\"\n            ],\n            review_state=sorted(\n                state.review_state.values(),\n                key=lambda item: (item.due_at, item.competency_id),\n            ),\n            current_activity=current,\n",
+              "project evidence arrays",
+          )
+
+          # Include trusted-evidence review due dates in the next-review projection.
+          replace_once(
+              "        current_completed = sum(1 for item in state.activities if item.id in completed)\n        assert state.target is not None\n",
+              "        evidence_review_dates = sorted(\n            _parse_timestamp(item.due_at)\n            for item in state.review_state.values()\n            if _parse_timestamp(item.due_at) > now\n        )\n        all_review_dates = sorted([*future_reviews, *evidence_review_dates])\n        current_completed = sum(1 for item in state.activities if item.id in completed)\n        assert state.target is not None\n",
+              "evidence review dates",
+          )
+          replace_once(
+              "            next_review_at=future_reviews[0].isoformat() if future_reviews else None,\n",
+              "            next_review_at=all_review_dates[0].isoformat() if all_review_dates else None,\n",
+              "next review projection",
+          )
+
+          old_upgrade = '''    @staticmethod\n    def _upgrade_state(state: LearnerState, role: RoleDefinition) -> LearnerState:\n        \"\"\"Migrate legacy signed state into schema v4 without promoting it to verified mastery.\"\"\"\n        planning_signal = (\n            dict(state.planning_signal) if state.planning_signal else dict(state.mastery)\n        )\n        target = state.target if state.target is not None else default_target_for(role)\n        return state.model_copy(\n            update={\n                \"schema_version\": 5,\n                \"target\": target,\n                \"planning_signal\": planning_signal,\n                \"mastery\": {},\n            }\n        )\n'''
+          new_upgrade = '''    @classmethod\n    def _upgrade_state(cls, state: LearnerState, role: RoleDefinition) -> LearnerState:\n        \"\"\"Migrate legacy signed state into schema v5 without inventing trusted evidence.\"\"\"\n        planning_signal = (\n            dict(state.planning_signal) if state.planning_signal else dict(state.mastery)\n        )\n        target = state.target if state.target is not None else default_target_for(role)\n        evidence_history = [\n            item\n            if item.evidence_id\n            else item.model_copy(\n                update={\n                    \"evidence_id\": cls._evidence_id(\n                        state.learner_id,\n                        item.activity_id,\n                        item.submitted_at,\n                    )\n                }\n            )\n            for item in state.evidence_history\n        ]\n        competency_evidence = {\n            item.identifier: state.competency_evidence.get(\n                item.identifier,\n                CompetencyEvidenceState(competency_id=item.identifier),\n            )\n            for item in role.competencies\n        }\n        return state.model_copy(\n            update={\n                \"schema_version\": 5,\n                \"target\": target,\n                \"planning_signal\": planning_signal,\n                \"mastery\": {},\n                \"evidence_history\": evidence_history,\n                \"competency_evidence\": competency_evidence,\n            }\n        )\n'''
+          replace_once(old_upgrade, new_upgrade, "schema v5 upgrade")
+
+          helper_marker = "    @staticmethod\n    def _learner_seed(learner_name: str, target_role: str, context: str) -> str:\n"
+          if helper_marker not in text:
+              raise SystemExit("learner seed marker missing")
+          evidence_helper = '''    @staticmethod\n    def _evidence_id(learner_id: str, activity_id: str, submitted_at: str) -> str:\n        digest = hashlib.sha256(\n            f\"{learner_id}|{activity_id}|{submitted_at}\".encode(\"utf-8\")\n        ).hexdigest()[:24]\n        return f\"evidence-{digest}\"\n\n'''
+          text = text.replace(helper_marker, evidence_helper + helper_marker, 1)
+
+          path.write_text(text, encoding="utf-8")
+          Path(".github/workflows/g02-service-integrate.yml").unlink()
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Integrate deterministic competency evidence state"
+          git push origin HEAD:product/g02-deterministic-evidence-state
