@@ -8,6 +8,7 @@ from ai_learning_platform_api.learning import LearningPlanService
 from ai_learning_platform_api.learning.blueprint_service import UntrustedInstanceEvidenceError
 from ai_learning_platform_api.learning.blueprints import (
     BlueprintTrustError,
+    _catalog_digest,
     attach_blueprint_identity,
     bind_learner_instance,
     blueprint_identity,
@@ -82,6 +83,31 @@ def test_blueprint_identity_fails_closed_for_unknown_or_unapproved_catalog_state
     assert attached.high_stakes_eligible is False
 
 
+def test_canonical_objective_change_requires_reviewed_manifest_refresh() -> None:
+    role = ROLE_CATALOG["junior-python-backend-engineer"]
+    competency = role.competencies[0]
+    template = competency.activities[0]
+    changed_template = replace(template, objective=f"{template.objective} changed without review")
+    changed_competency = replace(
+        competency,
+        activities=(changed_template, *competency.activities[1:]),
+    )
+    changed_role = replace(
+        role,
+        competencies=(changed_competency, *role.competencies[1:]),
+    )
+
+    assert _catalog_digest(changed_role) != _catalog_digest(role)
+    changed = blueprint_identity(changed_role, _catalog_activity())
+    assert changed.item_family_trust == "trusted"
+    assert changed.blueprint_trust == "legacy_unverified"
+    assert changed.blueprint_approval_id == ""
+    assert attach_blueprint_identity(
+        role=changed_role,
+        activity=_catalog_activity(),
+    ).high_stakes_eligible is False
+
+
 def test_item_family_and_blueprint_trust_can_be_demoted_independently(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -137,6 +163,29 @@ def test_similarity_and_collision_checks_cover_exact_near_and_distinct_cases() -
         semantic_fingerprint="other",
         semantic_signature="other",
         semantic_tokens=["x", "y"],
+        exposures=[exposure],
+    )
+
+
+def test_generated_one_dimension_variant_is_near_duplicate_but_two_dimension_variant_is_not() -> None:
+    exposure = CollisionFingerprintView(
+        item_family_id="family",
+        blueprint_id="blueprint",
+        semantic_fingerprint="old-fingerprint",
+        semantic_signature="old-signature",
+        semantic_tokens=["b:abcd", "d:01", "f:02", "c:03"],
+        served_at="2026-08-08T12:00:00+00:00",
+    )
+    assert collides(
+        semantic_fingerprint="new-fingerprint",
+        semantic_signature="new-signature",
+        semantic_tokens=["b:abcd", "d:01", "f:02", "c:09"],
+        exposures=[exposure],
+    )
+    assert not collides(
+        semantic_fingerprint="newer-fingerprint",
+        semantic_signature="newer-signature",
+        semantic_tokens=["b:abcd", "d:01", "f:08", "c:09"],
         exposures=[exposure],
     )
 
