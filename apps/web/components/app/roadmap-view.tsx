@@ -36,42 +36,78 @@ export function RoadmapView() {
     }
   };
 
+  const activeVersion = plan.active_plan_version;
+
   return (
     <div className={styles.page}>
       <PageHeader
         eyebrow="Roadmap"
         title={`${plan.role.title} planning map`}
-        description="This is a work-priority projection against the resolved Target—not a mastery map. Self-report, learner-attested work, calibration, focus, reviews, and capacity can change the sequence while readiness stays validation-locked."
+        description="This is a deterministic work-priority projection against the exact Target and RoleProfile version. Authoritative evidence and prerequisites decide what is eligible; self-report and calibration can only order unresolved work."
       />
 
       {error !== null ? <div className="error-banner" role="alert"><p>{error}</p></div> : null}
 
       <section className={styles.grid2}>
         <article className={styles.card}>
-          <span className={styles.label}>Current planning priorities</span>
+          <span className={styles.label}>Active immutable plan</span>
+          <h2>Revision {activeVersion.revision} · {activeVersion.trigger.replaceAll("_", " ")}</h2>
+          <p>
+            Plan <code>{activeVersion.plan_version_id}</code> is bound to role {activeVersion.role_version},
+            graph {activeVersion.graph_version}, and evidence policy {activeVersion.evidence_policy_version}.
+          </p>
+          <p>{activeVersion.delta.reason}</p>
+          <small>
+            {activeVersion.delta.added_activity_ids.length} added · {activeVersion.delta.removed_activity_ids.length} removed · {activeVersion.delta.retained_activity_ids.length} retained
+          </small>
+        </article>
+
+        <article className={styles.card}>
+          <span className={styles.label}>Current evidence-aware priorities</span>
           <ul className={styles.competencyList}>
             {plan.priority_competencies.map((competency) => (
               <li key={competency.id}>
                 <span className={styles.itemTitle}>
                   <strong>{competency.name}</strong>
                   <small>
-                    {competency.category} · priority gap {competency.priority_gap_percent}%
+                    {competency.category} · evidence {competency.evidence_status} · authoritative gap {competency.authoritative_gap_percent}%
                     {competency.assessment_percent === null ? " · not calibrated" : ` · calibration ${competency.assessment_percent}%`}
                   </small>
+                  {competency.blocked_by.length > 0 ? (
+                    <small>Blocked by independent evidence for: {competency.blocked_by.join(", ")}</small>
+                  ) : null}
+                  {competency.active_misconception_codes.length > 0 ? (
+                    <small>Active misconceptions: {competency.active_misconception_codes.join(", ")}</small>
+                  ) : null}
+                  <small>{competency.priority_reason}</small>
                   <span className={styles.progress}><span style={{ width: `${competency.diagnostic_signal_percent}%` }} /></span>
                 </span>
-                <span className={styles.score}>{competency.diagnostic_signal_percent}% signal</span>
+                <span className={styles.score}>{competency.diagnostic_signal_percent}% diagnostic signal</span>
               </li>
             ))}
           </ul>
+        </article>
+      </section>
+
+      <section className={styles.grid2}>
+        <article className={styles.card}>
+          <span className={styles.label}>Dependency contract</span>
+          <h2>Prerequisites are evidence gates, not suggestions.</h2>
+          <p>
+            A downstream build is not scheduled until every prerequisite reaches independent evidence.
+            High self-ratings, quiz scores, focus selections, or learner-attested completion cannot bypass that gate.
+          </p>
+          <small>
+            Target fingerprint {activeVersion.target_fingerprint} · {activeVersion.priorities.length} competency decisions recorded
+          </small>
         </article>
 
         <article className={styles.formCard}>
           <span className={styles.label}>Replan controls</span>
           <h2>Change constraints and priorities, not evidence claims.</h2>
           <p>
-            Replanning regenerates active build work while preserving recorded work, calibration history,
-            and pending spaced reviews. It cannot promote mastery or readiness.
+            Replanning creates a new immutable plan version while preserving evidence, prior versions,
+            calibration history, and pending reviews. It cannot promote mastery or readiness.
           </p>
           <form className={styles.form} onSubmit={submit}>
             <div className={styles.field}>
@@ -112,7 +148,7 @@ export function RoadmapView() {
               </div>
             </div>
             <button className="button button-primary" disabled={busy} type="submit">
-              {busy ? "Rebuilding roadmap…" : "Rebuild active roadmap"}
+              {busy ? "Rebuilding roadmap…" : "Create next plan version"}
             </button>
           </form>
         </article>

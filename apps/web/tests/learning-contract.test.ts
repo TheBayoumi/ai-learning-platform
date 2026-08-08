@@ -22,6 +22,8 @@ const role = {
   version: "2026.07-provisional-1",
   title: "Junior Python Backend Engineer",
   summary: "Role",
+  graph_version: "2026.07-provisional-1.graph-v1",
+  evidence_policy_version: "competency-evidence-v1",
   validation_state: "provisional" as const,
   default_target: target,
   competencies: [
@@ -30,7 +32,9 @@ const role = {
       name: "Python engineering",
       category: "language",
       description: "Typed Python",
-      weight: 14
+      weight: 14,
+      prerequisites: [],
+      evidence_requirements: ["trusted_evaluator", "independent", "no_assistance", "reasoning_verified"]
     }
   ]
 };
@@ -48,6 +52,44 @@ const activity = {
   rationale: "Current planning priority and role weight",
   generation: 0,
   available_from: null
+};
+
+
+const planPriority = {
+  competency_id: "python",
+  rank: 1,
+  evidence_status: "independent" as const,
+  diagnostic_signal_percent: 48,
+  authoritative_gap_percent: 0,
+  prerequisite_ids: [],
+  blocked_by: [],
+  active_misconception_codes: ["boundary-condition-omission"],
+  focused: true,
+  reason: "Authoritative evidence is independent."
+};
+
+const planVersion = {
+  plan_version_id: "plan-version-1",
+  revision: 1,
+  created_at: "2026-07-24T12:10:00+00:00",
+  trigger: "trusted_evidence" as const,
+  role_id: role.id,
+  role_version: role.version,
+  graph_version: role.graph_version,
+  evidence_policy_version: role.evidence_policy_version,
+  target_fingerprint: "target-fingerprint",
+  weekly_hours: 8,
+  focus_competency_ids: ["python"],
+  priorities: [planPriority],
+  activities: [activity],
+  delta: {
+    previous_plan_version_id: "plan-version-0",
+    added_activity_ids: [activity.id],
+    removed_activity_ids: [],
+    retained_activity_ids: [],
+    priority_changes: ["python:2->1"],
+    reason: "trusted_evidence: deterministic replan"
+  }
 };
 
 const evidence = {
@@ -146,7 +188,12 @@ const validPlan = {
       diagnostic_signal_percent: 48,
       assessment_percent: 100,
       priority_gap_percent: 52,
+      authoritative_gap_percent: 0,
       evidence_status: "independent" as const,
+      prerequisite_ids: [],
+      blocked_by: [],
+      active_misconception_codes: ["boundary-condition-omission"],
+      priority_reason: "Independent evidence closes this authoritative gap.",
       focused: true
     }
   ],
@@ -160,6 +207,8 @@ const validPlan = {
   sequence: 2,
   weekly_hours: 8,
   plan_revision: 1,
+  active_plan_version: planVersion,
+  plan_history: [planVersion],
   focus_competency_ids: ["python"],
   evidence_history: [evidence],
   assessment_history: [assessment],
@@ -205,6 +254,17 @@ describe("learning contract guards", () => {
       })
     ).toBe(false);
     expect(isPlanView({ ...validPlan, claim_state: "made-up" })).toBe(false);
+    expect(isRoleList([{ ...role, graph_version: 42 }])).toBe(false);
+    expect(
+      isPlanView({
+        ...validPlan,
+        priority_competencies: [{ ...validPlan.priority_competencies[0], blocked_by: "python" }]
+      })
+    ).toBe(false);
+    expect(
+      isPlanView({ ...validPlan, active_plan_version: { ...planVersion, trigger: "invented" } })
+    ).toBe(false);
+    expect(isPlanView({ ...validPlan, plan_history: [] })).toBe(false);
   });
 
   it("extracts only the stable public error message", () => {

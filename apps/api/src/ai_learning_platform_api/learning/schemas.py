@@ -29,6 +29,13 @@ ReasoningState = Literal["not_observed", "submitted", "verified"]
 CompetencyEvidenceStatus = Literal["unverified", "partial", "independent"]
 MisconceptionStatus = Literal["active", "resolved"]
 ReviewStage = Literal["evidence_follow_up", "retention_candidate"]
+CurriculumTrigger = Literal[
+    "initial",
+    "assessment",
+    "manual_replan",
+    "trusted_evidence",
+    "state_migration",
+]
 
 
 class CompetencyRating(StrictModel):
@@ -141,22 +148,26 @@ class TrustedEvidenceVerdict(StrictModel):
 
 
 class CompetencyView(StrictModel):
-    """Public competency metadata."""
+    """Public competency metadata including exact dependency/evidence requirements."""
 
     id: str
     name: str
     category: str
     description: str
     weight: int
+    prerequisites: list[str] = Field(default_factory=list)
+    evidence_requirements: list[str] = Field(default_factory=list)
 
 
 class RoleView(StrictModel):
-    """Versioned role-profile candidate plus the explicit Target defaults used by onboarding."""
+    """Versioned role-profile candidate plus the exact graph/policy versions used by planning."""
 
     id: str
     version: str
     title: str
     summary: str
+    graph_version: str
+    evidence_policy_version: str
     validation_state: Literal["provisional", "approved"] = "provisional"
     default_target: TargetView
     competencies: list[CompetencyView]
@@ -176,7 +187,7 @@ class CompetencyEvidenceState(StrictModel):
 
 
 class PriorityCompetencyView(StrictModel):
-    """A competency prioritized from non-authoritative planning and diagnostic signals."""
+    """Evidence-aware curriculum priority with diagnostics retained only as an ordering signal."""
 
     id: str
     name: str
@@ -185,7 +196,12 @@ class PriorityCompetencyView(StrictModel):
     diagnostic_signal_percent: int
     assessment_percent: int | None = None
     priority_gap_percent: int
+    authoritative_gap_percent: int = 100
     evidence_status: CompetencyEvidenceStatus = "unverified"
+    prerequisite_ids: list[str] = Field(default_factory=list)
+    blocked_by: list[str] = Field(default_factory=list)
+    active_misconception_codes: list[str] = Field(default_factory=list)
+    priority_reason: str = ""
     focused: bool = False
 
 
@@ -204,6 +220,51 @@ class ActivityView(StrictModel):
     rationale: str = ""
     generation: int = 0
     available_from: str | None = None
+
+
+class PlanPrioritySnapshot(StrictModel):
+    """Immutable scheduling evidence for one competency inside one plan version."""
+
+    competency_id: str
+    rank: Annotated[int, Field(ge=1)]
+    evidence_status: CompetencyEvidenceStatus
+    diagnostic_signal_percent: Annotated[int, Field(ge=0, le=100)]
+    authoritative_gap_percent: Annotated[int, Field(ge=0, le=100)]
+    prerequisite_ids: list[str]
+    blocked_by: list[str]
+    active_misconception_codes: list[str]
+    focused: bool
+    reason: str
+
+
+class PlanDeltaView(StrictModel):
+    """Deterministic difference from the immediately preceding immutable plan version."""
+
+    previous_plan_version_id: str | None = None
+    added_activity_ids: list[str] = Field(default_factory=list)
+    removed_activity_ids: list[str] = Field(default_factory=list)
+    retained_activity_ids: list[str] = Field(default_factory=list)
+    priority_changes: list[str] = Field(default_factory=list)
+    reason: str
+
+
+class LearnerPlanVersion(StrictModel):
+    """Immutable learner-specific curriculum snapshot bound to exact target/profile versions."""
+
+    plan_version_id: str
+    revision: Annotated[int, Field(ge=0)]
+    created_at: str
+    trigger: CurriculumTrigger
+    role_id: str
+    role_version: str
+    graph_version: str
+    evidence_policy_version: str
+    target_fingerprint: str
+    weekly_hours: Annotated[int, Field(ge=2, le=40)]
+    focus_competency_ids: list[str]
+    priorities: list[PlanPrioritySnapshot]
+    activities: list[ActivityView]
+    delta: PlanDeltaView
 
 
 class EvidenceRecordView(StrictModel):
@@ -322,7 +383,7 @@ class AssessmentRecordView(StrictModel):
 class LearnerState(StrictModel):
     """Signed learner state carried by the browser and optionally owned by durable storage."""
 
-    schema_version: Literal[1, 2, 3, 4, 5] = 5
+    schema_version: Literal[1, 2, 3, 4, 5, 6] = 6
     storage_mode: Literal["browser", "durable"] = "browser"
     learner_id: str
     learner_name: str
@@ -338,6 +399,8 @@ class LearnerState(StrictModel):
     completed_activity_ids: list[str]
     activities: list[ActivityView]
     plan_revision: int = 0
+    active_plan_version_id: str | None = None
+    plan_versions: list[LearnerPlanVersion] = Field(default_factory=list)
     focus_competency_ids: list[str] = Field(default_factory=list)
     evidence_history: list[EvidenceRecordView] = Field(default_factory=list)
     evidence_evaluations: list[EvidenceEvaluationRecord] = Field(default_factory=list)
@@ -372,6 +435,8 @@ class PlanView(StrictModel):
     sequence: int
     weekly_hours: int
     plan_revision: int
+    active_plan_version: LearnerPlanVersion
+    plan_history: list[LearnerPlanVersion]
     focus_competency_ids: list[str]
     evidence_history: list[EvidenceRecordView]
     assessment_history: list[AssessmentRecordView]

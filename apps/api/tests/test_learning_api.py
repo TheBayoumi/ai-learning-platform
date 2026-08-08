@@ -206,11 +206,18 @@ def test_replan_prioritizes_focus_and_preserves_evidence() -> None:
     assert replanned["weekly_hours"] == 6
     assert replanned["focus_competency_ids"] == ["fastapi", "postgresql"]
     assert replanned["evidence_history"] == progressed["evidence_history"]
-    assert replanned["total_count"] == 5
-    assert replanned["current_activity"]["competency_id"] == "fastapi"
+    assert replanned["active_plan_version"]["trigger"] == "manual_replan"
+    assert (
+        replanned["active_plan_version"]["delta"]["previous_plan_version_id"]
+        == progressed["active_plan_version"]["plan_version_id"]
+    )
+    assert replanned["current_activity"]["competency_id"] != "fastapi"
     assert replanned["current_activity"]["generation"] == 1
     focused = [item for item in replanned["priority_competencies"] if item["focused"]]
-    assert [item["id"] for item in focused] == ["fastapi", "postgresql"]
+    assert [item["id"] for item in focused] == ["postgresql", "fastapi"]
+    fastapi = next(item for item in focused if item["id"] == "fastapi")
+    assert set(fastapi["blocked_by"]) == {"python", "rest"}
+    assert replanned["evidence_history"] == progressed["evidence_history"]
     assert replanned["verified_readiness_percent"] is None
 
 

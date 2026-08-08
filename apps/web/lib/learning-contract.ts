@@ -4,6 +4,12 @@ export type EvidenceIndependence = "unverified" | "assisted" | "independent";
 export type AssistanceLevel = "unknown" | "none" | "hint" | "guided" | "answer_level";
 export type ReasoningState = "not_observed" | "submitted" | "verified";
 export type CompetencyEvidenceStatus = "unverified" | "partial" | "independent";
+export type CurriculumTrigger =
+  | "initial"
+  | "assessment"
+  | "manual_replan"
+  | "trusted_evidence"
+  | "state_migration";
 
 export interface CompetencyView {
   readonly id: string;
@@ -11,6 +17,8 @@ export interface CompetencyView {
   readonly category: string;
   readonly description: string;
   readonly weight: number;
+  readonly prerequisites: readonly string[];
+  readonly evidence_requirements: readonly string[];
 }
 
 export interface TargetView {
@@ -33,6 +41,8 @@ export interface RoleView {
   readonly version: string;
   readonly title: string;
   readonly summary: string;
+  readonly graph_version: string;
+  readonly evidence_policy_version: string;
   readonly validation_state: "provisional" | "approved";
   readonly default_target: TargetView;
   readonly competencies: readonly CompetencyView[];
@@ -57,7 +67,12 @@ export interface PriorityCompetencyView {
   readonly diagnostic_signal_percent: number;
   readonly assessment_percent: number | null;
   readonly priority_gap_percent: number;
+  readonly authoritative_gap_percent: number;
   readonly evidence_status: CompetencyEvidenceStatus;
+  readonly prerequisite_ids: readonly string[];
+  readonly blocked_by: readonly string[];
+  readonly active_misconception_codes: readonly string[];
+  readonly priority_reason: string;
   readonly focused: boolean;
 }
 
@@ -74,6 +89,45 @@ export interface ActivityView {
   readonly rationale: string;
   readonly generation: number;
   readonly available_from: string | null;
+}
+
+export interface PlanPrioritySnapshot {
+  readonly competency_id: string;
+  readonly rank: number;
+  readonly evidence_status: CompetencyEvidenceStatus;
+  readonly diagnostic_signal_percent: number;
+  readonly authoritative_gap_percent: number;
+  readonly prerequisite_ids: readonly string[];
+  readonly blocked_by: readonly string[];
+  readonly active_misconception_codes: readonly string[];
+  readonly focused: boolean;
+  readonly reason: string;
+}
+
+export interface PlanDeltaView {
+  readonly previous_plan_version_id: string | null;
+  readonly added_activity_ids: readonly string[];
+  readonly removed_activity_ids: readonly string[];
+  readonly retained_activity_ids: readonly string[];
+  readonly priority_changes: readonly string[];
+  readonly reason: string;
+}
+
+export interface LearnerPlanVersion {
+  readonly plan_version_id: string;
+  readonly revision: number;
+  readonly created_at: string;
+  readonly trigger: CurriculumTrigger;
+  readonly role_id: string;
+  readonly role_version: string;
+  readonly graph_version: string;
+  readonly evidence_policy_version: string;
+  readonly target_fingerprint: string;
+  readonly weekly_hours: number;
+  readonly focus_competency_ids: readonly string[];
+  readonly priorities: readonly PlanPrioritySnapshot[];
+  readonly activities: readonly ActivityView[];
+  readonly delta: PlanDeltaView;
 }
 
 export interface EvidenceRecordView {
@@ -197,6 +251,8 @@ export interface PlanView {
   readonly sequence: number;
   readonly weekly_hours: number;
   readonly plan_revision: number;
+  readonly active_plan_version: LearnerPlanVersion;
+  readonly plan_history: readonly LearnerPlanVersion[];
   readonly focus_competency_ids: readonly string[];
   readonly evidence_history: readonly EvidenceRecordView[];
   readonly assessment_history: readonly AssessmentRecordView[];
@@ -246,7 +302,9 @@ function isCompetency(value: unknown): value is CompetencyView {
     typeof value.name === "string" &&
     typeof value.category === "string" &&
     typeof value.description === "string" &&
-    typeof value.weight === "number"
+    typeof value.weight === "number" &&
+    isStringArray(value.prerequisites) &&
+    isStringArray(value.evidence_requirements)
   );
 }
 
@@ -275,6 +333,8 @@ function isRole(value: unknown): value is RoleView {
     typeof value.version === "string" &&
     typeof value.title === "string" &&
     typeof value.summary === "string" &&
+    typeof value.graph_version === "string" &&
+    typeof value.evidence_policy_version === "string" &&
     (value.validation_state === "provisional" || value.validation_state === "approved") &&
     isTarget(value.default_target) &&
     Array.isArray(value.competencies) &&
@@ -306,7 +366,12 @@ function isPriority(value: unknown): value is PriorityCompetencyView {
     typeof value.diagnostic_signal_percent === "number" &&
     (value.assessment_percent === null || typeof value.assessment_percent === "number") &&
     typeof value.priority_gap_percent === "number" &&
+    typeof value.authoritative_gap_percent === "number" &&
     isEvidenceStatus(value.evidence_status) &&
+    isStringArray(value.prerequisite_ids) &&
+    isStringArray(value.blocked_by) &&
+    isStringArray(value.active_misconception_codes) &&
+    typeof value.priority_reason === "string" &&
     typeof value.focused === "boolean"
   );
 }
@@ -326,6 +391,74 @@ function isActivity(value: unknown): value is ActivityView {
     typeof value.rationale === "string" &&
     typeof value.generation === "number" &&
     (value.available_from === null || typeof value.available_from === "string")
+  );
+}
+
+function isPlanPriority(value: unknown): value is PlanPrioritySnapshot {
+  return (
+    isRecord(value) &&
+    typeof value.competency_id === "string" &&
+    typeof value.rank === "number" &&
+    isEvidenceStatus(value.evidence_status) &&
+    typeof value.diagnostic_signal_percent === "number" &&
+    typeof value.authoritative_gap_percent === "number" &&
+    isStringArray(value.prerequisite_ids) &&
+    isStringArray(value.blocked_by) &&
+    isStringArray(value.active_misconception_codes) &&
+    typeof value.focused === "boolean" &&
+    typeof value.reason === "string"
+  );
+}
+
+function isPlanDelta(value: unknown): value is PlanDeltaView {
+  return (
+    isRecord(value) &&
+    (value.previous_plan_version_id === null || typeof value.previous_plan_version_id === "string") &&
+    isStringArray(value.added_activity_ids) &&
+    isStringArray(value.removed_activity_ids) &&
+    isStringArray(value.retained_activity_ids) &&
+    isStringArray(value.priority_changes) &&
+    typeof value.reason === "string"
+  );
+}
+
+function isCurriculumTrigger(value: unknown): value is CurriculumTrigger {
+  return ["initial", "assessment", "manual_replan", "trusted_evidence", "state_migration"].includes(
+    String(value)
+  );
+}
+
+function isPlanVersion(value: unknown): value is LearnerPlanVersion {
+  return (
+    isRecord(value) &&
+    typeof value.plan_version_id === "string" &&
+    typeof value.revision === "number" &&
+    typeof value.created_at === "string" &&
+    isCurriculumTrigger(value.trigger) &&
+    typeof value.role_id === "string" &&
+    typeof value.role_version === "string" &&
+    typeof value.graph_version === "string" &&
+    typeof value.evidence_policy_version === "string" &&
+    typeof value.target_fingerprint === "string" &&
+    typeof value.weekly_hours === "number" &&
+    isStringArray(value.focus_competency_ids) &&
+    Array.isArray(value.priorities) &&
+    value.priorities.every(isPlanPriority) &&
+    Array.isArray(value.activities) &&
+    value.activities.every(isActivity) &&
+    isPlanDelta(value.delta)
+  );
+}
+
+function hasValidPlanHistory(value: Record<string, unknown>): boolean {
+  const active = value.active_plan_version;
+  const history = value.plan_history;
+  return (
+    isPlanVersion(active) &&
+    Array.isArray(history) &&
+    history.length > 0 &&
+    history.every(isPlanVersion) &&
+    history.some((item) => item.plan_version_id === active.plan_version_id)
   );
 }
 
@@ -469,6 +602,7 @@ export function isPlanView(value: unknown): value is PlanView {
     typeof value.sequence === "number" &&
     typeof value.weekly_hours === "number" &&
     typeof value.plan_revision === "number" &&
+    hasValidPlanHistory(value) &&
     isStringArray(value.focus_competency_ids) &&
     Array.isArray(value.evidence_history) &&
     value.evidence_history.every(isEvidence) &&
