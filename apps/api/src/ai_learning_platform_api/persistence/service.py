@@ -87,10 +87,11 @@ class PersistentLearningService:
         account_id: str,
         request: PersistentPlanImportRequest,
     ) -> PersistentPlanView:
-        state = self._codec.decode(request.state_token)
-        if state.storage_mode != "browser":
+        supplied_state = self._codec.decode(request.state_token)
+        if supplied_state.storage_mode != "browser":
             raise LearnerStateNotFoundError
-        state = state.model_copy(update={"storage_mode": "durable"})
+        normalized = self._core.resume(request.state_token)
+        state = self._codec.decode(normalized.state_token).model_copy(update={"storage_mode": "durable"})
         stored = await self._repository.commit(
             LearnerStateCommit(
                 account_id=account_id,
