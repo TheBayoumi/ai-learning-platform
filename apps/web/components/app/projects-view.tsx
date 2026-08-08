@@ -22,9 +22,9 @@ export function ProjectsView() {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow="Projects & evidence"
-        title="The portfolio is the proof layer."
-        description="Career Atlas does not count a clicked lesson as readiness. This view is built around work you can point to, explain, and revisit."
+        eyebrow="Projects & recorded work"
+        title="A submitted artifact is a lead for verification—not proof by itself."
+        description="This view records learner-attested work so the engine can schedule stronger checks later. Provenance, assistance, modification/debugging, defense, no-hint, retention, and transfer gates are still required before work can contribute to verified mastery or readiness."
         action={<Link className="button button-primary" href="/app/learn">Open current mission</Link>}
       />
 
@@ -52,14 +52,14 @@ export function ProjectsView() {
         </article>
 
         <article className={styles.card}>
-          <span className={styles.label}>Evidence portfolio</span>
-          <h2>{plan.evidence_history.length} recorded evidence items</h2>
+          <span className={styles.label}>Learner-attested work history</span>
+          <h2>{plan.evidence_history.length} recorded items</h2>
           <p>
-            Records are learner-attested and provisional. Objective calibration and later reviews can
-            strengthen or challenge the mastery signal.
+            These records may change what the platform asks you to prove next. They do not increase
+            verified mastery or role readiness by themselves.
           </p>
           {plan.evidence_history.length === 0 ? (
-            <p>No evidence has been recorded yet. Complete the first mission with a defensible deliverable.</p>
+            <p>No work has been recorded yet. Complete the first mission with a defensible deliverable.</p>
           ) : (
             <ul className={styles.timeline}>
               {[...plan.evidence_history].reverse().map((record) => (
@@ -68,9 +68,9 @@ export function ProjectsView() {
                   <div>
                     <strong>{record.title}</strong>
                     <p>
-                      {record.competency_name} · +{record.provisional_mastery_delta} provisional mastery · confidence {record.confidence}/4
+                      {record.competency_name} · +{record.planning_signal_delta} planning signal · self-reported confidence {record.confidence}/4
                     </p>
-                    {record.evidence_reference ? <p>Evidence: {record.evidence_reference}</p> : null}
+                    {record.evidence_reference ? <p>Reference: {record.evidence_reference}</p> : null}
                   </div>
                 </li>
               ))}
