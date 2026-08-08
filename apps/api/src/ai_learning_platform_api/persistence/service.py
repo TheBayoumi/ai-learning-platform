@@ -61,6 +61,7 @@ class PersistentLearningService:
             PlanRequest(
                 learner_name=request.learner_name,
                 target_role=request.target_role,
+                target=request.target,
                 weekly_hours=request.weekly_hours,
                 experience_summary=request.experience_summary,
                 ratings=request.ratings,
