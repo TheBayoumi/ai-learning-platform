@@ -1,0 +1,87 @@
+name: G05 provenance schema patch
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'product/g05-trusted-blueprint-instances' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+      - name: Add immutable source and semantic-signature fields
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          schemas = Path('apps/api/src/ai_learning_platform_api/learning/schemas.py')
+          text = schemas.read_text(encoding='utf-8')
+          activity_marker = '    semantic_fingerprint: str = ""\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n'
+          activity_replacement = '    semantic_fingerprint: str = ""\n    semantic_signature: str = ""\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n'
+          if activity_marker not in text:
+              raise SystemExit('Activity semantic marker missing')
+          text = text.replace(activity_marker, activity_replacement, 1)
+          exposure_marker = '    semantic_fingerprint: str\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n'
+          exposure_replacement = '    semantic_fingerprint: str\n    semantic_signature: str\n    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)\n'
+          if exposure_marker not in text:
+              raise SystemExit('Task exposure semantic marker missing')
+          text = text.replace(exposure_marker, exposure_replacement, 1)
+          evidence_marker = '    next_review_at: str\n\n\nclass EvidenceEvaluationRecord'
+          evidence_replacement = '''    next_review_at: str
+              source_item_family_id: str = ""
+              source_blueprint_id: str = ""
+              source_rubric_version: str = ""
+              source_plan_version_id: str = ""
+              source_semantic_fingerprint: str = ""
+              source_semantic_signature: str = ""
+              source_high_stakes_eligible: bool = False
+
+
+          class EvidenceEvaluationRecord'''.replace('          ', '')
+          if evidence_marker not in text:
+              raise SystemExit('Evidence provenance marker missing')
+          schemas.write_text(text.replace(evidence_marker, evidence_replacement, 1), encoding='utf-8')
+
+          service = Path('apps/api/src/ai_learning_platform_api/learning/service.py')
+          text = service.read_text(encoding='utf-8')
+          record_marker = '            next_review_at=review_at.isoformat(),\n        )\n'
+          record_replacement = '''            next_review_at=review_at.isoformat(),
+              source_item_family_id=activity.item_family_id,
+              source_blueprint_id=activity.blueprint_id,
+              source_rubric_version=activity.rubric_version,
+              source_plan_version_id=activity.plan_version_id,
+              source_semantic_fingerprint=activity.semantic_fingerprint,
+              source_semantic_signature=activity.semantic_signature,
+              source_high_stakes_eligible=activity.high_stakes_eligible,
+          )
+          '''.replace('          ', '')
+          if record_marker not in text:
+              raise SystemExit('Evidence construction marker missing')
+          service.write_text(text.replace(record_marker, record_replacement, 1), encoding='utf-8')
+          PY
+      - name: Verify and commit
+        working-directory: apps/api
+        run: |
+          uv run --locked ruff check --fix src/ai_learning_platform_api/learning/schemas.py src/ai_learning_platform_api/learning/service.py
+          uv run --locked ruff format src/ai_learning_platform_api/learning/schemas.py src/ai_learning_platform_api/learning/service.py
+          uv run --locked mypy src tests ../../scripts
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/ai_learning_platform_api/learning/schemas.py src/ai_learning_platform_api/learning/service.py
+          git commit -m 'Preserve immutable G05 source provenance'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
