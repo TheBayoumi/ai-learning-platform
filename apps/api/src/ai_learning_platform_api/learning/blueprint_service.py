@@ -222,6 +222,9 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             raise LearningPlanError
         state = self._upgrade_state(state, role)
         active = self._active_plan_version(state)
+        target = state.target
+        if active is None or target is None:
+            raise LearningPlanError
         prior_exposures = [
             item for item in active.task_exposures if item.plan_version_id != active.plan_version_id
         ]
@@ -234,7 +237,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
                     role=role,
                     activity=activity,
                     learner_id=state.learner_id,
-                    target_fingerprint=target_fingerprint(state.target),
+                    target_fingerprint=target_fingerprint(target),
                     revision=active.revision,
                     position=position,
                     exposures=collision_scope,
