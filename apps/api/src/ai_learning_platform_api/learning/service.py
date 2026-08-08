@@ -1,4 +1,4 @@
-"""Deterministic adaptive curriculum, evidence history, and signed learner state."""
+"""Deterministic adaptive planning and learner-attested evidence history."""
 
 from __future__ import annotations
 
@@ -12,9 +12,7 @@ from uuid import UUID, uuid4
 
 from pydantic import ValidationError
 
-from ai_learning_platform_api.learning.assessment import (
-    AssessmentCalibrationEngine,
-)
+from ai_learning_platform_api.learning.assessment import AssessmentCalibrationEngine
 from ai_learning_platform_api.learning.catalog import (
     ROLE_CATALOG,
     CompetencyDefinition,
@@ -36,6 +34,7 @@ from ai_learning_platform_api.learning.schemas import (
     ReplanRequest,
     RoleView,
 )
+from ai_learning_platform_api.learning.targeting import default_target_for, resolve_target
 
 Clock = Callable[[], datetime]
 IdFactory = Callable[[], UUID]
@@ -151,7 +150,7 @@ class SignedStateCodec:
 
 
 class LearningPlanService:
-    """Create, advance, and replan deterministic learner curricula."""
+    """Create, advance, and replan deterministic learner-specific planning hypotheses."""
 
     def __init__(
         self,
@@ -168,17 +167,18 @@ class LearningPlanService:
         )
 
     def list_roles(self) -> list[RoleView]:
-        """Return the versioned role catalog exposed by this product slice."""
+        """Return versioned role candidates with explicit provisional Target defaults."""
         return [self._role_view(role) for role in ROLE_CATALOG.values()]
 
     def create_plan(self, request: PlanRequest) -> PlanView:
-        """Diagnose current gaps and generate learner-unique bounded work."""
+        """Resolve the Target, record self-report as planning input, and generate bounded work."""
         role = ROLE_CATALOG.get(request.target_role)
         if role is None:
             raise UnknownRoleError
 
+        target = resolve_target(role, request.target)
         rating_map = self._rating_map(role, request)
-        mastery = {
+        planning_signal = {
             competency.identifier: rating_map.get(competency.identifier, 0) * 25
             for competency in role.competencies
         }
@@ -189,7 +189,7 @@ class LearningPlanService:
         )
         activities = self._generate_build_activities(
             role=role,
-            mastery=mastery,
+            planning_signal=planning_signal,
             weekly_hours=request.weekly_hours,
             focus_competency_ids=[],
             learner_name=request.learner_name.strip(),
@@ -198,15 +198,17 @@ class LearningPlanService:
             generation=0,
         )
         state = LearnerState(
-            schema_version=3,
+            schema_version=4,
             learner_id=str(self._id_factory()),
             learner_name=request.learner_name.strip(),
             target_role=request.target_role,
+            target=target,
             weekly_hours=request.weekly_hours,
             experience_summary=request.experience_summary.strip(),
             created_at=self._now().isoformat(),
             sequence=0,
-            mastery=mastery,
+            planning_signal=planning_signal,
+            mastery={},
             completed_activity_ids=[],
             activities=activities,
             plan_revision=0,
@@ -216,25 +218,26 @@ class LearningPlanService:
         return self._project(state, role)
 
     def resume(self, state_token: str) -> PlanView:
-        """Verify and project a previously issued learner state."""
+        """Verify, upgrade, and project a previously issued learner state."""
         state = self._codec.decode(state_token)
         role = ROLE_CATALOG.get(state.target_role)
         if role is None:
             raise InvalidStateTokenError
-        return self._project(state, role)
+        return self._project(self._upgrade_state(state, role), role)
 
     def start_assessment(self, request: AssessmentStartRequest) -> AssessmentAttemptView:
-        """Issue an expiring calibration attempt for current priority gaps."""
+        """Issue an expiring calibration attempt for current planning priorities."""
         state = self._codec.decode(request.state_token)
         role = ROLE_CATALOG.get(state.target_role)
         if role is None:
             raise InvalidStateTokenError
-        effective_mastery = self._effective_mastery_values(
-            role, state.mastery, state.assessment_scores
+        state = self._upgrade_state(state, role)
+        diagnostic_signal = self._diagnostic_signal_values(
+            role, state.planning_signal, state.assessment_scores
         )
         priorities = self._rank_competencies(
             role,
-            effective_mastery,
+            diagnostic_signal,
             state.focus_competency_ids,
         )[: request.question_count]
         return self._assessment.start(
@@ -244,15 +247,18 @@ class LearningPlanService:
         )
 
     def submit_assessment(self, request: AssessmentSubmitRequest) -> AssessmentSubmissionView:
-        """Score a calibration attempt and regenerate assessment-informed work."""
+        """Score a calibration attempt and regenerate diagnostic-informed work."""
         state = self._codec.decode(request.state_token)
         role = ROLE_CATALOG.get(state.target_role)
         if role is None:
             raise InvalidStateTokenError
+        state = self._upgrade_state(state, role)
         outcome = self._assessment.score(state=state, role=role, request=request)
         assessment_scores = dict(state.assessment_scores)
         assessment_scores.update(outcome.competency_scores)
-        effective_mastery = self._effective_mastery_values(role, state.mastery, assessment_scores)
+        diagnostic_signal = self._diagnostic_signal_values(
+            role, state.planning_signal, assessment_scores
+        )
         revision = state.plan_revision + 1
         pending_reviews = [
             activity
@@ -261,7 +267,7 @@ class LearningPlanService:
         ]
         build_activities = self._generate_build_activities(
             role=role,
-            mastery=effective_mastery,
+            planning_signal=diagnostic_signal,
             weekly_hours=state.weekly_hours,
             focus_competency_ids=state.focus_competency_ids,
             learner_name=state.learner_name,
@@ -275,7 +281,7 @@ class LearningPlanService:
         )
         updated = state.model_copy(
             update={
-                "schema_version": 3,
+                "schema_version": 4,
                 "sequence": state.sequence + 1,
                 "plan_revision": revision,
                 "assessment_scores": assessment_scores,
@@ -295,11 +301,12 @@ class LearningPlanService:
         )
 
     def complete_activity(self, request: ProgressRequest) -> PlanView:
-        """Record learner-attested evidence and schedule a spaced review."""
+        """Record learner-attested work without promoting it to verified mastery."""
         state = self._codec.decode(request.state_token)
         role = ROLE_CATALOG.get(state.target_role)
         if role is None:
             raise InvalidStateTokenError
+        state = self._upgrade_state(state, role)
         activity = next((item for item in state.activities if item.id == request.activity_id), None)
         if activity is None:
             raise UnknownActivityError
@@ -308,7 +315,7 @@ class LearningPlanService:
 
         criteria_met = self._validated_criteria(activity, request.criteria_met)
         now = self._now()
-        delta = self._provisional_mastery_delta(
+        delta = self._planning_signal_delta(
             criteria_met=len(criteria_met),
             criteria_total=len(activity.acceptance_criteria),
             confidence=request.confidence,
@@ -316,10 +323,10 @@ class LearningPlanService:
         )
         review_at = now + timedelta(days=_REVIEW_INTERVAL_DAYS[request.confidence])
         completed = [*state.completed_activity_ids, activity.id][-_MAX_COMPLETED_IDS:]
-        mastery = dict(state.mastery)
-        mastery[activity.competency_id] = min(
+        planning_signal = dict(state.planning_signal)
+        planning_signal[activity.competency_id] = min(
             100,
-            mastery.get(activity.competency_id, 0) + delta,
+            planning_signal.get(activity.competency_id, 0) + delta,
         )
         evidence = EvidenceRecordView(
             activity_id=activity.id,
@@ -331,7 +338,7 @@ class LearningPlanService:
             evidence_reference=request.evidence_reference.strip(),
             criteria_met=criteria_met,
             confidence=request.confidence,
-            provisional_mastery_delta=delta,
+            planning_signal_delta=delta,
             next_review_at=review_at.isoformat(),
         )
         review_activity = self._review_activity(
@@ -343,9 +350,10 @@ class LearningPlanService:
         activities = [*state.activities, review_activity]
         updated = state.model_copy(
             update={
-                "schema_version": 3,
+                "schema_version": 4,
                 "sequence": state.sequence + 1,
-                "mastery": mastery,
+                "planning_signal": planning_signal,
+                "mastery": {},
                 "completed_activity_ids": completed,
                 "activities": activities,
                 "evidence_history": [*state.evidence_history, evidence][-_MAX_EVIDENCE_HISTORY:],
@@ -354,11 +362,12 @@ class LearningPlanService:
         return self._project(updated, role)
 
     def replan(self, request: ReplanRequest) -> PlanView:
-        """Regenerate active build work while preserving evidence and pending reviews."""
+        """Regenerate active work while preserving recorded planning inputs and reviews."""
         state = self._codec.decode(request.state_token)
         role = ROLE_CATALOG.get(state.target_role)
         if role is None:
             raise InvalidStateTokenError
+        state = self._upgrade_state(state, role)
         focus = self._validated_focus(role, request.focus_competency_ids)
         revision = state.plan_revision + 1
         seed = self._learner_seed(
@@ -373,7 +382,9 @@ class LearningPlanService:
         ]
         build_activities = self._generate_build_activities(
             role=role,
-            mastery=self._effective_mastery_values(role, state.mastery, state.assessment_scores),
+            planning_signal=self._diagnostic_signal_values(
+                role, state.planning_signal, state.assessment_scores
+            ),
             weekly_hours=request.weekly_hours,
             focus_competency_ids=focus,
             learner_name=state.learner_name,
@@ -383,7 +394,7 @@ class LearningPlanService:
         )
         updated = state.model_copy(
             update={
-                "schema_version": 3,
+                "schema_version": 4,
                 "weekly_hours": request.weekly_hours,
                 "sequence": state.sequence + 1,
                 "plan_revision": revision,
@@ -394,6 +405,7 @@ class LearningPlanService:
         return self._project(updated, role)
 
     def _project(self, state: LearnerState, role: RoleDefinition) -> PlanView:
+        state = self._upgrade_state(state, role)
         now = self._now()
         completed = set(state.completed_activity_ids)
         available = [
@@ -408,23 +420,24 @@ class LearningPlanService:
             )
         )
         current = available[0] if available else None
-        effective_mastery = self._effective_mastery_values(
-            role, state.mastery, state.assessment_scores
+        diagnostic_signal = self._diagnostic_signal_values(
+            role, state.planning_signal, state.assessment_scores
         )
         priorities = self._rank_competencies(
             role,
-            effective_mastery,
+            diagnostic_signal,
             state.focus_competency_ids,
         )[:4]
         total_weight = sum(item.weight for item in role.competencies)
-        weighted_evidence_mastery = sum(
-            state.mastery.get(item.identifier, 0) * item.weight for item in role.competencies
+        weighted_planning = sum(
+            state.planning_signal.get(item.identifier, 0) * item.weight
+            for item in role.competencies
         )
-        weighted_effective_mastery = sum(
-            effective_mastery.get(item.identifier, 0) * item.weight for item in role.competencies
+        weighted_diagnostic = sum(
+            diagnostic_signal.get(item.identifier, 0) * item.weight for item in role.competencies
         )
-        evidence_readiness = round(weighted_evidence_mastery / total_weight)
-        readiness = round(weighted_effective_mastery / total_weight)
+        planning_signal_percent = round(weighted_planning / total_weight)
+        diagnostic_signal_percent = round(weighted_diagnostic / total_weight)
         assessment_coverage = round((len(state.assessment_scores) / len(role.competencies)) * 100)
         future_reviews = sorted(
             _parse_timestamp(activity.available_from)
@@ -435,23 +448,27 @@ class LearningPlanService:
             and _parse_timestamp(activity.available_from) > now
         )
         current_completed = sum(1 for item in state.activities if item.id in completed)
+        assert state.target is not None
         return PlanView(
             state_token=self._codec.encode(state),
             learner_id=state.learner_id,
             learner_name=state.learner_name,
             role=self._role_view(role),
-            readiness_percent=readiness,
-            evidence_readiness_percent=evidence_readiness,
+            target=state.target,
+            claim_state="validation_locked",
+            verified_readiness_percent=None,
+            planning_signal_percent=planning_signal_percent,
+            diagnostic_signal_percent=diagnostic_signal_percent,
             assessment_coverage_percent=assessment_coverage,
             priority_competencies=[
                 PriorityCompetencyView(
                     id=item.identifier,
                     name=item.name,
                     category=item.category,
-                    mastery_percent=state.mastery.get(item.identifier, 0),
-                    effective_percent=effective_mastery.get(item.identifier, 0),
+                    planning_signal_percent=state.planning_signal.get(item.identifier, 0),
+                    diagnostic_signal_percent=diagnostic_signal.get(item.identifier, 0),
                     assessment_percent=state.assessment_scores.get(item.identifier),
-                    gap_percent=100 - effective_mastery.get(item.identifier, 0),
+                    priority_gap_percent=100 - diagnostic_signal.get(item.identifier, 0),
                     focused=item.identifier in state.focus_competency_ids,
                 )
                 for item in priorities
@@ -469,20 +486,20 @@ class LearningPlanService:
         )
 
     @staticmethod
-    def _effective_mastery_values(
+    def _diagnostic_signal_values(
         role: RoleDefinition,
-        mastery: dict[str, int],
+        planning_signal: dict[str, int],
         assessment_scores: dict[str, int],
     ) -> dict[str, int]:
-        """Blend evidence and calibration without overstating either signal."""
+        """Blend planning inputs and calibration only for prioritization, never mastery/readiness."""
         return {
             competency.identifier: (
                 round(
-                    (mastery.get(competency.identifier, 0) * 0.7)
+                    (planning_signal.get(competency.identifier, 0) * 0.7)
                     + (assessment_scores[competency.identifier] * 0.3)
                 )
                 if competency.identifier in assessment_scores
-                else mastery.get(competency.identifier, 0)
+                else planning_signal.get(competency.identifier, 0)
             )
             for competency in role.competencies
         }
@@ -491,7 +508,7 @@ class LearningPlanService:
         self,
         *,
         role: RoleDefinition,
-        mastery: dict[str, int],
+        planning_signal: dict[str, int],
         weekly_hours: int,
         focus_competency_ids: list[str],
         learner_name: str,
@@ -499,7 +516,7 @@ class LearningPlanService:
         seed: str,
         generation: int,
     ) -> list[ActivityView]:
-        ranked = self._rank_competencies(role, mastery, focus_competency_ids)
+        ranked = self._rank_competencies(role, planning_signal, focus_competency_ids)
         activity_count = min(len(ranked), max(4, weekly_hours // 2))
         return [
             self._activity_view(
@@ -510,7 +527,7 @@ class LearningPlanService:
                 learner_name=learner_name,
                 experience_summary=experience_summary,
                 generation=generation,
-                mastery=mastery.get(competency.identifier, 0),
+                planning_signal=planning_signal.get(competency.identifier, 0),
                 focused=competency.identifier in focus_competency_ids,
             )
             for position, competency in enumerate(ranked[:activity_count], start=1)
@@ -545,13 +562,14 @@ class LearningPlanService:
         return list(submitted)
 
     @staticmethod
-    def _provisional_mastery_delta(
+    def _planning_signal_delta(
         *,
         criteria_met: int,
         criteria_total: int,
         confidence: int,
         reflection: str,
     ) -> int:
+        """Weight learner-attested completion only as a future-diagnosis planning signal."""
         ratio = criteria_met / max(criteria_total, 1)
         reflection_bonus = 4 if len(reflection.strip()) >= 80 else 0
         return min(25, 5 + round(10 * ratio) + (confidence * 2) + reflection_bonus)
@@ -559,7 +577,7 @@ class LearningPlanService:
     @staticmethod
     def _rank_competencies(
         role: RoleDefinition,
-        mastery: dict[str, int],
+        planning_signal: dict[str, int],
         focus_competency_ids: list[str],
     ) -> list[CompetencyDefinition]:
         focus_order = {
@@ -570,7 +588,7 @@ class LearningPlanService:
             key=lambda item: (
                 0 if item.identifier in focus_order else 1,
                 focus_order.get(item.identifier, len(focus_order)),
-                -(100 - mastery.get(item.identifier, 0)) * item.weight,
+                -(100 - planning_signal.get(item.identifier, 0)) * item.weight,
                 item.identifier,
             ),
         )
@@ -598,12 +616,30 @@ class LearningPlanService:
         return activity.available_from is None or _parse_timestamp(activity.available_from) <= now
 
     @staticmethod
+    def _upgrade_state(state: LearnerState, role: RoleDefinition) -> LearnerState:
+        """Migrate legacy signed state into schema v4 without promoting it to verified mastery."""
+        planning_signal = (
+            dict(state.planning_signal) if state.planning_signal else dict(state.mastery)
+        )
+        target = state.target if state.target is not None else default_target_for(role)
+        return state.model_copy(
+            update={
+                "schema_version": 4,
+                "target": target,
+                "planning_signal": planning_signal,
+                "mastery": {},
+            }
+        )
+
+    @staticmethod
     def _role_view(role: RoleDefinition) -> RoleView:
         return RoleView(
             id=role.identifier,
             version=role.version,
             title=role.title,
             summary=role.summary,
+            validation_state="provisional",
+            default_target=default_target_for(role),
             competencies=[
                 CompetencyView(
                     id=item.identifier,
@@ -626,7 +662,7 @@ class LearningPlanService:
         learner_name: str,
         experience_summary: str,
         generation: int,
-        mastery: int,
+        planning_signal: int,
         focused: bool,
     ) -> ActivityView:
         selector_seed = hashlib.sha256(
@@ -634,7 +670,7 @@ class LearningPlanService:
         ).hexdigest()
         template = competency.activities[int(selector_seed[:4], 16) % len(competency.activities)]
         fingerprint = selector_seed[:12]
-        context = experience_summary or "current self-assessment and target role"
+        context = experience_summary or "current self-report and resolved target"
         focus_reason = " It was explicitly selected as a focus area." if focused else ""
         return ActivityView(
             id=f"activity-build-{competency.identifier}-{fingerprint}",
@@ -650,8 +686,10 @@ class LearningPlanService:
             estimated_minutes=template.estimated_minutes,
             kind="build",
             rationale=(
-                f"Selected from role profile {role.version} because current provisional mastery "
-                f"is {mastery}% and the competency weight is {competency.weight}.{focus_reason}"
+                f"Selected from provisional role profile {role.version} because the current "
+                f"planning signal is {planning_signal}% and the competency weight is "
+                f"{competency.weight}.{focus_reason} This signal prioritizes diagnosis/work; "
+                "it is not verified mastery."
             ),
             generation=generation,
             available_from=None,
@@ -674,8 +712,8 @@ class LearningPlanService:
             competency_name=source.competency_name,
             title=f"Review · {source.title.removeprefix('Review · ')}",
             objective=(
-                f"Reproduce or critique the earlier evidence for {learner_name} without relying "
-                "on the original step-by-step notes, then identify what still requires support."
+                f"Reproduce or critique the earlier work for {learner_name} without relying on "
+                "the original step-by-step notes, then identify what still requires support."
             ),
             deliverable=(
                 "A concise reproduction or review note linked to the earlier deliverable, with "
@@ -685,8 +723,8 @@ class LearningPlanService:
             estimated_minutes=max(30, source.estimated_minutes // 2),
             kind="review",
             rationale=(
-                "Scheduled as a spaced retrieval review from the previous learner-attested "
-                "evidence cycle; it is not an external competency certification."
+                "Scheduled as a spaced retrieval review from a learner-attested work cycle. "
+                "Completion remains a planning signal until independent evidence gates exist."
             ),
             generation=generation,
             available_from=available_from.isoformat(),
