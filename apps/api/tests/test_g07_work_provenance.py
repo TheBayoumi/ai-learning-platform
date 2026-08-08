@@ -120,7 +120,8 @@ def _submission(
         defense_response=(
             "I chose the smaller boundary because it preserves deterministic ownership. The main "
             "trade-off is additional explicit state, but it prevents provider output from becoming "
-            "authority. I rejected a shared mutable cache because replay and isolation would weaken."
+            "authority. I rejected a shared mutable cache because replay and isolation "
+            "would weaken."
         ),
     )
 

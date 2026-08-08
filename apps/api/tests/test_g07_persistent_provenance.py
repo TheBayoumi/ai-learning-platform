@@ -141,8 +141,9 @@ def test_provenance_challenge_capture_and_review_append_durable_events() -> None
                     defense_challenge_id=challenge_ids["defense"],
                     defense_response=(
                         "I chose deterministic state ownership because it preserves replay and "
-                        "isolation. I rejected provider-owned state because failures could silently "
-                        "change evidence authority, and I verified the correction with focused tests."
+                        "isolation. I rejected provider-owned state because failures could "
+                        "silently change evidence authority, and I verified the correction "
+                        "with focused tests."
                     ),
                 ),
             ),

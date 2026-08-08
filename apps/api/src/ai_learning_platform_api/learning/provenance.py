@@ -9,11 +9,13 @@ from datetime import datetime
 
 from ai_learning_platform_api.learning.schemas import (
     ArtifactCheckpointView,
+    EvidenceRecordView,
     LearnerState,
     TrustedWorkProvenanceVerdict,
     WorkProvenanceState,
     WorkProvenanceSubmission,
     WorkVerificationChallengeView,
+    WorkVerificationKind,
 )
 
 _MAX_PROVENANCE_RECORDS = 32
@@ -78,7 +80,8 @@ def issue_work_challenges(
             kind="debugging",
             prompt=(
                 "Diagnose and repair a controlled failure in the submitted work. Explain the "
-                "failure mechanism and the smallest defensible correction without answer-level help."
+                "failure mechanism and the smallest defensible correction without "
+                "answer-level help."
             ),
             occurred_at=occurred_at,
         ),
@@ -166,7 +169,7 @@ def apply_work_provenance_verdict(
     verdict: TrustedWorkProvenanceVerdict,
     occurred_at: datetime,
 ) -> WorkProvenanceTransitionResult:
-    """Apply a trusted work verdict without changing competency qualification or readiness itself."""
+    """Apply trusted work review without mutating qualification/readiness authority."""
     evidence = _find_evidence(state, verdict.evidence_id)
     current = state.work_provenance.get(verdict.evidence_id)
     if current is None or current.status == "challenge_issued":
@@ -205,7 +208,11 @@ def apply_work_provenance_verdict(
 
     accepted = verdict.disposition == "accepted"
     eligible = accepted and not issues and all(trusted_requirements.values())
-    status = "verified" if eligible else verdict.disposition
+    status = (
+        "verified"
+        if eligible
+        else ("reviewed_blocked" if verdict.disposition == "accepted" else verdict.disposition)
+    )
     record = current.model_copy(
         update={
             "status": status,
@@ -243,7 +250,7 @@ def project_work_provenance(state: LearnerState) -> list[WorkProvenanceState]:
     )
 
 
-def _find_evidence(state: LearnerState, evidence_id: str):
+def _find_evidence(state: LearnerState, evidence_id: str) -> EvidenceRecordView:
     for item in state.evidence_history:
         if item.evidence_id == evidence_id:
             return item
@@ -254,12 +261,12 @@ def _challenge(
     *,
     state: LearnerState,
     evidence_id: str,
-    kind: str,
+    kind: WorkVerificationKind,
     prompt: str,
     occurred_at: datetime,
 ) -> WorkVerificationChallengeView:
     digest = hashlib.sha256(
-        f"{state.learner_id}|{evidence_id}|{kind}|{state.active_plan_version_id}".encode("utf-8")
+        f"{state.learner_id}|{evidence_id}|{kind}|{state.active_plan_version_id}".encode()
     ).hexdigest()[:24]
     return WorkVerificationChallengeView(
         challenge_id=f"work-{kind}-{digest}",

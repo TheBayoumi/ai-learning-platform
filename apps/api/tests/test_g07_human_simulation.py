@@ -9,6 +9,7 @@ from ai_learning_platform_api.learning import LearningPlanService
 from ai_learning_platform_api.learning.provenance import WorkProvenanceError
 from ai_learning_platform_api.learning.schemas import (
     ArtifactCheckpointView,
+    AssistanceLevel,
     EvidenceRecordView,
     PlanRequest,
     PlanView,
@@ -62,10 +63,12 @@ def _submission(
     issued: PlanView,
     evidence: EvidenceRecordView,
     *,
-    assistance: str = "none",
+    assistance: AssistanceLevel = "none",
     defense: str | None = None,
 ) -> WorkProvenanceSubmission:
-    record = next(item for item in issued.work_provenance if item.evidence_id == evidence.evidence_id)
+    record = next(
+        item for item in issued.work_provenance if item.evidence_id == evidence.evidence_id
+    )
     challenge_ids = {item.kind: item.challenge_id for item in record.challenges}
     return WorkProvenanceSubmission(
         evidence_id=evidence.evidence_id,

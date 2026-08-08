@@ -17,6 +17,8 @@ from ai_learning_platform_api.learning.schemas import (
     TargetRequest,
     TrustedEvidenceVerdict,
     TrustedProbeVerdict,
+    TrustedWorkProvenanceVerdict,
+    WorkProvenanceSubmission,
 )
 
 IdempotencyKey = Annotated[str, Field(min_length=16, max_length=160, pattern=r"^[^\s]+$")]
@@ -95,6 +97,24 @@ class PersistentProbeEvaluationRequest(StrictModel):
     expected_version: Annotated[int, Field(ge=0)]
     idempotency_key: Annotated[str, Field(min_length=8, max_length=160)]
     verdict: TrustedProbeVerdict
+
+
+class PersistentWorkVerificationRequest(PersistentMutationRequest):
+    """Issue post-artifact modification/debugging/defense challenges durably."""
+
+    evidence_id: Annotated[str, Field(min_length=8, max_length=160)]
+
+
+class PersistentWorkProvenanceSubmissionRequest(PersistentMutationRequest):
+    """Capture immutable learner work provenance through the durable aggregate."""
+
+    submission: WorkProvenanceSubmission
+
+
+class PersistentWorkProvenanceEvaluationRequest(PersistentMutationRequest):
+    """Commit one trusted authorship/modification/debugging/defense verdict."""
+
+    verdict: TrustedWorkProvenanceVerdict
 
 
 class PersistentPlanView(StrictModel):
