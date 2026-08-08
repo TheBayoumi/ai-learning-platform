@@ -84,7 +84,7 @@ def test_self_report_and_attested_completion_never_grant_mastery_or_readiness() 
     assert created.claim_state == "validation_locked"
     assert created.verified_readiness_percent is None
     assert created.planning_signal_percent > 0
-    assert created_state.schema_version == 5
+    assert created_state.schema_version == 6
     assert created_state.planning_signal["python"] == 100
     assert created_state.mastery == {}
     assert all(item.status == "unverified" for item in created_state.competency_evidence.values())
@@ -134,7 +134,7 @@ def test_legacy_schema_three_mastery_is_migrated_only_to_planning_signal() -> No
     assert resumed.claim_state == "validation_locked"
     assert resumed.verified_readiness_percent is None
     assert resumed.target.role_id == "junior-python-backend-engineer"
-    assert migrated.schema_version == 5
+    assert migrated.schema_version == 6
     assert migrated.planning_signal == {"python": 75}
     assert migrated.mastery == {}
     assert migrated.evidence_evaluations == []

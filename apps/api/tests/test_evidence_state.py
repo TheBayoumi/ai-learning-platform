@@ -324,7 +324,7 @@ def test_schema_four_state_migrates_without_inventing_trusted_evidence() -> None
     migrated = core.resume(codec.encode(legacy))
     migrated_state = codec.decode(migrated.state_token)
 
-    assert migrated_state.schema_version == 5
+    assert migrated_state.schema_version == 6
     assert migrated.evidence_history[-1].evidence_id.startswith("evidence-")
     assert evidence_status(migrated, competency_id).status == "unverified"
     assert migrated.evidence_evaluations == []

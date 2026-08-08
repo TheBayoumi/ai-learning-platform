@@ -115,7 +115,9 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
         text=True,
         timeout=10,
     ).stdout.strip()
-    head_ref = os.environ.get("GITHUB_HEAD_REF", "product/g02-deterministic-evidence-state")
+    head_ref = os.environ.get(
+        "GITHUB_HEAD_REF", "product/g03-deterministic-curriculum-planner"
+    )
 
     phases = product_gate.validate_product_state(
         repository_root,
@@ -124,9 +126,11 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
         actual_sha=exact_sha,
         ancestor_check=lambda _ancestor, _descendant: True,
     )
+    active = next(phase for phase in phases if phase.status in product_gate.ACTIVE_STATUSES)
 
-    assert phases[1].identifier == "G02"
-    assert phases[1].status == "VALIDATING"
+    assert active.identifier == "G03"
+    assert active.status == "IMPLEMENTING"
+    assert active.branch == head_ref
 
 
 def test_valid_product_state_accepts_exact_active_phase(tmp_path: Path) -> None:
