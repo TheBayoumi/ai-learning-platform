@@ -1,0 +1,45 @@
+name: G01 one-shot normalization
+
+on:
+  push:
+    branches:
+      - product/mission-aligned-control-loop
+    paths:
+      - .github/workflows/mission-g01-normalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: product/mission-aligned-control-loop
+          fetch-depth: 0
+      - name: Apply exact lint normalization and self-delete
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          service = Path("apps/api/src/ai_learning_platform_api/learning/service.py")
+          text = service.read_text(encoding="utf-8")
+          before = '        """Blend planning inputs and calibration only for prioritization, never mastery/readiness."""\n'
+          after = '        """Blend planning and calibration only for prioritization."""\n'
+          if text.count(before) != 1:
+              raise SystemExit("expected exactly one diagnostic docstring to normalize")
+          service.write_text(text.replace(before, after), encoding="utf-8")
+
+          helper = Path(".github/workflows/mission-g01-normalize.yml")
+          if not helper.exists():
+              raise SystemExit("normalizer workflow is missing")
+          helper.unlink()
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Normalize G01 mission service lint"
+          git push origin HEAD:product/mission-aligned-control-loop
