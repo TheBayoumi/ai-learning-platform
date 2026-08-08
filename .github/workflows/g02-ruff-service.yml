@@ -1,0 +1,40 @@
+name: G02 signed-state Ruff formatter
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.head_ref == 'product/g02-deterministic-evidence-state' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+      - name: Format signed-state service
+        working-directory: apps/api
+        run: |
+          uv run --locked ruff format src/ai_learning_platform_api/learning/service.py
+          git diff --check
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet -- apps/api/src/ai_learning_platform_api/learning/service.py; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api/src/ai_learning_platform_api/learning/service.py
+          git commit -m 'Apply Ruff formatting to signed-state fix'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
