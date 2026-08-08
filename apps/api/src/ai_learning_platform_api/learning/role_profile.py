@@ -99,7 +99,9 @@ def profile_for(role: RoleDefinition) -> RoleProfileGraph:
         raise ValueError(f"missing RoleProfile graph for {role.identifier}")
     role_ids = {item.identifier for item in role.competencies}
     if set(profiles) != role_ids:
-        raise ValueError(f"RoleProfile graph does not match catalog competencies for {role.identifier}")
+        raise ValueError(
+            f"RoleProfile graph does not match catalog competencies for {role.identifier}"
+        )
     for profile in profiles.values():
         if profile.competency_id in profile.prerequisites:
             raise ValueError(f"self dependency in RoleProfile for {profile.competency_id}")

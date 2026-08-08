@@ -115,9 +115,7 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
         text=True,
         timeout=10,
     ).stdout.strip()
-    head_ref = os.environ.get(
-        "GITHUB_HEAD_REF", "product/g03-deterministic-curriculum-planner"
-    )
+    head_ref = os.environ.get("GITHUB_HEAD_REF", "product/g03-deterministic-curriculum-planner")
 
     phases = product_gate.validate_product_state(
         repository_root,

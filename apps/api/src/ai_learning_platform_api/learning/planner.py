@@ -123,9 +123,7 @@ def rank_curriculum(
         if blocked_by:
             reason_parts.append(f"blocked by prerequisites={','.join(blocked_by)}")
         if misconception_codes:
-            reason_parts.append(
-                f"active misconceptions={','.join(misconception_codes)}"
-            )
+            reason_parts.append(f"active misconceptions={','.join(misconception_codes)}")
         if focused:
             reason_parts.append("explicit learner focus")
         reason_parts.append(
@@ -162,9 +160,7 @@ def eligible_build_decisions(
 ) -> tuple[CurriculumDecision, ...]:
     """Return only unresolved competencies whose prerequisites are evidenced."""
     return tuple(
-        item
-        for item in decisions
-        if item.evidence_status != "independent" and not item.blocked_by
+        item for item in decisions if item.evidence_status != "independent" and not item.blocked_by
     )
 
 

@@ -76,9 +76,7 @@ def _judge(
 def test_struggling_learner_gets_remediation_not_false_progress() -> None:
     """A failed observed task keeps the gap open and feeds the misconception into replanning."""
     service = _service()
-    created = service.create_plan(
-        PlanRequest(learner_name="Struggling Learner", weekly_hours=20)
-    )
+    created = service.create_plan(PlanRequest(learner_name="Struggling Learner", weekly_hours=20))
     token, evidence_id = _submit(service, created.state_token, "python")
     judged = service.evaluate_evidence(
         state_token=token,
@@ -119,9 +117,7 @@ def test_fast_learner_unlocks_dependencies_without_repeating_independent_roots()
         )
 
     build_ids = {
-        item.competency_id
-        for item in plan.active_plan_version.activities
-        if item.kind == "build"
+        item.competency_id for item in plan.active_plan_version.activities if item.kind == "build"
     }
     fastapi = next(
         item for item in plan.active_plan_version.priorities if item.competency_id == "fastapi"
@@ -136,9 +132,7 @@ def test_fast_learner_unlocks_dependencies_without_repeating_independent_roots()
 def test_assisted_learner_cannot_unlock_downstream_curriculum() -> None:
     """Hint-assisted success stays partial and the downstream prerequisite remains closed."""
     service = _service()
-    created = service.create_plan(
-        PlanRequest(learner_name="Assisted Learner", weekly_hours=20)
-    )
+    created = service.create_plan(PlanRequest(learner_name="Assisted Learner", weekly_hours=20))
     token, evidence_id = _submit(service, created.state_token, "python")
     assisted = service.evaluate_evidence(
         state_token=token,
@@ -179,7 +173,9 @@ def test_returning_learner_replays_exact_plan_then_capacity_change_creates_a_del
             focus_competency_ids=["git"],
         )
     )
-    assert replanned.active_plan_version.plan_version_id != resumed.active_plan_version.plan_version_id
+    assert (
+        replanned.active_plan_version.plan_version_id != resumed.active_plan_version.plan_version_id
+    )
     assert (
         replanned.active_plan_version.delta.previous_plan_version_id
         == resumed.active_plan_version.plan_version_id

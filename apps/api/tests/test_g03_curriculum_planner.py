@@ -152,9 +152,7 @@ def test_self_report_cannot_bypass_prerequisites_or_authoritative_evidence() -> 
 
 def test_trusted_independent_prerequisites_unlock_downstream_work_and_create_deltas() -> None:
     service = _service()
-    created = service.create_plan(
-        PlanRequest(learner_name="Fast Learner", weekly_hours=20)
-    )
+    created = service.create_plan(PlanRequest(learner_name="Fast Learner", weekly_hours=20))
 
     token, python_evidence = _complete_competency(service, created.state_token, "python")
     after_python = service.evaluate_evidence(
@@ -199,9 +197,7 @@ def test_trusted_independent_prerequisites_unlock_downstream_work_and_create_del
 
 def test_assisted_evidence_remains_partial_and_does_not_unlock_dependents() -> None:
     service = _service()
-    created = service.create_plan(
-        PlanRequest(learner_name="Assisted Learner", weekly_hours=20)
-    )
+    created = service.create_plan(PlanRequest(learner_name="Assisted Learner", weekly_hours=20))
     token, evidence_id = _complete_competency(service, created.state_token, "python")
     assisted = service.evaluate_evidence(
         state_token=token,
@@ -232,9 +228,7 @@ def test_assisted_evidence_remains_partial_and_does_not_unlock_dependents() -> N
 
 def test_active_misconception_is_a_deterministic_priority_input() -> None:
     service = _service()
-    created = service.create_plan(
-        PlanRequest(learner_name="Struggling Learner", weekly_hours=20)
-    )
+    created = service.create_plan(PlanRequest(learner_name="Struggling Learner", weekly_hours=20))
     token, evidence_id = _complete_competency(service, created.state_token, "python")
     rejected = service.evaluate_evidence(
         state_token=token,
@@ -260,9 +254,7 @@ def test_active_misconception_is_a_deterministic_priority_input() -> None:
 
 def test_capacity_and_focus_create_new_versions_without_changing_evidence() -> None:
     service = _service()
-    created = service.create_plan(
-        PlanRequest(learner_name="Capacity Learner", weekly_hours=8)
-    )
+    created = service.create_plan(PlanRequest(learner_name="Capacity Learner", weekly_hours=8))
     replanned = service.replan(
         ReplanRequest(
             state_token=created.state_token,
