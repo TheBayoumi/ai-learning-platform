@@ -84,8 +84,8 @@ def recorded_plan(core: LearningPlanService) -> tuple[object, str, str]:
             state_token=created.state_token,
             activity_id=created.current_activity.id,
             reflection=(
-                "I built the bounded deliverable, recorded the decisions, and described what should "
-                "be verified independently next."
+                "I built the bounded deliverable, recorded the decisions, and described what "
+                "should be verified independently next."
             ),
             criteria_met=list(created.current_activity.acceptance_criteria),
             confidence=3,
@@ -124,7 +124,7 @@ def verdict(
 
 
 def evidence_status(plan: object, competency_id: str) -> object:
-    states = getattr(plan, "competency_evidence")
+    states = plan.competency_evidence
     return next(item for item in states if item.competency_id == competency_id)
 
 

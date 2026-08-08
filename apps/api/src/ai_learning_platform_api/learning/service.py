@@ -657,9 +657,9 @@ class LearningPlanService:
 
     @staticmethod
     def _evidence_id(learner_id: str, activity_id: str, submitted_at: str) -> str:
-        digest = hashlib.sha256(
-            f"{learner_id}|{activity_id}|{submitted_at}".encode("utf-8")
-        ).hexdigest()[:24]
+        digest = hashlib.sha256(f"{learner_id}|{activity_id}|{submitted_at}".encode()).hexdigest()[
+            :24
+        ]
         return f"evidence-{digest}"
 
     @staticmethod
