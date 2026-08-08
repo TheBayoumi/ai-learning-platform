@@ -3,7 +3,7 @@
   "program": "mission-aligned-product-completion",
   "mission_dod": "plans/product-completion-definition-of-done.md",
   "execution_dod": "plans/adaptive-product-definition-of-done.md",
-  "active_phase": "G06",
+  "active_phase": "G07",
   "engineering_claim_only": true,
   "validation_track_remains_external": true,
   "required_checks": [
@@ -286,8 +286,8 @@
     {
       "id": "G06",
       "name": "Independent retention and transfer engine",
-      "status": "VALIDATING",
-      "branch": "product/g06-retention-transfer-engine",
+      "status": "PASSED",
+      "branch": "main",
       "dependencies": [
         "G05"
       ],
@@ -325,15 +325,18 @@
       "human_simulation_evidence": [
         "apps/api/tests/test_g06_human_simulation.py"
       ],
-      "accepted_sha": null,
-      "production_acceptance": [],
+      "accepted_sha": "77cac7b3712668859fde223d3b9db9b88372dd01",
+      "production_acceptance": [
+        "Exact-head Quality Gates passed before merge on 77cac7b3712668859fde223d3b9db9b88372dd01",
+        "Product deployment run 31272618871 passed on main SHA 27441ba113fe8f0210d4d2dc09395783353d1545 containing merge 13f4daa570947f729a269f498c3de4659d7327dd"
+      ],
       "next_phase": "G07"
     },
     {
       "id": "G07",
       "name": "Work provenance and simulations",
-      "status": "NOT_STARTED",
-      "branch": null,
+      "status": "VALIDATING",
+      "branch": "product/g07-work-provenance-simulations",
       "dependencies": [
         "G06"
       ],
