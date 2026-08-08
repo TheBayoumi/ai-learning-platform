@@ -294,7 +294,7 @@ class LearnerPlanVersion(StrictModel):
     priorities: list[PlanPrioritySnapshot]
     activities: list[ActivityView]
     delta: PlanDeltaView
-    task_exposures: list[TaskExposureView] = Field(default_factory=list, max_length=64)
+    task_exposures: list[TaskExposureView] = Field(default_factory=list, max_length=16)
 
 
 class EvidenceRecordView(StrictModel):

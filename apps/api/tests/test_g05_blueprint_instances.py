@@ -94,7 +94,7 @@ def test_repeated_replanning_rejects_exact_and_near_duplicate_history() -> None:
     seen_tokens: list[list[str]] = []
     seen_fingerprints: set[str] = set()
 
-    for _ in range(12):
+    for _ in range(20):
         assert plan.current_activity is not None
         activity = plan.current_activity
         assert activity.semantic_fingerprint not in seen_fingerprints
@@ -111,7 +111,7 @@ def test_repeated_replanning_rejects_exact_and_near_duplicate_history() -> None:
             )
         )
         assert len(plan.state_token) < 65_536
-        assert len(plan.active_plan_version.task_exposures) <= 64
+        assert len(plan.active_plan_version.task_exposures) <= 16
 
 
 def test_untrusted_blueprint_cannot_create_high_stakes_instance() -> None:

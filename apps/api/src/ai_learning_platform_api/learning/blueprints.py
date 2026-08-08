@@ -232,7 +232,9 @@ def bind_learner_instance(
             exposures=prior,
         ):
             continue
-        instance_id = f"activity-build-{activity.competency_id}-{_digest(f'{learner_id}|{full_seed}', 12)}"
+        instance_id = (
+            f"activity-build-{activity.competency_id}-{_digest(f'{learner_id}|{full_seed}', 12)}"
+        )
         scenario = (
             f"Instance constraints: apply this blueprint to a {domain}; handle {failure}; "
             f"and {constraint}. Use {challenge} as the instance identity in the design note."

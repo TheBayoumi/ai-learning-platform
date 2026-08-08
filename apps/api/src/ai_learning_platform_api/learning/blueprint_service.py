@@ -188,9 +188,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         version: LearnerPlanVersion,
     ) -> list[LearnerPlanVersion]:
         """Keep immutable curriculum snapshots while avoiding cumulative ledger duplication."""
-        archived = [
-            item.model_copy(update={"task_exposures": []}) for item in state.plan_versions
-        ]
+        archived = [item.model_copy(update={"task_exposures": []}) for item in state.plan_versions]
         return [*archived, version][-_MAX_PLAN_VERSIONS:]
 
     def evaluate_evidence(
