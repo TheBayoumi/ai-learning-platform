@@ -28,6 +28,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import re
+          import textwrap
 
           path = Path('apps/api/src/ai_learning_platform_api/learning/service.py')
           text = path.read_text(encoding='utf-8')
@@ -44,70 +45,71 @@ jobs:
                   + '_STATE_COMPRESSION_PREFIX = b"Z1"\n',
                   1,
               )
-          new = '''def _decode_state_payload(packed: bytes) -> bytes:
-              """Decode compressed state with an explicit output bound; raw JSON is legacy-only."""
-              if packed.startswith(_STATE_COMPRESSION_PREFIX):
-                  decompressor = zlib.decompressobj()
-                  try:
-                      payload = decompressor.decompress(
-                          packed[len(_STATE_COMPRESSION_PREFIX) :],
-                          _MAX_STATE_PAYLOAD_BYTES + 1,
-                      )
-                  except zlib.error as error:
-                      raise InvalidStateTokenError from error
-                  if (
-                      len(payload) > _MAX_STATE_PAYLOAD_BYTES
-                      or not decompressor.eof
-                      or decompressor.unused_data
-                      or decompressor.unconsumed_tail
-                  ):
+          new = textwrap.dedent('''
+              def _decode_state_payload(packed: bytes) -> bytes:
+                  """Decode compressed state with an explicit output bound; raw JSON is legacy-only."""
+                  if packed.startswith(_STATE_COMPRESSION_PREFIX):
+                      decompressor = zlib.decompressobj()
+                      try:
+                          payload = decompressor.decompress(
+                              packed[len(_STATE_COMPRESSION_PREFIX) :],
+                              _MAX_STATE_PAYLOAD_BYTES + 1,
+                          )
+                      except zlib.error as error:
+                          raise InvalidStateTokenError from error
+                      if (
+                          len(payload) > _MAX_STATE_PAYLOAD_BYTES
+                          or not decompressor.eof
+                          or decompressor.unused_data
+                          or decompressor.unconsumed_tail
+                      ):
+                          raise InvalidStateTokenError
+                      return payload
+                  if len(packed) > _MAX_STATE_PAYLOAD_BYTES or not packed.startswith(b"{"):
                       raise InvalidStateTokenError
-                  return payload
-              if len(packed) > _MAX_STATE_PAYLOAD_BYTES or not packed.startswith(b"{"):
-                  raise InvalidStateTokenError
-              return packed
+                  return packed
 
 
-          class SignedStateCodec:
-              """Canonical HMAC codec for bounded compressed browser-carried learner state."""
+              class SignedStateCodec:
+                  """Canonical HMAC codec for bounded compressed browser-carried learner state."""
 
-              def __init__(self, secret: str) -> None:
-                  if len(secret.encode("utf-8")) < 32:
-                      raise ValueError("learner state secret must contain at least 32 UTF-8 bytes")
-                  self._secret = secret.encode("utf-8")
+                  def __init__(self, secret: str) -> None:
+                      if len(secret.encode("utf-8")) < 32:
+                          raise ValueError("learner state secret must contain at least 32 UTF-8 bytes")
+                      self._secret = secret.encode("utf-8")
 
-              def encode(self, state: LearnerState) -> str:
-                  payload = json.dumps(
-                      state.model_dump(mode="json"),
-                      ensure_ascii=False,
-                      separators=(",", ":"),
-                      sort_keys=True,
-                  ).encode("utf-8")
-                  if len(payload) > _MAX_STATE_PAYLOAD_BYTES:
-                      raise InvalidStateTokenError
-                  packed = _STATE_COMPRESSION_PREFIX + zlib.compress(payload, level=9)
-                  signature = hmac.new(self._secret, packed, hashlib.sha256).digest()
-                  token = f"{_urlsafe_encode(packed)}.{_urlsafe_encode(signature)}"
-                  if len(token) > 65_536:
-                      raise InvalidStateTokenError
-                  return token
+                  def encode(self, state: LearnerState) -> str:
+                      payload = json.dumps(
+                          state.model_dump(mode="json"),
+                          ensure_ascii=False,
+                          separators=(",", ":"),
+                          sort_keys=True,
+                      ).encode("utf-8")
+                      if len(payload) > _MAX_STATE_PAYLOAD_BYTES:
+                          raise InvalidStateTokenError
+                      packed = _STATE_COMPRESSION_PREFIX + zlib.compress(payload, level=9)
+                      signature = hmac.new(self._secret, packed, hashlib.sha256).digest()
+                      token = f"{_urlsafe_encode(packed)}.{_urlsafe_encode(signature)}"
+                      if len(token) > 65_536:
+                          raise InvalidStateTokenError
+                      return token
 
-              def decode(self, token: str) -> LearnerState:
-                  if len(token) > 65_536 or token.count(".") != 1:
-                      raise InvalidStateTokenError
-                  encoded_payload, encoded_signature = token.split(".", maxsplit=1)
-                  packed = _urlsafe_decode(encoded_payload)
-                  signature = _urlsafe_decode(encoded_signature)
-                  expected = hmac.new(self._secret, packed, hashlib.sha256).digest()
-                  if not hmac.compare_digest(signature, expected):
-                      raise InvalidStateTokenError
-                  payload = _decode_state_payload(packed)
-                  try:
-                      decoded = json.loads(payload)
-                      return LearnerState.model_validate(decoded)
-                  except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
-                      raise InvalidStateTokenError from error
-          '''.replace('          ', '').rstrip()
+                  def decode(self, token: str) -> LearnerState:
+                      if len(token) > 65_536 or token.count(".") != 1:
+                          raise InvalidStateTokenError
+                      encoded_payload, encoded_signature = token.split(".", maxsplit=1)
+                      packed = _urlsafe_decode(encoded_payload)
+                      signature = _urlsafe_decode(encoded_signature)
+                      expected = hmac.new(self._secret, packed, hashlib.sha256).digest()
+                      if not hmac.compare_digest(signature, expected):
+                          raise InvalidStateTokenError
+                      payload = _decode_state_payload(packed)
+                      try:
+                          decoded = json.loads(payload)
+                          return LearnerState.model_validate(decoded)
+                      except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
+                          raise InvalidStateTokenError from error
+          ''').strip()
           text, count = re.subn(
               r'class SignedStateCodec:.*?(?=\n\nclass LearningPlanService:)',
               new,
@@ -127,35 +129,35 @@ jobs:
                   'import base64\nimport hashlib\nimport hmac\nimport json\nimport zlib\n',
                   1,
               )
-              tests += '''
+              tests += textwrap.dedent('''
 
-          def _raw_token(payload: bytes) -> str:
-              encoded_payload = base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
-              signature = hmac.new(SECRET.encode(), payload, hashlib.sha256).digest()
-              encoded_signature = base64.urlsafe_b64encode(signature).rstrip(b"=").decode("ascii")
-              return f"{encoded_payload}.{encoded_signature}"
-
-
-          def test_signed_state_decodes_legacy_raw_json_token() -> None:
-              codec, token = _canonical_token()
-              state = codec.decode(token)
-              payload = json.dumps(
-                  state.model_dump(mode="json"),
-                  ensure_ascii=False,
-                  separators=(",", ":"),
-                  sort_keys=True,
-              ).encode()
-
-              assert codec.decode(_raw_token(payload)) == state
+                  def _raw_token(payload: bytes) -> str:
+                      encoded_payload = base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
+                      signature = hmac.new(SECRET.encode(), payload, hashlib.sha256).digest()
+                      encoded_signature = base64.urlsafe_b64encode(signature).rstrip(b"=").decode("ascii")
+                      return f"{encoded_payload}.{encoded_signature}"
 
 
-          def test_signed_state_rejects_compressed_payload_over_output_bound() -> None:
-              codec = SignedStateCodec(SECRET)
-              packed = b"Z1" + zlib.compress(b"x" * 300_000, level=9)
+                  def test_signed_state_decodes_legacy_raw_json_token() -> None:
+                      codec, token = _canonical_token()
+                      state = codec.decode(token)
+                      payload = json.dumps(
+                          state.model_dump(mode="json"),
+                          ensure_ascii=False,
+                          separators=(",", ":"),
+                          sort_keys=True,
+                      ).encode()
 
-              with pytest.raises(InvalidStateTokenError):
-                  codec.decode(_raw_token(packed))
-          '''.replace('          ', '')
+                      assert codec.decode(_raw_token(payload)) == state
+
+
+                  def test_signed_state_rejects_compressed_payload_over_output_bound() -> None:
+                      codec = SignedStateCodec(SECRET)
+                      packed = b"Z1" + zlib.compress(b"x" * 300_000, level=9)
+
+                      with pytest.raises(InvalidStateTokenError):
+                          codec.decode(_raw_token(packed))
+              ''')
           test_path.write_text(tests, encoding='utf-8')
           PY
       - name: Verify security and static quality
