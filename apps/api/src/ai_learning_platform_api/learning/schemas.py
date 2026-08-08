@@ -206,7 +206,7 @@ class PriorityCompetencyView(StrictModel):
 
 
 class ActivityView(StrictModel):
-    """One unique bounded work item in an adaptive learner plan."""
+    """One unique bounded work item with explicit G05 blueprint provenance."""
 
     id: str
     competency_id: str
@@ -220,6 +220,35 @@ class ActivityView(StrictModel):
     rationale: str = ""
     generation: int = 0
     available_from: str | None = None
+    item_family_id: str = ""
+    item_family_version: str = ""
+    item_family_trust: Literal["legacy_unverified", "trusted"] = "legacy_unverified"
+    blueprint_id: str = ""
+    blueprint_version: str = ""
+    blueprint_trust: Literal["legacy_unverified", "trusted"] = "legacy_unverified"
+    rubric_version: str = ""
+    instance_seed: str = ""
+    semantic_fingerprint: str = ""
+    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)
+    scenario_tags: list[str] = Field(default_factory=list, max_length=8)
+    plan_version_id: str = ""
+    high_stakes_eligible: bool = False
+
+
+class TaskExposureView(StrictModel):
+    """Persisted served-instance exposure for replay and collision rejection."""
+
+    instance_id: str
+    item_family_id: str
+    item_family_version: str
+    blueprint_id: str
+    blueprint_version: str
+    rubric_version: str
+    plan_version_id: str
+    semantic_fingerprint: str
+    semantic_tokens: list[str] = Field(default_factory=list, max_length=12)
+    high_stakes_eligible: bool = False
+    served_at: str
 
 
 class PlanPrioritySnapshot(StrictModel):
@@ -265,6 +294,7 @@ class LearnerPlanVersion(StrictModel):
     priorities: list[PlanPrioritySnapshot]
     activities: list[ActivityView]
     delta: PlanDeltaView
+    task_exposures: list[TaskExposureView] = Field(default_factory=list, max_length=64)
 
 
 class EvidenceRecordView(StrictModel):

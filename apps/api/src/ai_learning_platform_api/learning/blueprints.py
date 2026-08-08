@@ -6,11 +6,8 @@ import hashlib
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from ai_learning_platform_api.learning.blueprint_contracts import (
-    TaskExposureView,
-    TrustedActivityView,
-)
 from ai_learning_platform_api.learning.catalog import RoleDefinition
+from ai_learning_platform_api.learning.schemas import ActivityView, TaskExposureView
 
 _BLUEPRINT_VERSION = "2026-08-g05-v1"
 _ITEM_FAMILY_VERSION = "2026-08-g05-v1"
@@ -102,7 +99,7 @@ def _catalog_title(served_title: str) -> str:
     return title if separator else served_title
 
 
-def blueprint_identity(role: RoleDefinition, activity: TrustedActivityView) -> BlueprintIdentity:
+def blueprint_identity(role: RoleDefinition, activity: ActivityView) -> BlueprintIdentity:
     """Resolve trust only for an exact code-reviewed catalog template match."""
     competency = next(
         (item for item in role.competencies if item.identifier == activity.competency_id),
@@ -139,9 +136,7 @@ def blueprint_identity(role: RoleDefinition, activity: TrustedActivityView) -> B
     )
 
 
-def attach_blueprint_identity(
-    *, role: RoleDefinition, activity: TrustedActivityView
-) -> TrustedActivityView:
+def attach_blueprint_identity(*, role: RoleDefinition, activity: ActivityView) -> ActivityView:
     identity = blueprint_identity(role, activity)
     return activity.model_copy(
         update={
@@ -189,13 +184,13 @@ def collides(
 def bind_learner_instance(
     *,
     role: RoleDefinition,
-    activity: TrustedActivityView,
+    activity: ActivityView,
     learner_id: str,
     target_fingerprint: str,
     revision: int,
     position: int,
     exposures: Iterable[TaskExposureView],
-) -> TrustedActivityView:
+) -> ActivityView:
     """Bind a trusted blueprint to a deterministic non-colliding learner scenario."""
     if activity.item_family_trust != "trusted" or activity.blueprint_trust != "trusted":
         raise BlueprintTrustError("untrusted blueprint cannot create a high-stakes served instance")
@@ -252,7 +247,7 @@ def bind_learner_instance(
 
 
 def exposure_from_activity(
-    *, activity: TrustedActivityView, plan_version_id: str, served_at: str
+    *, activity: ActivityView, plan_version_id: str, served_at: str
 ) -> TaskExposureView:
     if not activity.instance_seed or not activity.semantic_fingerprint:
         raise BlueprintTrustError("served instance is missing learner-bound traceability")

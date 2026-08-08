@@ -5,9 +5,9 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
+from ai_learning_platform_api.learning.blueprint_contracts import TrustedActivityView
 
 from ai_learning_platform_api.learning import LearningPlanService
-from ai_learning_platform_api.learning.blueprint_contracts import TrustedActivityView
 from ai_learning_platform_api.learning.blueprint_service import UntrustedInstanceEvidenceError
 from ai_learning_platform_api.learning.blueprints import (
     BlueprintTrustError,

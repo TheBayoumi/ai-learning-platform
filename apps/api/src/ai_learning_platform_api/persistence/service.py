@@ -6,6 +6,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
+from ai_learning_platform_api.learning import LearningPlanService
 from ai_learning_platform_api.learning.schemas import (
     AssessmentStartRequest,
     AssessmentSubmitRequest,
@@ -13,7 +14,7 @@ from ai_learning_platform_api.learning.schemas import (
     ProgressRequest,
     ReplanRequest,
 )
-from ai_learning_platform_api.learning.service import LearningPlanService, SignedStateCodec
+from ai_learning_platform_api.learning.service import SignedStateCodec
 from ai_learning_platform_api.persistence.contracts import (
     LearnerStateCommit,
     LearnerStateConflictError,

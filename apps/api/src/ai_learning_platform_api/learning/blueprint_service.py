@@ -5,11 +5,6 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime
 
-from ai_learning_platform_api.learning.blueprint_contracts import (
-    TaskExposureView,
-    TrustedActivityView,
-    TrustedLearnerPlanVersion,
-)
 from ai_learning_platform_api.learning.blueprints import (
     BlueprintTrustError,
     attach_blueprint_identity,
@@ -24,6 +19,7 @@ from ai_learning_platform_api.learning.schemas import (
     LearnerPlanVersion,
     PlanView,
     TargetView,
+    TaskExposureView,
     TrustedEvidenceVerdict,
 )
 from ai_learning_platform_api.learning.service import (
@@ -55,7 +51,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         learner_name: str,
         experience_summary: str,
         generation: int,
-    ) -> TrustedActivityView:
+    ) -> ActivityView:
         base = BaseLearningPlanService._activity_view(
             role=role,
             decision=decision,
@@ -65,8 +61,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             experience_summary=experience_summary,
             generation=generation,
         )
-        trusted = TrustedActivityView.model_validate(base.model_dump(mode="json"))
-        return attach_blueprint_identity(role=role, activity=trusted)
+        return attach_blueprint_identity(role=role, activity=base)
 
     @staticmethod
     def _review_activity(
@@ -75,15 +70,15 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         learner_name: str,
         generation: int,
         available_from: datetime,
-    ) -> TrustedActivityView:
+    ) -> ActivityView:
         base = BaseLearningPlanService._review_activity(
             source=source,
             learner_name=learner_name,
             generation=generation,
             available_from=available_from,
         )
-        trusted_source = TrustedActivityView.model_validate(source.model_dump(mode="json"))
-        review = TrustedActivityView.model_validate(base.model_dump(mode="json"))
+        trusted_source = source
+        review = base
         seed = hashlib.sha256(
             f"review|{source.id}|{generation}|{available_from.isoformat()}".encode()
         ).hexdigest()
@@ -123,15 +118,13 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         decisions: tuple[CurriculumDecision, ...],
         activities: list[ActivityView],
         previous: LearnerPlanVersion | None,
-    ) -> TrustedLearnerPlanVersion:
-        prior_exposures = (
-            list(previous.task_exposures) if isinstance(previous, TrustedLearnerPlanVersion) else []
-        )
+    ) -> LearnerPlanVersion:
+        prior_exposures = list(previous.task_exposures) if previous is not None else []
         target_hash = target_fingerprint(target)
-        bound: list[TrustedActivityView] = []
+        bound: list[ActivityView] = []
         collision_scope = list(prior_exposures)
         for position, raw_activity in enumerate(activities, start=1):
-            activity = TrustedActivityView.model_validate(raw_activity.model_dump(mode="json"))
+            activity = raw_activity
             if activity.kind == "build":
                 activity = bind_learner_instance(
                     role=role,
@@ -187,10 +180,9 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             if activity.instance_seed and activity.semantic_fingerprint
         ]
         exposure_history = [*prior_exposures, *current_exposures][-_MAX_TASK_EXPOSURES:]
-        payload = base_version.model_dump(mode="json")
-        payload["activities"] = [item.model_dump(mode="json") for item in finalized]
-        payload["task_exposures"] = [item.model_dump(mode="json") for item in exposure_history]
-        return TrustedLearnerPlanVersion.model_validate(payload)
+        return base_version.model_copy(
+            update={"activities": finalized, "task_exposures": exposure_history}
+        )
 
     def evaluate_evidence(
         self,
@@ -210,9 +202,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             activity for version in state.plan_versions for activity in version.activities
         ]
         source = next((item for item in activities if item.id == evidence.activity_id), None)
-        if source is None or not isinstance(source, TrustedActivityView):
-            raise UntrustedInstanceEvidenceError
-        if not source.high_stakes_eligible:
+        if source is None or not source.high_stakes_eligible:
             raise UntrustedInstanceEvidenceError
         return super().evaluate_evidence(state_token=state_token, verdict=verdict)
 
