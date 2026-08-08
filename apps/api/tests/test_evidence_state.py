@@ -15,7 +15,9 @@ from ai_learning_platform_api.learning.schemas import (
     AssessmentAnswer,
     AssessmentStartRequest,
     AssessmentSubmitRequest,
+    CompetencyEvidenceState,
     PlanRequest,
+    PlanView,
     ProgressRequest,
     TrustedEvidenceVerdict,
 )
@@ -76,7 +78,7 @@ def service() -> LearningPlanService:
     )
 
 
-def recorded_plan(core: LearningPlanService) -> tuple[object, str, str]:
+def recorded_plan(core: LearningPlanService) -> tuple[PlanView, str, str]:
     created = core.create_plan(PlanRequest(learner_name="Evidence Learner"))
     assert created.current_activity is not None
     progressed = core.complete_activity(
@@ -123,7 +125,7 @@ def verdict(
     )
 
 
-def evidence_status(plan: object, competency_id: str) -> object:
+def evidence_status(plan: PlanView, competency_id: str) -> CompetencyEvidenceState:
     states = plan.competency_evidence
     return next(item for item in states if item.competency_id == competency_id)
 
