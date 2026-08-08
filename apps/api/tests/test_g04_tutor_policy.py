@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from ai_learning_platform_api.learning.schemas import PlanRequest
+from ai_learning_platform_api.learning.schemas import PlanRequest, ReplanRequest
 from ai_learning_platform_api.learning.service import LearningPlanService
 from ai_learning_platform_api.tutoring.contracts import TutorTurnRequest
 from ai_learning_platform_api.tutoring.policy import (
@@ -106,9 +106,7 @@ def test_signed_assistance_ledger_is_bound_to_exact_plan_and_activity() -> None:
         decision=first.decision,
     )
     replanned = LearningPlanService(SECRET).replan(
-        request=__import__(
-            "ai_learning_platform_api.learning.schemas", fromlist=["ReplanRequest"]
-        ).ReplanRequest(
+        ReplanRequest(
             state_token=plan.state_token,
             weekly_hours=4,
             focus_competency_ids=[],

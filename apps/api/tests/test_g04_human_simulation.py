@@ -11,7 +11,7 @@ from ai_learning_platform_api.learning.service import LearningPlanService
 from ai_learning_platform_api.tutoring.contracts import TutorTurnRequest
 from ai_learning_platform_api.tutoring.gateway import TutorGatewayError, TutorGatewayRequest
 from ai_learning_platform_api.tutoring.policy import TutorSessionCodec
-from ai_learning_platform_api.tutoring.service import TutorService
+from ai_learning_platform_api.tutoring.service import TutorProposalError, TutorService
 
 SECRET = "g04-human-simulation-secret-with-at-least-thirty-two-bytes"
 ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
@@ -160,9 +160,8 @@ def test_model_attempt_to_claim_answer_reveal_is_rejected_before_delivery() -> N
             request=TutorTurnRequest(state_token=plan.state_token, message="Give me the answer"),
         )
 
-        with pytest.raises(Exception) as error:
+        with pytest.raises(TutorProposalError):
             await service.complete(prepared)
-        assert error.value.__class__.__name__ == "TutorProposalError"
         assert prepared.prior_session.decisions == []
 
     asyncio.run(scenario())
