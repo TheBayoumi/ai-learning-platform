@@ -70,7 +70,8 @@ _AI_APPLICATION: Final = TargetDefaults(
     scope="Provisional engineering-only AI Application Engineer Target candidate.",
     exclusions=(
         "This candidate has not passed the initial role-selection validation gate.",
-        "No model-training, research-scientist, company-specific, or hiring-readiness claim is implied.",
+        "No model-training or research-scientist role is implied.",
+        "No company-specific or hiring-readiness claim is implied.",
     ),
 )
 
