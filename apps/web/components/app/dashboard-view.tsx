@@ -30,14 +30,14 @@ export function DashboardView() {
       <PageHeader
         eyebrow="Dashboard"
         title={`Welcome back, ${plan.learner_name}.`}
-        description={`Your ${plan.role.title} path is driven by evidence, calibration, and current capacity—not a fixed course sequence.`}
+        description={`Your ${plan.role.title} plan is bound to ${plan.target.seniority}, ${plan.target.labor_market}, and a ${plan.target.timeline_weeks}-week target. Current numbers prioritize diagnosis and work; they do not certify mastery or readiness.`}
         action={<Link className="button button-primary" href="/app/learn">Continue learning</Link>}
       />
 
-      <section className={styles.metrics} aria-label="Learning signals">
-        <Metric label="Role readiness" value={`${plan.readiness_percent}%`} note="Combined provisional signal" />
-        <Metric label="Evidence readiness" value={`${plan.evidence_readiness_percent}%`} note="Attested work and mastery signal" />
-        <Metric label="Assessment coverage" value={`${plan.assessment_coverage_percent}%`} note="Competencies calibrated objectively" />
+      <section className={styles.metrics} aria-label="Planning signals">
+        <Metric label="Readiness claim" value="Locked" note="Independent evidence gates are not yet satisfied" />
+        <Metric label="Planning signal" value={`${plan.planning_signal_percent}%`} note="Self-report and learner-attested work · prioritization only" />
+        <Metric label="Assessment coverage" value={`${plan.assessment_coverage_percent}%`} note="Current calibration coverage · not mastery" />
       </section>
 
       <section className={styles.grid2}>
@@ -62,7 +62,7 @@ export function DashboardView() {
               </ul>
               <div className={styles.actions}>
                 <Link className="button button-primary" href="/app/learn">Open mission</Link>
-                <Link className="button button-quiet" href="/app/projects">Project evidence</Link>
+                <Link className="button button-quiet" href="/app/projects">Recorded work</Link>
               </div>
             </>
           )}
@@ -70,16 +70,16 @@ export function DashboardView() {
 
         <article className={styles.card}>
           <span className={styles.label}>Priority gaps</span>
-          <h2>What the engine is prioritizing now</h2>
+          <h2>Where the engine will seek stronger evidence next</h2>
           <ul className={styles.competencyList}>
             {plan.priority_competencies.slice(0, 6).map((competency) => (
               <li key={competency.id}>
                 <span className={styles.itemTitle}>
                   <strong>{competency.name}</strong>
                   <small>{competency.category}{competency.focused ? " · explicit focus" : ""}</small>
-                  <span className={styles.progress}><span style={{ width: `${competency.effective_percent}%` }} /></span>
+                  <span className={styles.progress}><span style={{ width: `${competency.diagnostic_signal_percent}%` }} /></span>
                 </span>
-                <span className={styles.score}>{competency.effective_percent}%</span>
+                <span className={styles.score}>{competency.priority_gap_percent}% priority gap</span>
               </li>
             ))}
           </ul>
@@ -89,19 +89,19 @@ export function DashboardView() {
       <section className={styles.grid3}>
         <article className={styles.card}>
           <span className={styles.label}>Plan state</span>
-          <h3>{plan.completed_count} of {plan.total_count} activities complete</h3>
+          <h3>{plan.completed_count} of {plan.total_count} activities recorded</h3>
           <div className={styles.progress}><span style={{ width: `${completion}%` }} /></div>
-          <p>Revision {plan.plan_revision} · {plan.weekly_hours} hours/week.</p>
+          <p>Revision {plan.plan_revision} · {plan.weekly_hours} hours/week. Completion is not mastery.</p>
         </article>
         <article className={styles.card}>
-          <span className={styles.label}>Evidence portfolio</span>
-          <h3>{plan.evidence_history.length} accepted learner records</h3>
-          <p>Use Projects to inspect what you submitted and what each record changed provisionally.</p>
+          <span className={styles.label}>Target contract</span>
+          <h3>{plan.target.geography} · {plan.target.seniority}</h3>
+          <p>{plan.target.stack_overlays.slice(0, 5).join(" · ")}</p>
         </article>
         <article className={styles.card}>
-          <span className={styles.label}>Next evidence review</span>
+          <span className={styles.label}>Next review</span>
           <h3>{formatReview(plan.next_review_at)}</h3>
-          <p>Spaced reviews can pre-empt new build work when prior evidence becomes due.</p>
+          <p>Scheduled reviews are retrieval opportunities; their completion still requires later independent verification.</p>
         </article>
       </section>
     </div>
