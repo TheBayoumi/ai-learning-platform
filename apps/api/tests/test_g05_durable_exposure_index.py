@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import UTC, datetime
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -19,6 +20,7 @@ from ai_learning_platform_api.learning.schemas import (
 from ai_learning_platform_api.learning.service import SignedStateCodec
 from ai_learning_platform_api.persistence.contracts import (
     LearnerStateCommit,
+    StoredLearnerState,
     TaskExposureConflictError,
 )
 from ai_learning_platform_api.persistence.database import DatabaseRuntime
@@ -46,11 +48,16 @@ class ExposureRepository:
 
 
 class NoopStateRepository:
-    async def load(self, *, account_id: str, learner_id: UUID):
+    async def load(
+        self,
+        *,
+        account_id: str,
+        learner_id: UUID,
+    ) -> StoredLearnerState | None:
         del account_id, learner_id
         return None
 
-    async def commit(self, request: LearnerStateCommit):
+    async def commit(self, request: LearnerStateCommit) -> StoredLearnerState:
         raise AssertionError(f"unexpected commit: {request.event_type}")
 
     async def delete_account(self, *, account_id: str) -> bool:
@@ -66,7 +73,7 @@ def test_persistent_service_rebinds_a_forced_cross_learner_collision() -> None:
     exposure_repository = ExposureRepository(external)
     service = PersistentLearningService(
         secret=_SECRET,
-        repository=NoopStateRepository(),
+        repository=cast(Any, NoopStateRepository()),
         exposure_repository=exposure_repository,
         clock=lambda: _NOW,
     )
@@ -132,7 +139,9 @@ def test_evaluator_uses_immutable_source_rubric_after_plan_history_pruning() -> 
     )
     state = SignedStateCodec(_SECRET).decode(accepted.state_token)
     competency = next(
-        item for item in state.competency_evidence if item.competency_id == evidence.competency_id
+        item
+        for item in state.competency_evidence.values()
+        if item.competency_id == evidence.competency_id
     )
     assert competency.status == "independent"
 
