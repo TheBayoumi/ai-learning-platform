@@ -45,18 +45,12 @@ jobs:
 
           test = Path('apps/api/tests/test_g05_durable_exposure_index.py')
           text = test.read_text(encoding='utf-8')
-          if 'from typing import cast\n' not in text:
-              text = text.replace('from uuid import UUID\n', 'from typing import cast\nfrom uuid import UUID\n', 1)
-          if '    LearnerStateRepository,\n' not in text:
-              text = text.replace(
-                  '    LearnerStateCommit,\n',
-                  '    LearnerStateCommit,\n    LearnerStateRepository,\n',
-                  1,
-              )
+          if 'from typing import Any, cast\n' not in text:
+              text = text.replace('from uuid import UUID\n', 'from typing import Any, cast\nfrom uuid import UUID\n', 1)
           if '    StoredLearnerState,\n' not in text:
               text = text.replace(
-                  '    LearnerStateRepository,\n',
-                  '    LearnerStateRepository,\n    StoredLearnerState,\n',
+                  '    LearnerStateCommit,\n',
+                  '    LearnerStateCommit,\n    StoredLearnerState,\n',
                   1,
               )
           text = text.replace(
@@ -73,9 +67,15 @@ jobs:
           )
           text = text.replace(
               '        repository=NoopStateRepository(),\n',
-              '        repository=cast(LearnerStateRepository, NoopStateRepository()),\n',
+              '        repository=cast(Any, NoopStateRepository()),\n',
               1,
           )
+          text = text.replace(
+              '        repository=cast(LearnerStateRepository, NoopStateRepository()),\n',
+              '        repository=cast(Any, NoopStateRepository()),\n',
+              1,
+          )
+          text = text.replace('    LearnerStateRepository,\n', '')
           test.write_text(text, encoding='utf-8')
           PY
       - name: Format and verify
