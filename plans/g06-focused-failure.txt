@@ -53,4 +53,8 @@ tests/test_g06_retention_transfer.py:226: error: "BlueprintLearningPlanService" 
 tests/test_g06_retention_transfer.py:251: error: "BlueprintLearningPlanService" has no attribute "evaluate_probe"  [attr-defined]
 tests/test_g06_retention_transfer.py:257: error: "BlueprintLearningPlanService" has no attribute "evaluate_probe"  [attr-defined]
 tests/test_g06_retention_transfer.py:262: error: "BlueprintLearningPlanService" has no attribute "evaluate_probe"  [attr-defined]
-Found 54 errors in 4 files (checked 100 source files)
+tests/test_g06_persistent_probe.py:8: error: Module "ai_learning_platform_api.learning.schemas" has no attribute "TrustedProbeVerdict"  [attr-defined]
+tests/test_g06_persistent_probe.py:15: error: Module "ai_learning_platform_api.persistence.schemas" has no attribute "PersistentProbeEvaluationRequest"; maybe "PersistentEvidenceEvaluationRequest" or "PersistentMutationRequest"?  [attr-defined]
+tests/test_g06_persistent_probe.py:82: error: "PlanView" has no attribute "verification_probes"  [attr-defined]
+tests/test_g06_persistent_probe.py:101: error: "PersistentLearningService" has no attribute "evaluate_probe"  [attr-defined]
+Found 58 errors in 5 files (checked 101 source files)
