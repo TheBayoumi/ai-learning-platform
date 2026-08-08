@@ -1,0 +1,121 @@
+name: G07 layer regression resolver
+
+on:
+  push:
+    branches: [product/g07-work-provenance-simulations]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: g07-layer-regression
+  cancel-in-progress: true
+
+jobs:
+  resolve:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ai_learning_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ai_learning_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AI_PLATFORM_DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ai_learning_platform
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: product/g07-work-provenance-simulations
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+      - name: Bind historical tests to their owning service layer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          g05_files = (
+              'apps/api/tests/test_g05_blueprint_instances.py',
+              'apps/api/tests/test_g05_durable_exposure_index.py',
+              'apps/api/tests/test_g05_trust_edge_cases.py',
+          )
+          for name in g05_files:
+              path = Path(name)
+              text = path.read_text(encoding='utf-8')
+              text = text.replace(
+                  'from ai_learning_platform_api.learning import LearningPlanService\n',
+                  'from ai_learning_platform_api.learning.blueprint_service import (\n'
+                  '    BlueprintLearningPlanService as LearningPlanService,\n'
+                  ')\n',
+                  1,
+              )
+              path.write_text(text, encoding='utf-8')
+
+          g06_files = (
+              'apps/api/tests/test_g06_human_simulation.py',
+              'apps/api/tests/test_g06_retention_transfer.py',
+              'apps/api/tests/test_g06_persistent_probe.py',
+          )
+          for name in g06_files:
+              path = Path(name)
+              text = path.read_text(encoding='utf-8')
+              text = text.replace(
+                  'from ai_learning_platform_api.learning import LearningPlanService\n',
+                  'from ai_learning_platform_api.learning.qualification_service import (\n'
+                  '    QualificationLearningPlanService as LearningPlanService,\n'
+                  ')\n',
+                  1,
+              )
+              path.write_text(text, encoding='utf-8')
+
+          evidence = Path('apps/api/tests/test_evidence_state.py')
+          text = evidence.read_text(encoding='utf-8')
+          if 'from typing import Any, cast\n' not in text:
+              text = text.replace(
+                  'from datetime import UTC, datetime\n',
+                  'from datetime import UTC, datetime\nfrom typing import Any, cast\n',
+                  1,
+              )
+          marker = '''        persistent = PersistentLearningService(\n            secret=SECRET,\n            repository=repository,\n            clock=lambda: NOW,\n        )\n        created = await persistent.create_plan(\n'''
+          replacement = '''        persistent = PersistentLearningService(\n            secret=SECRET,\n            repository=repository,\n            clock=lambda: NOW,\n        )\n        # This G02 contract test intentionally exercises the deterministic evidence layer,\n        # not the later G07 provenance gate. Production PersistentLearningService still\n        # defaults to the full top-level service.\n        cast(Any, persistent)._core = LearningPlanService(SECRET, clock=lambda: NOW)\n        created = await persistent.create_plan(\n'''
+          if marker not in text:
+              raise SystemExit('G02 persistent evidence fixture marker missing')
+          text = text.replace(marker, replacement, 1)
+          evidence.write_text(text, encoding='utf-8')
+          PY
+      - name: Verify full API regression surface
+        working-directory: apps/api
+        run: |
+          uv sync --locked --all-groups
+          uv run --locked ruff format tests
+          uv run --locked ruff check --fix tests
+          uv run --locked ruff format tests
+          uv run --locked ruff check . ../../scripts
+          uv run --locked mypy src tests ../../scripts
+          uv run --locked alembic upgrade head
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
+      - name: Commit verified layer ownership and self-delete
+        run: |
+          git rm -f .github/workflows/g07-layer-regression.yml
+          git add apps/api/tests
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Preserve cross-phase test layer ownership under G07'
+          git push origin HEAD:product/g07-work-provenance-simulations
