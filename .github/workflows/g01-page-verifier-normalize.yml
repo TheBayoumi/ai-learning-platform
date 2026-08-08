@@ -1,0 +1,77 @@
+name: G01 page verifier one-shot fix
+
+on:
+  push:
+    branches:
+      - fix/g01-page-verification-propagation
+    paths:
+      - .github/workflows/g01-page-verifier-normalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: fix/g01-page-verification-propagation
+          fetch-depth: 0
+      - name: Retry exact public page contract and self-delete
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/deploy-product.sh")
+          text = path.read_text(encoding="utf-8")
+          before = '''phase="deployed-page-verification"
+          page_file="$RUNNER_TEMP/deployed-page.html"
+          page_status=$(curl -sS "${frontend_access_headers[@]}" \\
+            -o "$page_file" -w '%{http_code}' "$frontend_url/")
+          if test "$page_status" != "200"; then
+            printf 'deployment verification failed: page HTTP %s\\n' "$page_status" >&2
+            exit 1
+          fi
+          grep -F "Career Atlas" "$page_file" >/dev/null
+          grep -F "Learning service online" "$page_file" >/dev/null
+          grep -F "Readiness stays locked" "$page_file" >/dev/null
+          '''
+          after = '''phase="deployed-page-verification"
+          page_file="$RUNNER_TEMP/deployed-page.html"
+          page_status="000"
+          page_verified=false
+          for attempt in {1..12}; do
+            page_status=$(curl -sS "${frontend_access_headers[@]}" \\
+              -o "$page_file" -w '%{http_code}' "$frontend_url/" || printf '000')
+            if test "$page_status" = "200" \\
+              && grep -F "Career Atlas" "$page_file" >/dev/null \\
+              && grep -F "Learning service online" "$page_file" >/dev/null \\
+              && grep -F "Readiness stays locked" "$page_file" >/dev/null; then
+              page_verified=true
+              break
+            fi
+            if (( attempt < 12 )); then
+              sleep 5
+            fi
+          done
+          if test "$page_verified" != "true"; then
+            printf 'deployment verification failed: exact public page contract unavailable after retries (HTTP %s)\\n' \\
+              "$page_status" >&2
+            exit 1
+          fi
+          '''
+          if text.count(before) != 1:
+              raise SystemExit("expected exactly one deployed page verification block")
+          path.write_text(text.replace(before, after), encoding="utf-8")
+
+          helper = Path(".github/workflows/g01-page-verifier-normalize.yml")
+          helper.unlink()
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Retry exact public page verification after alias propagation"
+          git push origin HEAD:fix/g01-page-verification-propagation
