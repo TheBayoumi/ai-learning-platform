@@ -71,12 +71,15 @@ def test_ai_application_track_creates_resumable_role_specific_work() -> None:
         "ai-evaluation",
     }
     assert created["current_activity"]["competency_id"] in {
-        "llm-applications",
-        "rag",
-        "ai-evaluation",
-        "fastapi",
-        "testing",
+        "python",
+        "git",
+        "communication",
     }
+    priorities = {item["id"]: item for item in created["priority_competencies"]}
+    assert set(priorities["llm-applications"]["blocked_by"]) == {"python", "testing"}
+    assert priorities["rag"]["blocked_by"] == ["llm-applications"]
+    assert priorities["ai-evaluation"]["blocked_by"] == ["llm-applications", "testing"]
+    assert all(item["authoritative_gap_percent"] == 100 for item in priorities.values())
 
     resumed = asyncio.run(
         request(
@@ -131,5 +134,8 @@ def test_data_engineer_track_uses_data_specific_competency_graph() -> None:
         "data-pipelines",
         "data-quality",
     }
-    priority_ids = {item["id"] for item in plan["priority_competencies"][:6]}
-    assert priority_ids & {"data-modeling", "data-pipelines", "data-quality"}
+    priorities = {item["id"]: item for item in plan["priority_competencies"]}
+    assert {"data-modeling", "data-pipelines", "data-quality"} <= set(priorities)
+    assert priorities["data-modeling"]["blocked_by"] == ["postgresql"]
+    assert set(priorities["data-pipelines"]["blocked_by"]) == {"python", "postgresql"}
+    assert set(priorities["data-quality"]["blocked_by"]) == {"data-pipelines", "testing"}

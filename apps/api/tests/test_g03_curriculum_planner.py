@@ -276,19 +276,20 @@ def test_capacity_and_focus_create_new_versions_without_changing_evidence() -> N
 def test_plan_history_is_bounded_and_replay_is_deterministic() -> None:
     service = _service()
     plan = service.create_plan(PlanRequest(learner_name="Returning Learner"))
-    for index in range(8):
+    for index in range(20):
         plan = service.replan(
             ReplanRequest(
                 state_token=plan.state_token,
-                weekly_hours=4 + index,
+                weekly_hours=4 + (index % 8),
                 focus_competency_ids=[],
             )
         )
+        assert len(plan.state_token) < 65_536
 
     first = service.resume(plan.state_token)
     second = service.resume(plan.state_token)
 
-    assert len(first.plan_history) == 6
+    assert len(first.plan_history) == 3
     assert first.active_plan_version.plan_version_id == first.plan_history[-1].plan_version_id
     assert first.model_dump() == second.model_dump()
 
