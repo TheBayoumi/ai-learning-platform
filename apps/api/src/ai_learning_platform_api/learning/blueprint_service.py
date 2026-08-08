@@ -1,4 +1,4 @@
-"""G05 service extension that binds trusted catalog blueprints to learner-specific instances."""
+"""G05 service extension that binds approved catalog blueprints to learner-specific instances."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from datetime import datetime
 
 from ai_learning_platform_api.learning.blueprints import (
     BlueprintTrustError,
+    CollisionHistoryEntry,
     attach_blueprint_identity,
     bind_learner_instance,
     exposure_from_activity,
@@ -23,6 +24,7 @@ from ai_learning_platform_api.learning.schemas import (
     LearnerPlanVersion,
     LearnerState,
     PlanView,
+    ProgressRequest,
     TargetView,
     TaskExposureView,
     TrustedEvidenceVerdict,
@@ -46,6 +48,12 @@ class EvidenceRubricMismatchError(LearningPlanError):
     """Trusted evaluator verdict names a rubric other than the served task rubric."""
 
     code = "EVIDENCE_RUBRIC_MISMATCH"
+
+
+class EvidenceInstanceContractMismatchError(LearningPlanError):
+    """Trusted evaluator verdict does not attest to the exact learner-specific task contract."""
+
+    code = "EVIDENCE_INSTANCE_CONTRACT_MISMATCH"
 
 
 class BlueprintLearningPlanService(BaseLearningPlanService):
@@ -102,6 +110,9 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
                 "blueprint_id": source.blueprint_id,
                 "blueprint_version": source.blueprint_version,
                 "blueprint_trust": source.blueprint_trust,
+                "blueprint_approval_id": source.blueprint_approval_id,
+                "blueprint_approved_by": source.blueprint_approved_by,
+                "blueprint_approval_version": source.blueprint_approval_version,
                 "rubric_version": source.rubric_version,
                 "instance_seed": seed,
                 "semantic_fingerprint": hashlib.sha256(
@@ -112,6 +123,8 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
                 ],
                 "semantic_tokens": semantic_tokens,
                 "scenario_tags": ["review", f"g:{generation}"],
+                "instance_requirements": [],
+                "instance_contract_hash": "",
                 "high_stakes_eligible": False,
             }
         )
@@ -134,7 +147,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         prior_exposures = list(previous.task_exposures) if previous is not None else []
         target_hash = target_fingerprint(target)
         bound: list[ActivityView] = []
-        collision_scope = list(prior_exposures)
+        collision_scope: list[CollisionHistoryEntry] = list(prior_exposures)
         for position, raw_activity in enumerate(activities, start=1):
             activity = raw_activity
             if activity.kind == "build":
@@ -159,6 +172,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
                         semantic_fingerprint=activity.semantic_fingerprint,
                         semantic_signature=activity.semantic_signature,
                         semantic_tokens=list(activity.semantic_tokens),
+                        instance_contract_hash=activity.instance_contract_hash,
                         high_stakes_eligible=True,
                         served_at=created_at.isoformat(),
                     )
@@ -193,6 +207,8 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             for activity in finalized
             if activity.kind == "build" and activity.instance_seed and activity.semantic_fingerprint
         ]
+        # Browser-carried history is only a bounded replay/cache window. Durable production
+        # uniqueness is enforced by the unlinkable PostgreSQL collision-fingerprint index.
         exposure_history = [*prior_exposures, *current_exposures][-_MAX_TASK_EXPOSURES:]
         return base_version.model_copy(
             update={"activities": finalized, "task_exposures": exposure_history}
@@ -207,13 +223,51 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         archived = [item.model_copy(update={"task_exposures": []}) for item in state.plan_versions]
         return [*archived, version][-_MAX_PLAN_VERSIONS:]
 
+    def complete_activity(self, request: ProgressRequest) -> PlanView:
+        """Bind learner evidence to the exact approved rubric and enforceable instance contract."""
+        before = self._codec.decode(request.state_token)
+        role = ROLE_CATALOG.get(before.target_role)
+        if role is None:
+            raise LearningPlanError
+        before = self._upgrade_state(before, role)
+        source = next((item for item in before.activities if item.id == request.activity_id), None)
+        if source is None:
+            return super().complete_activity(request)
+
+        projected = super().complete_activity(request)
+        state = self._codec.decode(projected.state_token)
+        if not state.evidence_history:
+            return projected
+        evidence = state.evidence_history[-1]
+        fully_satisfied = (
+            len(evidence.criteria_met) == len(source.acceptance_criteria)
+            and set(evidence.criteria_met) == set(source.acceptance_criteria)
+        )
+        trusted_source = bool(
+            source.high_stakes_eligible
+            and source.blueprint_approval_id
+            and source.instance_contract_hash
+            and fully_satisfied
+        )
+        hardened = evidence.model_copy(
+            update={
+                "source_blueprint_approval_id": source.blueprint_approval_id,
+                "source_instance_contract_hash": source.instance_contract_hash,
+                "source_high_stakes_eligible": trusted_source,
+            }
+        )
+        updated = state.model_copy(
+            update={"evidence_history": [*state.evidence_history[:-1], hardened]}
+        )
+        return self._project(updated, role)
+
     def rebind_external_exposures(
         self,
         *,
         state_token: str,
-        external_exposures: tuple[TaskExposureView, ...],
+        external_exposures: tuple[CollisionHistoryEntry, ...],
     ) -> PlanView:
-        """Rebind active build instances against durable cohort history before serving."""
+        """Rebind active builds against durable cohort history without losing state semantics."""
         if not external_exposures:
             return self.resume(state_token)
         state = self._codec.decode(state_token)
@@ -225,10 +279,20 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         target = state.target
         if active is None or target is None:
             raise LearningPlanError
+        previous_id = active.delta.previous_plan_version_id
+        previous = None
+        if previous_id is not None:
+            previous = next(
+                (item for item in state.plan_versions if item.plan_version_id == previous_id),
+                None,
+            )
+            if previous is None:
+                raise LearningPlanError
+
         prior_exposures = [
             item for item in active.task_exposures if item.plan_version_id != active.plan_version_id
         ]
-        collision_scope = [*external_exposures, *prior_exposures]
+        collision_scope: list[CollisionHistoryEntry] = [*external_exposures, *prior_exposures]
         rebound: list[ActivityView] = []
         for position, activity in enumerate(active.activities, start=1):
             candidate = activity
@@ -269,10 +333,12 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             for item in finalized
             if item.kind == "build"
         ]
+        delta = self._plan_delta(previous, finalized, active.priorities, active.trigger)
         updated_version = active.model_copy(
             update={
                 "plan_version_id": next_id,
                 "activities": finalized,
+                "delta": delta,
                 "task_exposures": [*prior_exposures, *current_exposures][-_MAX_TASK_EXPOSURES:],
             }
         )
@@ -280,9 +346,13 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             updated_version if item.plan_version_id == active.plan_version_id else item
             for item in state.plan_versions
         ]
+        active_activity_ids = {item.id for item in active.activities}
+        external_state_activities = [
+            item for item in state.activities if item.id not in active_activity_ids
+        ]
         updated_state = state.model_copy(
             update={
-                "activities": finalized,
+                "activities": [*external_state_activities, *finalized],
                 "plan_versions": versions,
                 "active_plan_version_id": next_id,
             }
@@ -295,7 +365,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         state_token: str,
         verdict: TrustedEvidenceVerdict,
     ) -> PlanView:
-        """Require immutable trusted source provenance and the exact served rubric."""
+        """Require immutable approval provenance and exact rubric/instance attestation."""
         state = self._codec.decode(state_token)
         evidence = next(
             (item for item in state.evidence_history if item.evidence_id == verdict.evidence_id),
@@ -305,16 +375,24 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             return super().evaluate_evidence(state_token=state_token, verdict=verdict)
         if not evidence.source_high_stakes_eligible:
             raise UntrustedInstanceEvidenceError
-        if not evidence.source_blueprint_id or not evidence.source_rubric_version:
+        if (
+            not evidence.source_blueprint_id
+            or not evidence.source_blueprint_approval_id
+            or not evidence.source_rubric_version
+            or not evidence.source_instance_contract_hash
+        ):
             raise UntrustedInstanceEvidenceError
         if verdict.rubric_version != evidence.source_rubric_version:
             raise EvidenceRubricMismatchError
+        if verdict.instance_contract_hash != evidence.source_instance_contract_hash:
+            raise EvidenceInstanceContractMismatchError
         return super().evaluate_evidence(state_token=state_token, verdict=verdict)
 
 
 __all__ = [
     "BlueprintLearningPlanService",
     "BlueprintTrustError",
+    "EvidenceInstanceContractMismatchError",
     "EvidenceRubricMismatchError",
     "UntrustedInstanceEvidenceError",
 ]
