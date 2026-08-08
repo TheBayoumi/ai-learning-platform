@@ -227,9 +227,7 @@ def test_evaluator_uses_immutable_source_contract_after_plan_history_pruning() -
 def test_postgres_index_fails_closed_and_tombstone_survives_account_deletion() -> None:
     database_url = os.environ.get("AI_PLATFORM_DATABASE_URL")
     if database_url is None:
-        pytest.skip(
-            "AI_PLATFORM_DATABASE_URL is required for the PostgreSQL exposure-index integration test"
-        )
+        pytest.skip("CI database URL is required for the G05 PostgreSQL integration test")
 
     async def scenario() -> None:
         runtime = DatabaseRuntime.create(database_url)
