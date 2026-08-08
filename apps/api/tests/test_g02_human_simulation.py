@@ -72,9 +72,7 @@ def _verdict(
 
 def _competency_status(plan: PlanView, competency_id: str) -> str:
     return next(
-        item.status
-        for item in plan.competency_evidence
-        if item.competency_id == competency_id
+        item.status for item in plan.competency_evidence if item.competency_id == competency_id
     )
 
 
@@ -108,9 +106,7 @@ def test_overconfident_learner_cannot_self_certify_through_rating_work_or_quiz()
     assert progressed.evidence_history[-1].disposition == "recorded"
     assert submitted.plan.assessment_coverage_percent > 0
     assert submitted.plan.evidence_evaluations == []
-    assert all(
-        item.status == "unverified" for item in submitted.plan.competency_evidence
-    )
+    assert all(item.status == "unverified" for item in submitted.plan.competency_evidence)
     assert submitted.plan.claim_state == "validation_locked"
     assert submitted.plan.verified_readiness_percent is None
 

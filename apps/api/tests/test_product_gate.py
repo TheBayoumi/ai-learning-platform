@@ -32,9 +32,7 @@ def _phase(identifier: str, status: str) -> dict[str, object]:
         "implementation_evidence": (
             [f"evidence/{identifier}-implementation.txt"] if passed or active else []
         ),
-        "test_evidence": (
-            [f"evidence/{identifier}-test.txt"] if passed or active else []
-        ),
+        "test_evidence": ([f"evidence/{identifier}-test.txt"] if passed or active else []),
         "human_simulations": ["returning learner"],
         "human_simulation_evidence": (
             [f"evidence/{identifier}-human.txt"] if passed or active else []
@@ -71,25 +69,17 @@ def _state() -> dict[str, object]:
     }
 
 
-def _write_repository(
-    root: Path, state: dict[str, object] | None = None
-) -> dict[str, object]:
+def _write_repository(root: Path, state: dict[str, object] | None = None) -> dict[str, object]:
     effective = _state() if state is None else state
     plans = root / "plans"
     evidence = root / "evidence"
     plans.mkdir(parents=True)
     evidence.mkdir(parents=True)
-    (plans / "product-completion-definition-of-done.md").write_text(
-        "mission\n", encoding="utf-8"
-    )
-    (plans / "adaptive-product-definition-of-done.md").write_text(
-        "execution\n", encoding="utf-8"
-    )
+    (plans / "product-completion-definition-of-done.md").write_text("mission\n", encoding="utf-8")
+    (plans / "adaptive-product-definition-of-done.md").write_text("execution\n", encoding="utf-8")
     for identifier in ("G01", "G02"):
         for suffix in ("implementation", "test", "human"):
-            (evidence / f"{identifier}-{suffix}.txt").write_text(
-                "evidence\n", encoding="utf-8"
-            )
+            (evidence / f"{identifier}-{suffix}.txt").write_text("evidence\n", encoding="utf-8")
     (plans / "adaptive-product-state.json").write_text(
         json.dumps(effective),
         encoding="utf-8",
@@ -101,9 +91,7 @@ def _phases(state: dict[str, object]) -> list[dict[str, object]]:
     return cast(list[dict[str, object]], state["phases"])
 
 
-def _validate(
-    root: Path, **overrides: object
-) -> tuple[product_gate.ProductPhase, ...]:
+def _validate(root: Path, **overrides: object) -> tuple[product_gate.ProductPhase, ...]:
     expected_sha = cast(str, overrides.get("expected_sha", HEAD_SHA))
     head_ref = cast(str, overrides.get("head_ref", HEAD_REF))
     actual_sha = cast(str, overrides.get("actual_sha", HEAD_SHA))
@@ -127,9 +115,7 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
         text=True,
         timeout=10,
     ).stdout.strip()
-    head_ref = os.environ.get(
-        "GITHUB_HEAD_REF", "product/g02-deterministic-evidence-state"
-    )
+    head_ref = os.environ.get("GITHUB_HEAD_REF", "product/g02-deterministic-evidence-state")
 
     phases = product_gate.validate_product_state(
         repository_root,
@@ -182,35 +168,25 @@ def test_non_product_branch_is_rejected(tmp_path: Path) -> None:
 def test_branch_must_match_active_machine_phase(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
     state["active_phase"] = "G03"
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_branch_phase_mismatch"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_branch_phase_mismatch"):
         _validate(tmp_path)
 
 
 def test_claim_boundary_cannot_be_disabled(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
     state["engineering_claim_only"] = False
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_claim_boundary_invalid"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_claim_boundary_invalid"):
         _validate(tmp_path)
 
 
 def test_required_five_check_contract_is_exact(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
     state["required_checks"] = ["API quality"]
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
     with pytest.raises(product_gate.ProductGateViolation, match="product_checks_invalid"):
         _validate(tmp_path)
@@ -225,13 +201,9 @@ def test_prior_phase_must_be_passed(tmp_path: Path) -> None:
     _phases(state)[0]["test_evidence"] = []
     _phases(state)[0]["human_simulation_evidence"] = []
     _phases(state)[0]["production_acceptance"] = []
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_dependency_not_passed"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_dependency_not_passed"):
         _validate(tmp_path)
 
 
@@ -240,74 +212,52 @@ def test_future_phase_cannot_start_early(tmp_path: Path) -> None:
     future = _phases(state)[2]
     future["status"] = "IMPLEMENTING"
     future["branch"] = "product/g03-planner"
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_future_phase_started"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_future_phase_started"):
         _validate(tmp_path)
 
 
 def test_future_phase_cannot_preclaim_evidence(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
     _phases(state)[2]["test_evidence"] = ["evidence/future.txt"]
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_future_evidence_invalid"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_future_evidence_invalid"):
         _validate(tmp_path)
 
 
 def test_passed_phase_requires_production_and_human_evidence(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
     _phases(state)[0]["production_acceptance"] = []
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_passed_evidence_missing"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_passed_evidence_missing"):
         _validate(tmp_path)
 
 
 def test_active_phase_requires_executable_human_simulation(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
     _phases(state)[1]["human_simulation_evidence"] = []
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_active_evidence_missing"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_active_evidence_missing"):
         _validate(tmp_path)
 
 
 def test_evidence_paths_cannot_escape_repository(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
     _phases(state)[1]["test_evidence"] = ["../outside.txt"]
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_evidence_path_invalid"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_evidence_path_invalid"):
         _validate(tmp_path)
 
 
 def test_passed_sha_must_be_ancestor_of_exact_head(tmp_path: Path) -> None:
     _write_repository(tmp_path)
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_passed_sha_not_ancestor"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_passed_sha_not_ancestor"):
         _validate(tmp_path, ancestor_result=False)
 
 
@@ -328,9 +278,7 @@ def test_phase_contracts_are_fail_closed(
 ) -> None:
     state = _write_repository(tmp_path)
     _phases(state)[1][field] = value
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
     with pytest.raises(product_gate.ProductGateViolation, match=code):
         _validate(tmp_path)
@@ -339,13 +287,9 @@ def test_phase_contracts_are_fail_closed(
 def test_state_requires_exact_fields(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
     state["unexpected"] = True
-    (tmp_path / product_gate.STATE_PATH).write_text(
-        json.dumps(state), encoding="utf-8"
-    )
+    (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_state_fields_invalid"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_state_fields_invalid"):
         _validate(tmp_path)
 
 
@@ -353,25 +297,19 @@ def test_invalid_json_is_rejected(tmp_path: Path) -> None:
     _write_repository(tmp_path)
     (tmp_path / product_gate.STATE_PATH).write_text("{", encoding="utf-8")
 
-    with pytest.raises(
-        product_gate.ProductGateViolation, match="product_state_invalid_json"
-    ):
+    with pytest.raises(product_gate.ProductGateViolation, match="product_state_invalid_json"):
         _validate(tmp_path)
 
 
 def test_cli_returns_stable_failure_payload(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    def fail(
-        *_args: object, **_kwargs: object
-    ) -> tuple[product_gate.ProductPhase, ...]:
+    def fail(*_args: object, **_kwargs: object) -> tuple[product_gate.ProductPhase, ...]:
         raise product_gate.ProductGateViolation("simulated_failure")
 
     monkeypatch.setattr(product_gate, "validate_product_state", fail)
 
-    result = product_gate.main(
-        ["validate", "--expected-sha", HEAD_SHA, "--head-ref", HEAD_REF]
-    )
+    result = product_gate.main(["validate", "--expected-sha", HEAD_SHA, "--head-ref", HEAD_REF])
 
     assert result == 1
     assert json.loads(capsys.readouterr().out) == {
@@ -387,13 +325,9 @@ def test_cli_reports_active_phase(
         product_gate.ProductPhase("G01", "PASSED", "main", (), OLD_SHA),
         product_gate.ProductPhase("G02", "VALIDATING", HEAD_REF, ("G01",), None),
     )
-    monkeypatch.setattr(
-        product_gate, "validate_product_state", lambda *_args, **_kwargs: phases
-    )
+    monkeypatch.setattr(product_gate, "validate_product_state", lambda *_args, **_kwargs: phases)
 
-    result = product_gate.main(
-        ["validate", "--expected-sha", HEAD_SHA, "--head-ref", HEAD_REF]
-    )
+    result = product_gate.main(["validate", "--expected-sha", HEAD_SHA, "--head-ref", HEAD_REF])
 
     assert result == 0
     assert json.loads(capsys.readouterr().out) == {

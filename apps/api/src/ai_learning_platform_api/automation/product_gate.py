@@ -25,9 +25,7 @@ ACTIVE_STATUSES: Final = frozenset(
     {"IMPLEMENTING", "VALIDATING", "FAILED_RETRYABLE", "BLOCKED_EXTERNAL"}
 )
 SHA_PATTERN: Final = re.compile(r"^[0-9a-f]{40}$")
-PRODUCT_BRANCH_PATTERN: Final = re.compile(
-    r"^product/(?P<phase>g[0-9]{2})-[a-z0-9][a-z0-9-]*$"
-)
+PRODUCT_BRANCH_PATTERN: Final = re.compile(r"^product/(?P<phase>g[0-9]{2})-[a-z0-9][a-z0-9-]*$")
 DOD_PATTERN: Final = re.compile(r"^D(?:0[1-9]|1[0-2])$")
 
 
@@ -139,13 +137,9 @@ def _parse_phase(
         raise _violation("product_phase_status_invalid")
     branch = _optional_string(raw["branch"], "product_phase_branch_invalid")
     accepted_sha = _optional_string(raw["accepted_sha"], "product_phase_sha_invalid")
-    dependencies = tuple(
-        _strings(raw["dependencies"], "product_phase_dependencies_invalid")
-    )
+    dependencies = tuple(_strings(raw["dependencies"], "product_phase_dependencies_invalid"))
     expected_dependencies = (
-        ()
-        if identifier == "G01"
-        else (PHASE_IDS[PHASE_IDS.index(identifier) - 1],)
+        () if identifier == "G01" else (PHASE_IDS[PHASE_IDS.index(identifier) - 1],)
     )
     if dependencies != expected_dependencies:
         raise _violation("product_phase_dependencies_invalid")
@@ -159,29 +153,17 @@ def _parse_phase(
     if tuple(_strings(raw["risk_tiers"], "product_phase_risk_invalid")) != RISK_TIERS:
         raise _violation("product_phase_risk_invalid")
 
-    implementation = _strings(
-        raw["implementation_evidence"], "product_phase_evidence_invalid"
-    )
+    implementation = _strings(raw["implementation_evidence"], "product_phase_evidence_invalid")
     tests = _strings(raw["test_evidence"], "product_phase_evidence_invalid")
     personas = _strings(raw["human_simulations"], "product_phase_human_invalid")
-    human_evidence = _strings(
-        raw["human_simulation_evidence"], "product_phase_human_invalid"
-    )
-    production = _strings(
-        raw["production_acceptance"], "product_phase_production_invalid"
-    )
-    expected_next = (
-        None if identifier == "G09" else PHASE_IDS[PHASE_IDS.index(identifier) + 1]
-    )
+    human_evidence = _strings(raw["human_simulation_evidence"], "product_phase_human_invalid")
+    production = _strings(raw["production_acceptance"], "product_phase_production_invalid")
+    expected_next = None if identifier == "G09" else PHASE_IDS[PHASE_IDS.index(identifier) + 1]
     if raw["next_phase"] != expected_next:
         raise _violation("product_phase_next_invalid")
 
     if status == "PASSED":
-        if (
-            branch is None
-            or accepted_sha is None
-            or SHA_PATTERN.fullmatch(accepted_sha) is None
-        ):
+        if branch is None or accepted_sha is None or SHA_PATTERN.fullmatch(accepted_sha) is None:
             raise _violation("product_passed_identity_invalid")
         if not implementation or not tests or not personas or not human_evidence or not production:
             raise _violation("product_passed_evidence_missing")
@@ -228,14 +210,17 @@ def validate_product_state(
     root = repository_root.resolve()
     if SHA_PATTERN.fullmatch(expected_sha) is None:
         raise _violation("product_expected_sha_invalid")
-    exact_sha = actual_sha or subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=root,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=10,
-    ).stdout.strip()
+    exact_sha = (
+        actual_sha
+        or subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout.strip()
+    )
     if exact_sha != expected_sha:
         raise _violation("product_exact_head_mismatch")
     branch_match = PRODUCT_BRANCH_PATTERN.fullmatch(head_ref)
@@ -259,10 +244,7 @@ def validate_product_state(
         },
         "product_state_fields_invalid",
     )
-    if (
-        state["schema_version"] != 1
-        or state["program"] != "mission-aligned-product-completion"
-    ):
+    if state["schema_version"] != 1 or state["program"] != "mission-aligned-product-completion":
         raise _violation("product_state_schema_invalid")
     if (
         state["engineering_claim_only"] is not True
@@ -324,9 +306,7 @@ def validate_product_state(
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Validate the adaptive G-series product DoD state"
-    )
+    parser = argparse.ArgumentParser(description="Validate the adaptive G-series product DoD state")
     parser.add_argument("command", choices=("validate",))
     parser.add_argument("--expected-sha", required=True)
     parser.add_argument("--head-ref", required=True)
@@ -344,15 +324,11 @@ def main(arguments: list[str] | None = None) -> int:
         )
     except (OSError, subprocess.SubprocessError, ProductGateViolation) as error:
         code = (
-            str(error)
-            if isinstance(error, ProductGateViolation)
-            else "product_gate_runtime_error"
+            str(error) if isinstance(error, ProductGateViolation) else "product_gate_runtime_error"
         )
         print(json.dumps({"status": "failed", "code": code}, sort_keys=True))
         return 1
-    active = next(
-        phase.identifier for phase in phases if phase.status in ACTIVE_STATUSES
-    )
+    active = next(phase.identifier for phase in phases if phase.status in ACTIVE_STATUSES)
     print(json.dumps({"status": "passed", "active_phase": active}, sort_keys=True))
     return 0
 
