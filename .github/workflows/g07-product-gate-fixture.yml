@@ -1,0 +1,45 @@
+name: G07 product gate fixture
+
+on:
+  push:
+    branches: [product/g07-work-provenance-simulations]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: product/g07-work-provenance-simulations
+          persist-credentials: true
+      - name: Correct committed repository phase fixture
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/api/tests/test_product_gate.py')
+          text = path.read_text(encoding='utf-8')
+          old = '    head_ref = os.environ.get("GITHUB_HEAD_REF", HEAD_REF)\n'
+          new = (\
+              '    head_ref = os.environ.get("GITHUB_HEAD_REF") '
+              'or "product/g07-work-provenance-simulations"\n'
+          )
+          if old not in text:
+              raise SystemExit('G07 head-ref fixture marker missing')
+          text = text.replace(old, new, 1)
+          text = text.replace(
+              '    assert active.identifier == "G06"\n',
+              '    assert active.identifier == "G07"\n',
+              1,
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+          git add apps/api/tests/test_product_gate.py
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Correct G07 committed phase fixture'
+          git push origin HEAD:product/g07-work-provenance-simulations
