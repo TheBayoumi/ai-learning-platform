@@ -27,76 +27,75 @@ jobs:
           path = Path("scripts/deploy-product.sh")
           text = path.read_text(encoding="utf-8")
 
-          before = '''  and (.diagnostic_signal_percent | type) == "number"
-          and (has("readiness_percent") | not)
-          and (has("evidence_readiness_percent") | not)
-          '''
-          after = '''  and (.diagnostic_signal_percent | type) == "number"
-          and (.competency_evidence | length) == (.role.competencies | length)
-          and ([.competency_evidence[].status] | all(. == "unverified"))
-          and .evidence_evaluations == []
-          and .active_misconceptions == []
-          and .review_state == []
-          and (has("readiness_percent") | not)
-          and (has("evidence_readiness_percent") | not)
-          '''
-          if text.count(before) != 1:
-              raise SystemExit("plan-create evidence assertion marker mismatch")
-          text = text.replace(before, after)
+          def replace_once(before: str, after: str, label: str) -> None:
+              global text
+              count = text.count(before)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1 match, found {count}")
+              text = text.replace(before, after)
 
-          before = '''  and .verified_readiness_percent == null
-          and (.evidence_history[-1].planning_signal_delta | type) == "number"
-          '''
-          after = '''  and .verified_readiness_percent == null
-          and (.evidence_history[-1].evidence_id | startswith("evidence-"))
-          and .evidence_history[-1].source == "learner_attested"
-          and .evidence_history[-1].disposition == "recorded"
-          and .evidence_history[-1].independence == "unverified"
-          and .evidence_history[-1].assistance == "unknown"
-          and .evidence_history[-1].reasoning == "submitted"
-          and (.evidence_history[-1].planning_signal_delta | type) == "number"
-          and (.evidence_history[-1].competency_id as $competency
-            | any(.competency_evidence[];
-                .competency_id == $competency and .status == "unverified"))
-          and .evidence_evaluations == []
-          '''
-          if text.count(before) != 1:
-              raise SystemExit("progress evidence assertion marker mismatch")
-          text = text.replace(before, after)
+          replace_once(
+              '  and (.diagnostic_signal_percent | type) == "number"\n'
+              '  and (has("readiness_percent") | not)\n'
+              '  and (has("evidence_readiness_percent") | not)\n',
+              '  and (.diagnostic_signal_percent | type) == "number"\n'
+              '  and (.competency_evidence | length) == (.role.competencies | length)\n'
+              '  and ([.competency_evidence[].status] | all(. == "unverified"))\n'
+              '  and .evidence_evaluations == []\n'
+              '  and .active_misconceptions == []\n'
+              '  and .review_state == []\n'
+              '  and (has("readiness_percent") | not)\n'
+              '  and (has("evidence_readiness_percent") | not)\n',
+              "plan-create evidence assertions",
+          )
 
-          before = '''  --argjson progressed_planning_signal "$(jq '.planning_signal_percent' "$progress")" \\
-          '{
-            schema_version:2,
-          '''
-          after = '''  --argjson progressed_planning_signal "$(jq '.planning_signal_percent' "$progress")" \\
-          --arg attestation_source "$(jq -r '.evidence_history[-1].source' "$progress")" \\
-          --arg attestation_disposition "$(jq -r '.evidence_history[-1].disposition' "$progress")" \\
-          --arg attestation_competency "$(jq -r '.evidence_history[-1].competency_id' "$progress")" \\
-          '{
-            schema_version:3,
-          '''
-          if text.count(before) != 1:
-              raise SystemExit("evidence artifact argument marker mismatch")
-          text = text.replace(before, after)
+          replace_once(
+              '  and .verified_readiness_percent == null\n'
+              '  and (.evidence_history[-1].planning_signal_delta | type) == "number"\n',
+              '  and .verified_readiness_percent == null\n'
+              '  and (.evidence_history[-1].evidence_id | startswith("evidence-"))\n'
+              '  and .evidence_history[-1].source == "learner_attested"\n'
+              '  and .evidence_history[-1].disposition == "recorded"\n'
+              '  and .evidence_history[-1].independence == "unverified"\n'
+              '  and .evidence_history[-1].assistance == "unknown"\n'
+              '  and .evidence_history[-1].reasoning == "submitted"\n'
+              '  and (.evidence_history[-1].planning_signal_delta | type) == "number"\n'
+              '  and (.evidence_history[-1].competency_id as $competency\n'
+              '    | any(.competency_evidence[];\n'
+              '        .competency_id == $competency and .status == "unverified"))\n'
+              '  and .evidence_evaluations == []\n',
+              "progress evidence assertions",
+          )
 
-          before = '''      verified_readiness:"locked",
-                initial_planning_signal:$initial_planning_signal,
-                progressed_planning_signal:$progressed_planning_signal
-          '''
-          after = '''      verified_readiness:"locked",
-                initial_planning_signal:$initial_planning_signal,
-                progressed_planning_signal:$progressed_planning_signal,
-                learner_attestation:{
-                  source:$attestation_source,
-                  disposition:$attestation_disposition,
-                  competency_id:$attestation_competency,
-                  competency_evidence_after_attestation:"unverified",
-                  trusted_evaluator_public_route:"absent"
-                }
-          '''
-          if text.count(before) != 1:
-              raise SystemExit("evidence artifact journey marker mismatch")
-          text = text.replace(before, after)
+          replace_once(
+              '  --argjson progressed_planning_signal "$(jq \'.planning_signal_percent\' "$progress")" \\\n'
+              "  '{\n"
+              '    schema_version:2,\n',
+              '  --argjson progressed_planning_signal "$(jq \'.planning_signal_percent\' "$progress")" \\\n'
+              '  --arg attestation_source "$(jq -r \'.evidence_history[-1].source\' "$progress")" \\\n'
+              '  --arg attestation_disposition "$(jq -r \'.evidence_history[-1].disposition\' "$progress")" \\\n'
+              '  --arg attestation_competency "$(jq -r \'.evidence_history[-1].competency_id\' "$progress")" \\\n'
+              "  '{\n"
+              '    schema_version:3,\n',
+              "evidence artifact arguments",
+          )
+
+          replace_once(
+              '      verified_readiness:"locked",\n'
+              '      initial_planning_signal:$initial_planning_signal,\n'
+              '      progressed_planning_signal:$progressed_planning_signal\n',
+              '      verified_readiness:"locked",\n'
+              '      initial_planning_signal:$initial_planning_signal,\n'
+              '      progressed_planning_signal:$progressed_planning_signal,\n'
+              '      learner_attestation:{\n'
+              '        source:$attestation_source,\n'
+              '        disposition:$attestation_disposition,\n'
+              '        competency_id:$attestation_competency,\n'
+              '        competency_evidence_after_attestation:"unverified",\n'
+              '        trusted_evaluator_public_route:"absent"\n'
+              '      }\n',
+              "evidence artifact journey",
+          )
 
           path.write_text(text, encoding="utf-8")
           Path(".github/workflows/g02-production-contract.yml").unlink()
