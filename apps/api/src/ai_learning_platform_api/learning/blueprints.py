@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from ai_learning_platform_api.learning.catalog import RoleDefinition
 from ai_learning_platform_api.learning.schemas import ActivityView, TaskExposureView
 
-_BLUEPRINT_VERSION = "2026-08-g05-v1"
-_ITEM_FAMILY_VERSION = "2026-08-g05-v1"
+_BLUEPRINT_VERSION = "g05-v1"
+_ITEM_FAMILY_VERSION = "g05-v1"
 _NEAR_DUPLICATE_THRESHOLD = 0.80
 _MAX_BIND_ATTEMPTS = 128
 
@@ -91,7 +91,7 @@ def _digest(value: str, length: int = 24) -> str:
 
 def _rubric_version(deliverable: str, criteria: Iterable[str]) -> str:
     payload = "|".join((deliverable.strip(), *(item.strip() for item in criteria)))
-    return f"rubric-{_digest(payload, 20)}"
+    return f"rubric-{_digest(payload, 16)}"
 
 
 def _catalog_title(served_title: str) -> str:
@@ -107,20 +107,22 @@ def blueprint_identity(role: RoleDefinition, activity: ActivityView) -> Blueprin
     )
     if competency is None:
         return BlueprintIdentity("", "", "legacy_unverified", "", "", "legacy_unverified", "")
-    family_id = f"item-family:{role.identifier}:{role.version}:{competency.identifier}"
+    family_id = f"family-{_digest(f'{role.identifier}|{role.version}|{competency.identifier}', 16)}"
     for index, template in enumerate(competency.activities, start=1):
         if (
             template.deliverable == activity.deliverable
             and list(template.acceptance_criteria) == list(activity.acceptance_criteria)
             and _catalog_title(activity.title) == template.title
         ):
+            template_hash = _digest(
+                "|".join((family_id, str(index), template.title, template.deliverable)),
+                16,
+            )
             return BlueprintIdentity(
                 item_family_id=family_id,
                 item_family_version=_ITEM_FAMILY_VERSION,
                 item_family_trust="trusted",
-                blueprint_id=(
-                    f"blueprint:{role.identifier}:{role.version}:{competency.identifier}:{index:02d}"
-                ),
+                blueprint_id=f"blueprint-{template_hash}",
                 blueprint_version=_BLUEPRINT_VERSION,
                 blueprint_trust="trusted",
                 rubric_version=_rubric_version(template.deliverable, template.acceptance_criteria),
@@ -196,7 +198,7 @@ def bind_learner_instance(
         raise BlueprintTrustError("untrusted blueprint cannot create a high-stakes served instance")
     prior = tuple(exposures)
     for nonce in range(_MAX_BIND_ATTEMPTS):
-        seed = hashlib.sha256(
+        full_seed = hashlib.sha256(
             "|".join(
                 (
                     learner_id,
@@ -210,24 +212,27 @@ def bind_learner_instance(
                 )
             ).encode()
         ).hexdigest()
-        domain = _DOMAIN_SCENARIOS[int(seed[0:4], 16) % len(_DOMAIN_SCENARIOS)]
-        failure = _FAILURE_SCENARIOS[int(seed[4:8], 16) % len(_FAILURE_SCENARIOS)]
-        constraint = _CONSTRAINT_SCENARIOS[int(seed[8:12], 16) % len(_CONSTRAINT_SCENARIOS)]
-        challenge = f"challenge:{seed[12:28]}"
+        domain_index = int(full_seed[0:4], 16) % len(_DOMAIN_SCENARIOS)
+        failure_index = int(full_seed[4:8], 16) % len(_FAILURE_SCENARIOS)
+        constraint_index = int(full_seed[8:12], 16) % len(_CONSTRAINT_SCENARIOS)
+        domain = _DOMAIN_SCENARIOS[domain_index]
+        failure = _FAILURE_SCENARIOS[failure_index]
+        constraint = _CONSTRAINT_SCENARIOS[constraint_index]
+        challenge = f"challenge:{full_seed[12:28]}"
         semantic_tokens = [
-            f"blueprint:{activity.blueprint_id}",
-            f"domain:{domain}",
-            f"failure:{failure}",
-            f"constraint:{constraint}",
+            f"b:{_digest(activity.blueprint_id, 8)}",
+            f"d:{domain_index:02d}",
+            f"f:{failure_index:02d}",
+            f"c:{constraint_index:02d}",
         ]
-        fingerprint = _digest("|".join((*semantic_tokens, challenge)), 32)
+        fingerprint = _digest("|".join((*semantic_tokens, challenge)), 24)
         if collides(
             semantic_fingerprint=fingerprint,
             semantic_tokens=semantic_tokens,
             exposures=prior,
         ):
             continue
-        instance_id = f"task-instance-{_digest(f'{learner_id}|{seed}', 28)}"
+        instance_id = f"activity-build-{activity.competency_id}-{_digest(f'{learner_id}|{full_seed}', 12)}"
         scenario = (
             f"Instance constraints: apply this blueprint to a {domain}; handle {failure}; "
             f"and {constraint}. Use {challenge} as the instance identity in the design note."
@@ -236,10 +241,14 @@ def bind_learner_instance(
             update={
                 "id": instance_id,
                 "objective": f"{activity.objective} {scenario}",
-                "instance_seed": seed,
+                "instance_seed": full_seed[:32],
                 "semantic_fingerprint": fingerprint,
                 "semantic_tokens": semantic_tokens,
-                "scenario_tags": [domain, failure, constraint, challenge],
+                "scenario_tags": [
+                    f"d:{domain_index:02d}",
+                    f"f:{failure_index:02d}",
+                    f"c:{constraint_index:02d}",
+                ],
                 "high_stakes_eligible": True,
             }
         )
