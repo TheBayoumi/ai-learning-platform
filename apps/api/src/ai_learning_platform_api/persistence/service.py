@@ -36,6 +36,7 @@ from ai_learning_platform_api.persistence.schemas import (
     PersistentPlanCreateRequest,
     PersistentPlanImportRequest,
     PersistentPlanView,
+    PersistentProbeEvaluationRequest,
     PersistentProgressRequest,
     PersistentReplanRequest,
 )
@@ -180,6 +181,31 @@ class PersistentLearningService:
             plan=plan,
         )
         return self._view(committed)
+
+    async def evaluate_probe(
+        self,
+        *,
+        account_id: str,
+        request: PersistentProbeEvaluationRequest,
+    ) -> PersistentPlanView:
+        """Commit one trusted server-timed retention/transfer probe verdict."""
+        stored = await self._load_expected(
+            account_id=account_id,
+            learner_id=request.learner_id,
+            expected_version=request.expected_version,
+        )
+        plan = self._core.evaluate_probe(
+            state_token=self._codec.encode(stored.state), verdict=request.verdict
+        )
+        if plan.sequence == stored.state.sequence:
+            return self._view(stored)
+        return await self._commit_plan(
+            account_id=account_id,
+            stored=stored,
+            state_token=plan.state_token,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.probe.evaluated",
+        )
 
     async def replan(
         self,

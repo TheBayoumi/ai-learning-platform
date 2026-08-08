@@ -3,7 +3,7 @@
   "program": "mission-aligned-product-completion",
   "mission_dod": "plans/product-completion-definition-of-done.md",
   "execution_dod": "plans/adaptive-product-definition-of-done.md",
-  "active_phase": "G05",
+  "active_phase": "G06",
   "engineering_claim_only": true,
   "validation_track_remains_external": true,
   "required_checks": [
@@ -217,8 +217,8 @@
     {
       "id": "G05",
       "name": "Trusted blueprint and unique-instance system",
-      "status": "VALIDATING",
-      "branch": "product/g05-trusted-blueprint-instances",
+      "status": "PASSED",
+      "branch": "main",
       "dependencies": [
         "G04"
       ],
@@ -276,15 +276,18 @@
         "apps/api/tests/test_g05_trust_edge_cases.py",
         "apps/api/tests/test_g05_exposure_race.py"
       ],
-      "accepted_sha": null,
-      "production_acceptance": [],
+      "accepted_sha": "d53e5457302b2106f68a410f2da6ed7001af60b2",
+      "production_acceptance": [
+        "Quality Gates run 31269258470 passed on exact PR head d53e5457302b2106f68a410f2da6ed7001af60b2",
+        "Product deployment run 31269539912 passed on merged main SHA 51a9df280b3e705366880991e487171e01185641"
+      ],
       "next_phase": "G06"
     },
     {
       "id": "G06",
       "name": "Independent retention and transfer engine",
-      "status": "NOT_STARTED",
-      "branch": null,
+      "status": "VALIDATING",
+      "branch": "product/g06-retention-transfer-engine",
       "dependencies": [
         "G05"
       ],
@@ -299,15 +302,29 @@
         "D",
         "E"
       ],
-      "implementation_evidence": [],
-      "test_evidence": [],
+      "implementation_evidence": [
+        "apps/api/src/ai_learning_platform_api/learning/qualification.py",
+        "apps/api/src/ai_learning_platform_api/learning/qualification_service.py",
+        "apps/api/src/ai_learning_platform_api/learning/schemas.py",
+        "apps/api/src/ai_learning_platform_api/persistence/schemas.py",
+        "apps/api/src/ai_learning_platform_api/persistence/service.py"
+      ],
+      "test_evidence": [
+        "apps/api/tests/test_g06_retention_transfer.py",
+        "apps/api/tests/test_g06_human_simulation.py",
+        "apps/api/tests/test_g06_persistent_probe.py",
+        "apps/api/tests/test_product_gate.py",
+        ".github/workflows/ci.yml"
+      ],
       "human_simulations": [
         "assisted learner",
         "fast learner",
         "struggling learner",
         "delayed returning learner"
       ],
-      "human_simulation_evidence": [],
+      "human_simulation_evidence": [
+        "apps/api/tests/test_g06_human_simulation.py"
+      ],
       "accepted_sha": null,
       "production_acceptance": [],
       "next_phase": "G07"

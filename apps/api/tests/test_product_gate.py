@@ -126,7 +126,7 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
     )
     active = next(phase for phase in phases if phase.status in product_gate.ACTIVE_STATUSES)
 
-    assert active.identifier == "G05"
+    assert active.identifier == "G06"
     assert active.status in product_gate.ACTIVE_STATUSES
     assert active.branch == head_ref
 
