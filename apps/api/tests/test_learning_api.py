@@ -207,7 +207,10 @@ def test_replan_prioritizes_focus_and_preserves_evidence() -> None:
     assert replanned["focus_competency_ids"] == ["fastapi", "postgresql"]
     assert replanned["evidence_history"] == progressed["evidence_history"]
     assert replanned["active_plan_version"]["trigger"] == "manual_replan"
-    assert replanned["active_plan_version"]["delta"]["previous_plan_version_id"] == progressed["active_plan_version"]["plan_version_id"]
+    assert (
+        replanned["active_plan_version"]["delta"]["previous_plan_version_id"]
+        == progressed["active_plan_version"]["plan_version_id"]
+    )
     assert replanned["current_activity"]["competency_id"] != "fastapi"
     assert replanned["current_activity"]["generation"] == 1
     focused = [item for item in replanned["priority_competencies"] if item["focused"]]
