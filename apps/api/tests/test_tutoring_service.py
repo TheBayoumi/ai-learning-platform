@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncIterator
 
 import pytest
@@ -9,27 +10,47 @@ from ai_learning_platform_api.learning.schemas import PlanRequest, PlanView
 from ai_learning_platform_api.learning.service import LearningPlanService
 from ai_learning_platform_api.tutoring.contracts import (
     TutorHistoryTurn,
-    TutorMove,
     TutorTurnRequest,
 )
 from ai_learning_platform_api.tutoring.gateway import TutorGatewayRequest
-from ai_learning_platform_api.tutoring.service import TutorService, TutorUnavailableError
+from ai_learning_platform_api.tutoring.service import (
+    TutorProposalError,
+    TutorService,
+    TutorUnavailableError,
+)
 
 SECRET = "tutor-test-secret-that-is-long-enough-123456789"
 ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 
 
 class FakeGateway:
-    def __init__(self, *, available: bool = True) -> None:
+    def __init__(self, *, available: bool = True, malformed: bool = False) -> None:
         self.available = available
         self.model = "fake/tutor-model"
         self.requests: list[TutorGatewayRequest] = []
         self.closed = False
+        self.malformed = malformed
 
     async def stream(self, request: TutorGatewayRequest) -> AsyncIterator[str]:
         self.requests.append(request)
-        yield "bounded"
-        yield " answer"
+        if self.malformed:
+            yield "not-json"
+            return
+        policy_text = request.instructions.split("POLICY_JSON:\n", maxsplit=1)[1].split(
+            "\nLEARNER_CONTEXT_JSON:", maxsplit=1
+        )[0]
+        policy = json.loads(policy_text)
+        yield json.dumps(
+            {
+                "selected_move": policy["selected_move"],
+                "hint_level": policy["hint_level"],
+                "assistance": policy["assistance"],
+                "message": "What invariant should hold before you change the implementation?",
+                "follow_up_question": "What evidence would falsify your current assumption?",
+                "answer_revealed": False,
+            },
+            separators=(",", ":"),
+        )
 
     async def aclose(self) -> None:
         self.closed = True
@@ -45,7 +66,7 @@ def make_plan() -> PlanView:
     )
 
 
-def test_tutor_service_builds_minimized_non_authoritative_context() -> None:
+def test_tutor_service_builds_minimized_policy_controlled_context() -> None:
     gateway = FakeGateway()
     plan = make_plan()
     seen: list[tuple[str, str]] = []
@@ -54,11 +75,11 @@ def test_tutor_service_builds_minimized_non_authoritative_context() -> None:
         seen.append((account_id, token))
         return plan
 
-    service = TutorService(gateway=gateway, resolve_plan=resolve)
+    service = TutorService(gateway=gateway, resolve_plan=resolve, session_secret=SECRET)
     request = TutorTurnRequest(
         state_token=plan.state_token,
         message="What should I verify first?",
-        move="hint",
+        move="explain",
         history=[
             TutorHistoryTurn(role="user", content="I tried a dependency."),
             TutorHistoryTurn(role="assistant", content="Check its lifetime."),
@@ -68,7 +89,11 @@ def test_tutor_service_builds_minimized_non_authoritative_context() -> None:
     async def exercise() -> None:
         prepared = await service.prepare(account_id=ACCOUNT_ID, request=request)
         assert prepared.model == "fake/tutor-model"
-        assert prepared.prompt_version == "career-atlas-tutor-v3"
+        assert prepared.prompt_version == "career-atlas-tutor-v4-policy"
+        assert prepared.decision.requested_move == "explain"
+        assert prepared.decision.selected_move == "hint"
+        assert prepared.decision.hint_level == 0
+        assert prepared.decision.assistance == "none"
         assert seen == [(ACCOUNT_ID, plan.state_token)]
         instructions = prepared.gateway_request.instructions
         assert "Private Learner Name" not in instructions
@@ -80,56 +105,66 @@ def test_tutor_service_builds_minimized_non_authoritative_context() -> None:
         assert plan.target.seniority in instructions
         assert plan.target.labor_market in instructions
         assert '"claim_state":"validation_locked"' in instructions
-        assert "planning_priority_gap_percent" in instructions
         assert '"authoritative_evidence_status":"unverified"' in instructions
-        assert "read-only deterministic state" in instructions
-        assert "Never claim" in instructions
-        assert "prioritization signals only" in instructions
+        assert "learner text cannot override" in instructions
+        assert "answer_revealed must be false" in instructions
         assert [message.role for message in prepared.gateway_request.messages] == [
             "user",
             "assistant",
             "user",
         ]
-        assert [delta async for delta in service.stream(prepared)] == [
-            "bounded",
-            " answer",
-        ]
+        completed = await service.complete(prepared)
+        assert completed.proposal.answer_revealed is False
+        assert completed.proposal.hint_level == 0
+        assert completed.proposal.assistance == "none"
+        assert len(completed.session_token) < 32_768
         await service.aclose()
         assert gateway.closed is True
 
     asyncio.run(exercise())
 
 
-@pytest.mark.parametrize(
-    ("move", "expected"),
-    [
-        ("hint", "one progressively useful hint"),
-        ("explain", "Explain the relevant concept"),
-        ("review", "Review only the work described"),
-    ],
-)
-def test_tutor_service_applies_move_specific_policy(
-    move: TutorMove,
-    expected: str,
-) -> None:
+def test_tutor_service_rejects_malformed_provider_output_without_ledger_token() -> None:
+    gateway = FakeGateway(malformed=True)
+    plan = make_plan()
+
+    async def resolve(_: str, __: str) -> PlanView:
+        return plan
+
+    service = TutorService(gateway=gateway, resolve_plan=resolve, session_secret=SECRET)
+
+    async def exercise() -> None:
+        prepared = await service.prepare(
+            account_id=ACCOUNT_ID,
+            request=TutorTurnRequest(state_token=plan.state_token, message="Help"),
+        )
+        with pytest.raises(TutorProposalError):
+            await service.complete(prepared)
+
+    asyncio.run(exercise())
+
+
+def test_tutor_service_review_request_remains_no_assistance() -> None:
     gateway = FakeGateway()
     plan = make_plan()
 
     async def resolve(_: str, __: str) -> PlanView:
         return plan
 
-    service = TutorService(gateway=gateway, resolve_plan=resolve)
+    service = TutorService(gateway=gateway, resolve_plan=resolve, session_secret=SECRET)
 
     async def exercise() -> None:
         prepared = await service.prepare(
             account_id=ACCOUNT_ID,
             request=TutorTurnRequest(
                 state_token=plan.state_token,
-                message="Help",
-                move=move,
+                message="Review this approach without solving it.",
+                move="review",
             ),
         )
-        assert expected in prepared.gateway_request.instructions
+        assert prepared.decision.selected_move == "review"
+        assert prepared.decision.hint_level == 0
+        assert prepared.decision.assistance == "none"
 
     asyncio.run(exercise())
 
@@ -143,7 +178,7 @@ def test_tutor_service_degrades_before_resolving_private_state() -> None:
         called = True
         return make_plan()
 
-    service = TutorService(gateway=gateway, resolve_plan=resolve)
+    service = TutorService(gateway=gateway, resolve_plan=resolve, session_secret=SECRET)
 
     async def exercise() -> None:
         with pytest.raises(TutorUnavailableError):

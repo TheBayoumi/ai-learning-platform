@@ -1,4 +1,4 @@
-"""HTTP/SSE transport for bounded, non-authoritative tutor turns."""
+"""HTTP/SSE transport for policy-controlled, non-authoritative tutor turns."""
 
 from __future__ import annotations
 
@@ -26,8 +26,10 @@ from ai_learning_platform_api.tutoring.limits import (
     TutorTurnLease,
     TutorTurnLimiter,
 )
+from ai_learning_platform_api.tutoring.policy import TutorPolicyError
 from ai_learning_platform_api.tutoring.service import (
     PreparedTutorTurn,
+    TutorProposalError,
     TutorService,
     TutorUnavailableError,
 )
@@ -42,7 +44,7 @@ def create_tutoring_router(
     service: TutorService,
     limiter: TutorTurnLimiter,
 ) -> APIRouter:
-    """Create a streaming tutor endpoint with preflight state validation."""
+    """Create a tutor endpoint whose SSE stream contains only validated model output."""
     router = APIRouter(prefix="/api/v1", tags=["tutoring"])
 
     @router.post("/tutor/stream", operation_id="stream_tutor_turn")
@@ -146,6 +148,14 @@ async def _prepare(
                 "message": "Durable learning storage is temporarily unavailable.",
             },
         ) from error
+    except TutorPolicyError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "TUTOR_SESSION_INVALID",
+                "message": "The tutor assistance session is invalid or stale.",
+            },
+        ) from error
     except (LearningPlanError, AssessmentError) as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -160,29 +170,47 @@ async def _events(
     lease: TutorTurnLease,
 ) -> AsyncIterator[str]:
     try:
-        yield _event(
-            "meta",
-            {
-                "model": prepared.model,
-                "prompt_version": prepared.prompt_version,
-                "authoritative": False,
-            },
-        )
-        produced_text = False
         try:
-            async for delta in service.stream(prepared):
-                produced_text = True
-                yield _event("delta", {"text": delta})
-            if not produced_text:
-                raise TutorGatewayError("tutor provider produced no text")
-            yield _event("done", {"status": "complete"})
+            completed = await service.complete(prepared)
+            yield _event(
+                "meta",
+                {
+                    "model": prepared.model,
+                    "prompt_version": prepared.prompt_version,
+                    "authoritative": False,
+                    "decision": completed.decision.model_dump(mode="json"),
+                    "tutor_session_token": completed.session_token,
+                },
+            )
+            text = completed.proposal.message
+            for start in range(0, len(text), 256):
+                yield _event("delta", {"text": text[start : start + 256]})
+            yield _event(
+                "done",
+                {
+                    "status": "complete",
+                    "follow_up_question": completed.proposal.follow_up_question,
+                },
+            )
+        except TutorProposalError:
+            yield _event(
+                "error",
+                {
+                    "code": "TUTOR_POLICY_REJECTED_OUTPUT",
+                    "message": (
+                        "The tutor output did not satisfy the tutoring policy. "
+                        "Your learning state and assistance ledger were not changed."
+                    ),
+                },
+            )
         except TutorGatewayError:
             yield _event(
                 "error",
                 {
                     "code": "TUTOR_PROVIDER_UNAVAILABLE",
                     "message": (
-                        "The tutor response was interrupted. Your learning state was not changed."
+                        "The tutor response was interrupted. Your learning state and assistance "
+                        "ledger were not changed."
                     ),
                 },
             )

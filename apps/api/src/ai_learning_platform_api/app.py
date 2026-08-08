@@ -91,7 +91,11 @@ def create_app(
                 )
             return core_service.resume(state_token)
 
-        tutor_service = TutorService(gateway=gateway, resolve_plan=resolve_plan)
+        tutor_service = TutorService(
+            gateway=gateway,
+            resolve_plan=resolve_plan,
+            session_secret=secret,
+        )
         tutor_limiter = TutorTurnLimiter(
             max_concurrent_turns=resolved_settings.tutor_max_concurrent_turns,
             requests_per_window=resolved_settings.tutor_requests_per_window,

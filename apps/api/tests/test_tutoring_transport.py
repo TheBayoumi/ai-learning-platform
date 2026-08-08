@@ -1,45 +1,86 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
 from typing import cast
 
 import httpx
 import pytest
 from fastapi import FastAPI
 
+from ai_learning_platform_api.learning.schemas import PlanRequest
+from ai_learning_platform_api.learning.service import LearningPlanService
 from ai_learning_platform_api.persistence.contracts import (
     LearnerStateConflictError,
     LearnerStateNotFoundError,
     PersistenceUnavailableError,
 )
 from ai_learning_platform_api.transport.http.tutoring import create_tutoring_router
-from ai_learning_platform_api.tutoring.contracts import TutorTurnRequest
+from ai_learning_platform_api.tutoring.contracts import (
+    TutorPolicyDecision,
+    TutorProposal,
+    TutorSessionState,
+    TutorTurnRequest,
+)
 from ai_learning_platform_api.tutoring.gateway import (
     TutorGatewayError,
     TutorGatewayMessage,
     TutorGatewayRequest,
 )
 from ai_learning_platform_api.tutoring.limits import TutorTurnLimiter
+from ai_learning_platform_api.tutoring.policy import InvalidTutorSessionError
 from ai_learning_platform_api.tutoring.service import (
+    CompletedTutorTurn,
     PreparedTutorTurn,
+    TutorProposalError,
     TutorService,
     TutorUnavailableError,
 )
 
 ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
+SECRET = "tutor-transport-secret-with-at-least-thirty-two-bytes"
 BODY = {
     "state_token": "signed-token-with-sufficient-length",
     "message": "What should I verify?",
     "move": "hint",
     "history": [],
 }
+PLAN = LearningPlanService(SECRET).create_plan(PlanRequest(learner_name="Transport Learner"))
+assert PLAN.current_activity is not None
+DECISION = TutorPolicyDecision(
+    decision_id="tutor-decision-transport",
+    plan_version_id=PLAN.active_plan_version.plan_version_id,
+    activity_id=PLAN.current_activity.id,
+    requested_move="hint",
+    selected_move="hint",
+    hint_level=0,
+    assistance="none",
+    reason="transport test",
+)
 PREPARED = PreparedTutorTurn(
     gateway_request=TutorGatewayRequest(
         instructions="bounded",
         messages=(TutorGatewayMessage(role="user", content="question"),),
     ),
     model="fake/model",
+    plan=PLAN,
+    decision=DECISION,
+    prior_session=TutorSessionState(
+        learner_id=PLAN.learner_id,
+        plan_version_id=PLAN.active_plan_version.plan_version_id,
+        activity_id=PLAN.current_activity.id,
+    ),
+)
+COMPLETED = CompletedTutorTurn(
+    proposal=TutorProposal(
+        selected_move="hint",
+        hint_level=0,
+        assistance="none",
+        message="First step",
+        follow_up_question="What would falsify that?",
+        answer_revealed=False,
+    ),
+    session_token="signed-tutor-session-token-with-sufficient-length",
+    decision=DECISION,
 )
 
 
@@ -48,12 +89,10 @@ class FakeTutorService:
         self,
         *,
         prepare_error: Exception | None = None,
-        stream_error: bool = False,
-        empty_stream: bool = False,
+        complete_error: Exception | None = None,
     ) -> None:
         self.prepare_error = prepare_error
-        self.stream_error = stream_error
-        self.empty_stream = empty_stream
+        self.complete_error = complete_error
         self.account_id: str | None = None
         self.request: TutorTurnRequest | None = None
 
@@ -64,13 +103,10 @@ class FakeTutorService:
             raise self.prepare_error
         return PREPARED
 
-    async def stream(self, _: PreparedTutorTurn) -> AsyncIterator[str]:
-        if self.empty_stream:
-            return
-        yield "First"
-        if self.stream_error:
-            raise TutorGatewayError("secret provider failure")
-        yield " step"
+    async def complete(self, _: PreparedTutorTurn) -> CompletedTutorTurn:
+        if self.complete_error is not None:
+            raise self.complete_error
+        return COMPLETED
 
 
 def limiter(
@@ -88,12 +124,7 @@ def limiter(
 
 def app_for(service: FakeTutorService, turn_limiter: TutorTurnLimiter) -> FastAPI:
     app = FastAPI()
-    app.include_router(
-        create_tutoring_router(
-            cast(TutorService, service),
-            turn_limiter,
-        )
-    )
+    app.include_router(create_tutoring_router(cast(TutorService, service), turn_limiter))
     return app
 
 
@@ -115,9 +146,10 @@ async def post(
         )
 
 
-def test_tutoring_router_streams_normalized_events_after_preflight() -> None:
+def test_tutoring_router_emits_metadata_only_after_validated_completion() -> None:
     service = FakeTutorService()
     response = asyncio.run(post(service))
+
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert response.headers["cache-control"] == "no-store"
@@ -126,24 +158,33 @@ def test_tutoring_router_streams_normalized_events_after_preflight() -> None:
     assert service.request is not None
     assert "event: meta" in response.text
     assert '"authoritative":false' in response.text
-    assert 'event: delta\ndata: {"text":"First"}' in response.text
-    assert 'event: delta\ndata: {"text":" step"}' in response.text
-    assert 'event: done\ndata: {"status":"complete"}' in response.text
+    assert '"decision_id":"tutor-decision-transport"' in response.text
+    assert (
+        '"tutor_session_token":"signed-tutor-session-token-with-sufficient-length"' in response.text
+    )
+    assert 'event: delta\ndata: {"text":"First step"}' in response.text
+    assert '"follow_up_question":"What would falsify that?"' in response.text
 
 
-def test_tutoring_router_emits_safe_stream_error_without_mutating_state() -> None:
-    response = asyncio.run(post(FakeTutorService(stream_error=True)))
+@pytest.mark.parametrize(
+    ("error", "code"),
+    [
+        (TutorGatewayError("private provider detail"), "TUTOR_PROVIDER_UNAVAILABLE"),
+        (TutorProposalError("private proposal detail"), "TUTOR_POLICY_REJECTED_OUTPUT"),
+    ],
+)
+def test_tutoring_router_emits_safe_completion_error_without_ledger_metadata(
+    error: Exception,
+    code: str,
+) -> None:
+    response = asyncio.run(post(FakeTutorService(complete_error=error)))
+
     assert response.status_code == 200
-    assert 'event: delta\ndata: {"text":"First"}' in response.text
-    assert "TUTOR_PROVIDER_UNAVAILABLE" in response.text
-    assert "secret provider failure" not in response.text
-    assert "event: done" not in response.text
-
-
-def test_tutoring_router_maps_empty_provider_stream_to_safe_error() -> None:
-    response = asyncio.run(post(FakeTutorService(empty_stream=True)))
-    assert response.status_code == 200
-    assert "TUTOR_PROVIDER_UNAVAILABLE" in response.text
+    assert code in response.text
+    assert "private provider detail" not in response.text
+    assert "private proposal detail" not in response.text
+    assert "event: meta" not in response.text
+    assert "tutor_session_token" not in response.text
     assert "event: done" not in response.text
 
 
@@ -154,6 +195,7 @@ def test_tutoring_router_maps_empty_provider_stream_to_safe_error() -> None:
         (LearnerStateNotFoundError(), 404, "LEARNER_STATE_NOT_FOUND"),
         (LearnerStateConflictError(), 409, "LEARNER_STATE_CONFLICT"),
         (PersistenceUnavailableError(), 503, "PERSISTENCE_UNAVAILABLE"),
+        (InvalidTutorSessionError(), 400, "TUTOR_SESSION_INVALID"),
     ],
 )
 def test_tutoring_router_maps_preflight_failures(
@@ -185,10 +227,7 @@ def test_tutoring_router_releases_capacity_after_preflight_failure() -> None:
             )
         assert failed.status_code == 503
 
-        succeeded = await post(
-            FakeTutorService(),
-            turn_limiter=turn_limiter,
-        )
+        succeeded = await post(FakeTutorService(), turn_limiter=turn_limiter)
         assert succeeded.status_code == 200
 
     asyncio.run(exercise())

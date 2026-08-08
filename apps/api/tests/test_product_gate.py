@@ -12,15 +12,15 @@ from ai_learning_platform_api.automation import product_gate
 
 OLD_SHA = "1" * 40
 HEAD_SHA = "2" * 40
-HEAD_REF = "product/g02-evidence-state"
+HEAD_REF = "product/g04-tutor-policy-loop"
 
 
 def _phase(identifier: str, status: str) -> dict[str, object]:
     index = int(identifier[1:])
     previous = [] if index == 1 else [f"G{index - 1:02d}"]
     next_phase = None if index == 9 else f"G{index + 1:02d}"
-    active = identifier == "G02"
-    passed = identifier == "G01"
+    active = identifier == "G04"
+    passed = index < 4
     return {
         "id": identifier,
         "name": f"Phase {identifier}",
@@ -49,7 +49,7 @@ def _state() -> dict[str, object]:
         "program": "mission-aligned-product-completion",
         "mission_dod": "plans/product-completion-definition-of-done.md",
         "execution_dod": "plans/adaptive-product-definition-of-done.md",
-        "active_phase": "G02",
+        "active_phase": "G04",
         "engineering_claim_only": True,
         "validation_track_remains_external": True,
         "required_checks": list(product_gate.REQUIRED_CHECKS),
@@ -58,9 +58,9 @@ def _state() -> dict[str, object]:
                 identifier,
                 (
                     "PASSED"
-                    if identifier == "G01"
+                    if int(identifier[1:]) < 4
                     else "VALIDATING"
-                    if identifier == "G02"
+                    if identifier == "G04"
                     else "NOT_STARTED"
                 ),
             )
@@ -77,7 +77,7 @@ def _write_repository(root: Path, state: dict[str, object] | None = None) -> dic
     evidence.mkdir(parents=True)
     (plans / "product-completion-definition-of-done.md").write_text("mission\n", encoding="utf-8")
     (plans / "adaptive-product-definition-of-done.md").write_text("execution\n", encoding="utf-8")
-    for identifier in ("G01", "G02"):
+    for identifier in ("G01", "G02", "G03", "G04"):
         for suffix in ("implementation", "test", "human"):
             (evidence / f"{identifier}-{suffix}.txt").write_text("evidence\n", encoding="utf-8")
     (plans / "adaptive-product-state.json").write_text(
@@ -115,7 +115,7 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
         text=True,
         timeout=10,
     ).stdout.strip()
-    head_ref = os.environ.get("GITHUB_HEAD_REF", "product/g03-deterministic-curriculum-planner")
+    head_ref = os.environ.get("GITHUB_HEAD_REF", HEAD_REF)
 
     phases = product_gate.validate_product_state(
         repository_root,
@@ -126,7 +126,7 @@ def test_committed_product_state_matches_the_exact_pr_revision() -> None:
     )
     active = next(phase for phase in phases if phase.status in product_gate.ACTIVE_STATUSES)
 
-    assert active.identifier == "G03"
+    assert active.identifier == "G04"
     assert active.status in product_gate.ACTIVE_STATUSES
     assert active.branch == head_ref
 
@@ -136,9 +136,9 @@ def test_valid_product_state_accepts_exact_active_phase(tmp_path: Path) -> None:
 
     phases = _validate(tmp_path)
 
-    assert phases[0].status == "PASSED"
-    assert phases[1].status == "VALIDATING"
-    assert phases[1].branch == HEAD_REF
+    assert [phase.status for phase in phases[:3]] == ["PASSED", "PASSED", "PASSED"]
+    assert phases[3].status == "VALIDATING"
+    assert phases[3].branch == HEAD_REF
 
 
 @pytest.mark.parametrize(
@@ -164,7 +164,7 @@ def test_non_product_branch_is_rejected(tmp_path: Path) -> None:
     _write_repository(tmp_path)
 
     with pytest.raises(product_gate.ProductGateViolation, match="product_branch_invalid"):
-        _validate(tmp_path, head_ref="feature/g02-evidence-state")
+        _validate(tmp_path, head_ref="feature/g04-tutor")
 
 
 def test_branch_must_match_active_machine_phase(tmp_path: Path) -> None:
@@ -196,13 +196,14 @@ def test_required_five_check_contract_is_exact(tmp_path: Path) -> None:
 
 def test_prior_phase_must_be_passed(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
-    _phases(state)[0]["status"] = "NOT_STARTED"
-    _phases(state)[0]["branch"] = None
-    _phases(state)[0]["accepted_sha"] = None
-    _phases(state)[0]["implementation_evidence"] = []
-    _phases(state)[0]["test_evidence"] = []
-    _phases(state)[0]["human_simulation_evidence"] = []
-    _phases(state)[0]["production_acceptance"] = []
+    prior = _phases(state)[2]
+    prior["status"] = "NOT_STARTED"
+    prior["branch"] = None
+    prior["accepted_sha"] = None
+    prior["implementation_evidence"] = []
+    prior["test_evidence"] = []
+    prior["human_simulation_evidence"] = []
+    prior["production_acceptance"] = []
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
     with pytest.raises(product_gate.ProductGateViolation, match="product_dependency_not_passed"):
@@ -211,9 +212,9 @@ def test_prior_phase_must_be_passed(tmp_path: Path) -> None:
 
 def test_future_phase_cannot_start_early(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
-    future = _phases(state)[2]
+    future = _phases(state)[4]
     future["status"] = "IMPLEMENTING"
-    future["branch"] = "product/g03-planner"
+    future["branch"] = "product/g05-blueprints"
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
     with pytest.raises(product_gate.ProductGateViolation, match="product_future_phase_started"):
@@ -222,7 +223,7 @@ def test_future_phase_cannot_start_early(tmp_path: Path) -> None:
 
 def test_future_phase_cannot_preclaim_evidence(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
-    _phases(state)[2]["test_evidence"] = ["evidence/future.txt"]
+    _phases(state)[4]["test_evidence"] = ["evidence/future.txt"]
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
     with pytest.raises(product_gate.ProductGateViolation, match="product_future_evidence_invalid"):
@@ -240,7 +241,7 @@ def test_passed_phase_requires_production_and_human_evidence(tmp_path: Path) -> 
 
 def test_active_phase_requires_executable_human_simulation(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
-    _phases(state)[1]["human_simulation_evidence"] = []
+    _phases(state)[3]["human_simulation_evidence"] = []
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
     with pytest.raises(product_gate.ProductGateViolation, match="product_active_evidence_missing"):
@@ -249,7 +250,7 @@ def test_active_phase_requires_executable_human_simulation(tmp_path: Path) -> No
 
 def test_evidence_paths_cannot_escape_repository(tmp_path: Path) -> None:
     state = _write_repository(tmp_path)
-    _phases(state)[1]["test_evidence"] = ["../outside.txt"]
+    _phases(state)[3]["test_evidence"] = ["../outside.txt"]
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
     with pytest.raises(product_gate.ProductGateViolation, match="product_evidence_path_invalid"):
@@ -279,7 +280,7 @@ def test_phase_contracts_are_fail_closed(
     code: str,
 ) -> None:
     state = _write_repository(tmp_path)
-    _phases(state)[1][field] = value
+    _phases(state)[3][field] = value
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
     with pytest.raises(product_gate.ProductGateViolation, match=code):
@@ -325,7 +326,9 @@ def test_cli_reports_active_phase(
 ) -> None:
     phases = (
         product_gate.ProductPhase("G01", "PASSED", "main", (), OLD_SHA),
-        product_gate.ProductPhase("G02", "VALIDATING", HEAD_REF, ("G01",), None),
+        product_gate.ProductPhase("G02", "PASSED", "main", ("G01",), OLD_SHA),
+        product_gate.ProductPhase("G03", "PASSED", "main", ("G02",), OLD_SHA),
+        product_gate.ProductPhase("G04", "VALIDATING", HEAD_REF, ("G03",), None),
     )
     monkeypatch.setattr(product_gate, "validate_product_state", lambda *_args, **_kwargs: phases)
 
@@ -333,6 +336,6 @@ def test_cli_reports_active_phase(
 
     assert result == 0
     assert json.loads(capsys.readouterr().out) == {
-        "active_phase": "G02",
+        "active_phase": "G04",
         "status": "passed",
     }
