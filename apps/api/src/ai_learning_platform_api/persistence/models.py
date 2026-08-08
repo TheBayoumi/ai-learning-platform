@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -115,7 +116,7 @@ task_exposures = Table(
     Column("semantic_signature", String(64), nullable=False),
     Column("semantic_fingerprint", String(64), nullable=False),
     Column("semantic_tokens", JSONB, nullable=False),
-    Column("high_stakes_eligible", Integer, nullable=False),
+    Column("high_stakes_eligible", Boolean, nullable=False),
     Column("served_at", DateTime(timezone=True), nullable=False, index=True),
     UniqueConstraint(
         "blueprint_id",
