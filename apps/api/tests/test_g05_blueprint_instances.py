@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
-from ai_learning_platform_api.learning.blueprint_contracts import TrustedActivityView
 
 from ai_learning_platform_api.learning import LearningPlanService
 from ai_learning_platform_api.learning.blueprint_service import UntrustedInstanceEvidenceError
@@ -17,6 +16,7 @@ from ai_learning_platform_api.learning.blueprints import (
 from ai_learning_platform_api.learning.catalog import ROLE_CATALOG
 from ai_learning_platform_api.learning.planner import target_fingerprint
 from ai_learning_platform_api.learning.schemas import (
+    ActivityView,
     PlanRequest,
     ProgressRequest,
     ReplanRequest,
@@ -119,7 +119,7 @@ def test_untrusted_blueprint_cannot_create_high_stakes_instance() -> None:
     target = (
         LearningPlanService(SECRET).create_plan(PlanRequest(learner_name="Target Source")).target
     )
-    untrusted = TrustedActivityView(
+    untrusted = ActivityView(
         id="legacy-task",
         competency_id=role.competencies[0].identifier,
         competency_name=role.competencies[0].name,
