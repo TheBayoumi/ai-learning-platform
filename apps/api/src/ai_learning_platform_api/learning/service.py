@@ -13,11 +13,7 @@ from uuid import UUID, uuid4
 from pydantic import ValidationError
 
 from ai_learning_platform_api.learning.assessment import AssessmentCalibrationEngine
-from ai_learning_platform_api.learning.catalog import (
-    ROLE_CATALOG,
-    CompetencyDefinition,
-    RoleDefinition,
-)
+from ai_learning_platform_api.learning.catalog import ROLE_CATALOG, RoleDefinition
 from ai_learning_platform_api.learning.evidence import apply_trusted_verdict
 from ai_learning_platform_api.learning.planner import (
     CurriculumDecision,
@@ -977,7 +973,9 @@ class LearningPlanService:
                     priority_changes=[
                         f"{item.competency_id}:migrated-rank-{item.rank}" for item in priorities
                     ],
-                    reason="state_migration: preserved legacy curriculum without inventing evidence",
+                    reason=(
+                        "state_migration: preserved legacy curriculum without inventing evidence"
+                    ),
                 ),
             )
             plan_versions = [migration]
