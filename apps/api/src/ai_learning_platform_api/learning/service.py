@@ -55,7 +55,7 @@ IdFactory = Callable[[], UUID]
 _MAX_EVIDENCE_HISTORY = 24
 _MAX_ASSESSMENT_HISTORY = 12
 _MAX_COMPLETED_IDS = 128
-_MAX_PLAN_VERSIONS = 6
+_MAX_PLAN_VERSIONS = 3
 _REVIEW_INTERVAL_DAYS = {0: 1, 1: 2, 2: 4, 3: 7, 4: 14}
 
 
@@ -280,7 +280,11 @@ class LearningPlanService:
         state = self._upgrade_state(state, role)
         decisions = self._decisions(state, role)
         unresolved = [item for item in decisions if item.evidence_status != "independent"]
-        priorities = unresolved[: request.question_count]
+        diagnostic_priorities = sorted(
+            unresolved,
+            key=lambda item: (-item.score, item.competency.identifier),
+        )
+        priorities = diagnostic_priorities[: request.question_count]
         return self._assessment.start(
             state=state,
             role=role,
@@ -637,7 +641,7 @@ class LearningPlanService:
                     priority_reason=item.reason,
                     focused=item.focused,
                 )
-                for item in decisions[:4]
+                for item in decisions
             ],
             competency_evidence=[
                 state.competency_evidence[item.identifier] for item in role.competencies
@@ -1059,7 +1063,7 @@ class LearningPlanService:
             rationale=(
                 f"Selected from provisional role profile {role.version}. {decision.reason}. "
                 "The task is scheduled only because its prerequisites are authoritatively clear; "
-                "completion itself will not grant mastery."
+                "completion itself is not verified mastery and will not grant mastery."
             ),
             generation=generation,
             available_from=None,
