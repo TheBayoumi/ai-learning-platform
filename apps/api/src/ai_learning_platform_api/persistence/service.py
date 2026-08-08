@@ -39,6 +39,9 @@ from ai_learning_platform_api.persistence.schemas import (
     PersistentProbeEvaluationRequest,
     PersistentProgressRequest,
     PersistentReplanRequest,
+    PersistentWorkProvenanceEvaluationRequest,
+    PersistentWorkProvenanceSubmissionRequest,
+    PersistentWorkVerificationRequest,
 )
 
 Clock = Callable[[], datetime]
@@ -205,6 +208,79 @@ class PersistentLearningService:
             state_token=plan.state_token,
             idempotency_key=request.idempotency_key,
             event_type="learner.probe.evaluated",
+        )
+
+    async def issue_work_verification(
+        self,
+        *,
+        account_id: str,
+        request: PersistentWorkVerificationRequest,
+    ) -> PersistentPlanView:
+        stored = await self._load_expected(
+            account_id=account_id,
+            learner_id=request.learner_id,
+            expected_version=request.expected_version,
+        )
+        plan = self._core.issue_work_verification(
+            state_token=self._codec.encode(stored.state),
+            evidence_id=request.evidence_id,
+        )
+        if plan.sequence == stored.state.sequence:
+            return self._view(stored)
+        return await self._commit_plan(
+            account_id=account_id,
+            stored=stored,
+            state_token=plan.state_token,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.work.verification_issued",
+        )
+
+    async def submit_work_provenance(
+        self,
+        *,
+        account_id: str,
+        request: PersistentWorkProvenanceSubmissionRequest,
+    ) -> PersistentPlanView:
+        stored = await self._load_expected(
+            account_id=account_id,
+            learner_id=request.learner_id,
+            expected_version=request.expected_version,
+        )
+        plan = self._core.submit_work_provenance(
+            state_token=self._codec.encode(stored.state),
+            submission=request.submission,
+        )
+        return await self._commit_plan(
+            account_id=account_id,
+            stored=stored,
+            state_token=plan.state_token,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.work.provenance_captured",
+        )
+
+    async def evaluate_work_provenance(
+        self,
+        *,
+        account_id: str,
+        request: PersistentWorkProvenanceEvaluationRequest,
+    ) -> PersistentPlanView:
+        stored = await self._load_expected(
+            account_id=account_id,
+            learner_id=request.learner_id,
+            expected_version=request.expected_version,
+        )
+        plan = self._core.evaluate_work_provenance(
+            state_token=self._codec.encode(stored.state),
+            verdict=request.verdict,
+        )
+        if plan.sequence == stored.state.sequence:
+            return self._view(stored)
+        return await self._commit_plan(
+            account_id=account_id,
+            stored=stored,
+            state_token=plan.state_token,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.work.provenance_evaluated",
         )
 
     async def replan(

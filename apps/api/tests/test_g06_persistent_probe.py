@@ -4,7 +4,9 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
-from ai_learning_platform_api.learning import LearningPlanService
+from ai_learning_platform_api.learning.qualification_service import (
+    QualificationLearningPlanService as LearningPlanService,
+)
 from ai_learning_platform_api.learning.schemas import (
     PlanRequest,
     ProgressRequest,
