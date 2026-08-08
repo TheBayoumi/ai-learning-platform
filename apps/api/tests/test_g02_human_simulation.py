@@ -72,7 +72,9 @@ def _verdict(
 
 def _competency_status(plan: PlanView, competency_id: str) -> str:
     return next(
-        item.status for item in plan.competency_evidence if item.competency_id == competency_id
+        item.status
+        for item in plan.competency_evidence
+        if item.competency_id == competency_id
     )
 
 
@@ -106,7 +108,9 @@ def test_overconfident_learner_cannot_self_certify_through_rating_work_or_quiz()
     assert progressed.evidence_history[-1].disposition == "recorded"
     assert submitted.plan.assessment_coverage_percent > 0
     assert submitted.plan.evidence_evaluations == []
-    assert all(item.status == "unverified" for item in submitted.plan.competency_evidence)
+    assert all(
+        item.status == "unverified" for item in submitted.plan.competency_evidence
+    )
     assert submitted.plan.claim_state == "validation_locked"
     assert submitted.plan.verified_readiness_percent is None
 
@@ -177,12 +181,17 @@ def test_dispute_is_visible_without_silently_erasing_prior_independent_observati
     )
 
     state = next(
-        item for item in disputed.competency_evidence if item.competency_id == evidence.competency_id
+        item
+        for item in disputed.competency_evidence
+        if item.competency_id == evidence.competency_id
     )
     assert state.status == "independent"
     assert evidence.evidence_id in state.accepted_evidence_ids
     assert evidence.evidence_id in state.disputed_evidence_ids
-    assert [item.disposition for item in disputed.evidence_evaluations] == ["accepted", "disputed"]
+    assert [item.disposition for item in disputed.evidence_evaluations] == [
+        "accepted",
+        "disputed",
+    ]
     assert disputed.evidence_history[-1].disposition == "disputed"
     assert disputed.verified_readiness_percent is None
 
