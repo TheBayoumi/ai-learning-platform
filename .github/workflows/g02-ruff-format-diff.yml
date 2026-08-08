@@ -1,0 +1,33 @@
+name: G02 Ruff format diff
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  format-diff:
+    if: github.head_ref == 'product/g02-deterministic-evidence-state'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+      - name: Emit canonical Ruff formatting patch
+        working-directory: apps/api
+        run: |
+          uv run --locked ruff format --diff \
+            src/ai_learning_platform_api/automation/product_gate.py \
+            tests/test_claim_integrity.py \
+            tests/test_g02_human_simulation.py \
+            tests/test_product_gate.py
