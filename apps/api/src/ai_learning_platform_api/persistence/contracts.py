@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from ai_learning_platform_api.learning.schemas import LearnerState, TaskExposureView
+from ai_learning_platform_api.learning.schemas import CollisionFingerprintView, LearnerState
 
 _MAX_ACCOUNT_ID_LENGTH = 160
 _MAX_IDEMPOTENCY_KEY_LENGTH = 160
@@ -106,14 +106,13 @@ class LearnerStateRepository(Protocol):
 
 
 class TaskExposureIndexRepository(Protocol):
-    """History-wide cohort exposure query boundary used before serving new task instances."""
+    """Complete unlinkable cohort collision history used before serving new instances."""
 
-    async def list_recent_task_exposures(
+    async def list_task_collision_fingerprints(
         self,
         *,
         item_family_ids: tuple[str, ...],
-        limit: int = 512,
-    ) -> tuple[TaskExposureView, ...]: ...
+    ) -> tuple[CollisionFingerprintView, ...]: ...
 
 
 class LearnerStateReplayRepository(Protocol):
