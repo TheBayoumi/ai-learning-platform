@@ -11,6 +11,7 @@ from ai_learning_platform_api.learning.blueprints import collides
 from ai_learning_platform_api.learning.schemas import (
     AssessmentStartRequest,
     AssessmentSubmitRequest,
+    CollisionFingerprintView,
     PlanRequest,
     PlanView,
     ProgressRequest,
@@ -261,7 +262,9 @@ class PersistentLearningService:
             version=committed.version,
         )
 
-    async def _collision_history(self, plan: PlanView) -> tuple:
+    async def _collision_history(
+        self, plan: PlanView
+    ) -> tuple[CollisionFingerprintView, ...]:
         if self._exposure_repository is None:
             return ()
         item_family_ids = tuple(
