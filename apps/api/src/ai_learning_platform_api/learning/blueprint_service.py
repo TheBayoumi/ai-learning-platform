@@ -19,9 +19,10 @@ from ai_learning_platform_api.learning.blueprints import (
 from ai_learning_platform_api.learning.catalog import RoleDefinition
 from ai_learning_platform_api.learning.planner import CurriculumDecision, target_fingerprint
 from ai_learning_platform_api.learning.schemas import (
+    ActivityView,
     CurriculumTrigger,
     LearnerPlanVersion,
-    PlanPrioritySnapshot,
+    PlanView,
     TargetView,
     TrustedEvidenceVerdict,
 )
@@ -68,7 +69,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
     @staticmethod
     def _review_activity(
         *,
-        source: TrustedActivityView,
+        source: ActivityView,
         learner_name: str,
         generation: int,
         available_from: datetime,
@@ -79,26 +80,27 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             generation=generation,
             available_from=available_from,
         )
+        trusted_source = TrustedActivityView.model_validate(source.model_dump(mode="json"))
         review = TrustedActivityView.model_validate(base.model_dump(mode="json"))
         seed = hashlib.sha256(
-            f"review|{source.id}|{generation}|{available_from.isoformat()}".encode("utf-8")
+            f"review|{source.id}|{generation}|{available_from.isoformat()}".encode()
         ).hexdigest()
         return review.model_copy(
             update={
-                "item_family_id": source.item_family_id,
-                "item_family_version": source.item_family_version,
-                "item_family_trust": source.item_family_trust,
-                "blueprint_id": source.blueprint_id,
-                "blueprint_version": source.blueprint_version,
-                "blueprint_trust": source.blueprint_trust,
-                "rubric_version": source.rubric_version,
+                "item_family_id": trusted_source.item_family_id,
+                "item_family_version": trusted_source.item_family_version,
+                "item_family_trust": trusted_source.item_family_trust,
+                "blueprint_id": trusted_source.blueprint_id,
+                "blueprint_version": trusted_source.blueprint_version,
+                "blueprint_trust": trusted_source.blueprint_trust,
+                "rubric_version": trusted_source.rubric_version,
                 "instance_seed": seed,
                 "semantic_fingerprint": hashlib.sha256(
-                    f"review|{source.semantic_fingerprint}|{generation}".encode("utf-8")
+                    f"review|{trusted_source.semantic_fingerprint}|{generation}".encode()
                 ).hexdigest()[:32],
                 "semantic_tokens": [
-                    f"review:{source.blueprint_id}",
-                    f"source:{source.semantic_fingerprint}",
+                    f"review:{trusted_source.blueprint_id}",
+                    f"source:{trusted_source.semantic_fingerprint}",
                 ],
                 "scenario_tags": ["delayed-review", f"source:{source.id}"],
                 "high_stakes_eligible": False,
@@ -117,10 +119,14 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         weekly_hours: int,
         focus_competency_ids: list[str],
         decisions: tuple[CurriculumDecision, ...],
-        activities: list[TrustedActivityView],
+        activities: list[ActivityView],
         previous: LearnerPlanVersion | None,
     ) -> TrustedLearnerPlanVersion:
-        prior_exposures = list(getattr(previous, "task_exposures", []))
+        prior_exposures = (
+            list(previous.task_exposures)
+            if isinstance(previous, TrustedLearnerPlanVersion)
+            else []
+        )
         target_hash = target_fingerprint(target)
         bound: list[TrustedActivityView] = []
         collision_scope = list(prior_exposures)
@@ -191,7 +197,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         *,
         state_token: str,
         verdict: TrustedEvidenceVerdict,
-    ):
+    ) -> PlanView:
         """Reject high-stakes evaluator promotion when the source task was not trusted."""
         state = self._codec.decode(state_token)
         evidence = next(
@@ -201,12 +207,12 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         if evidence is None:
             return super().evaluate_evidence(state_token=state_token, verdict=verdict)
         activities = [
-            activity
-            for version in state.plan_versions
-            for activity in getattr(version, "activities", [])
+            activity for version in state.plan_versions for activity in version.activities
         ]
         source = next((item for item in activities if item.id == evidence.activity_id), None)
-        if source is None or not getattr(source, "high_stakes_eligible", False):
+        if source is None or not isinstance(source, TrustedActivityView):
+            raise UntrustedInstanceEvidenceError
+        if not source.high_stakes_eligible:
             raise UntrustedInstanceEvidenceError
         return super().evaluate_evidence(state_token=state_token, verdict=verdict)
 
