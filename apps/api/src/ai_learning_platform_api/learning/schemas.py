@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class StrictModel(BaseModel):
@@ -13,33 +13,73 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+TargetText = Annotated[str, Field(min_length=2, max_length=160)]
+OverlayText = Annotated[str, Field(min_length=1, max_length=120)]
+ClaimState = Literal[
+    "engineering_available",
+    "validation_locked",
+    "partial_profile_evidence",
+    "ready_against_profile",
+]
+
+
 class CompetencyRating(StrictModel):
-    """A learner self-rating on a bounded five-point scale."""
+    """A learner self-rating used only to prioritize diagnosis and planning."""
 
     competency_id: Annotated[str, Field(min_length=1, max_length=64)]
     score: Annotated[int, Field(ge=0, le=4)]
 
 
+class TargetRequest(StrictModel):
+    """Every required dimension that must be resolved before a curriculum is planned."""
+
+    seniority: TargetText
+    labor_market: TargetText
+    timeline_weeks: Annotated[int, Field(ge=1, le=104)]
+    geography: TargetText
+    stack_overlays: Annotated[list[OverlayText], Field(min_length=1, max_length=24)]
+    industry_overlay: TargetText | None = None
+    company_overlay: TargetText | None = None
+
+
+class TargetView(StrictModel):
+    """A fully resolved, version-bound career Target and its explicit claim boundary."""
+
+    role_id: str
+    role_version: str
+    seniority: str
+    labor_market: str
+    timeline_weeks: int
+    geography: str
+    stack_overlays: list[str]
+    industry_overlay: str | None = None
+    company_overlay: str | None = None
+    validation_state: Literal["provisional", "approved"]
+    scope: str
+    exclusions: list[str]
+
+
 class PlanRequest(StrictModel):
-    """Inputs required to diagnose gaps and generate the first plan."""
+    """Inputs required to create a resolved Target and the first planning hypothesis."""
 
     learner_name: Annotated[str, Field(min_length=2, max_length=80)]
     target_role: Annotated[str, Field(min_length=2, max_length=80)] = (
         "junior-python-backend-engineer"
     )
+    target: TargetRequest | None = None
     weekly_hours: Annotated[int, Field(ge=2, le=40)] = 8
     experience_summary: Annotated[str, Field(min_length=0, max_length=600)] = ""
     ratings: Annotated[list[CompetencyRating], Field(max_length=32)] = Field(default_factory=list)
 
 
 class ResumeRequest(StrictModel):
-    """Resume a signed learner state without server-side persistence."""
+    """Resume a signed learner state."""
 
     state_token: Annotated[str, Field(min_length=20, max_length=65_536)]
 
 
 class ProgressRequest(ResumeRequest):
-    """Record one evidence cycle and issue the next signed adaptive state."""
+    """Record learner-attested work and issue the next signed planning state."""
 
     activity_id: Annotated[str, Field(min_length=1, max_length=160)]
     reflection: Annotated[str, Field(min_length=0, max_length=1_000)] = ""
@@ -69,7 +109,7 @@ class AssessmentAnswer(StrictModel):
 
 
 class AssessmentSubmitRequest(ResumeRequest):
-    """Score an expiring signed attempt and replan from the calibration signal."""
+    """Score an expiring signed attempt and replan from the diagnostic signal."""
 
     attempt_token: Annotated[str, Field(min_length=20, max_length=16_384)]
     answers: Annotated[list[AssessmentAnswer], Field(min_length=1, max_length=4)]
@@ -86,25 +126,27 @@ class CompetencyView(StrictModel):
 
 
 class RoleView(StrictModel):
-    """Versioned target-role profile."""
+    """Versioned role-profile candidate plus the explicit Target defaults used by onboarding."""
 
     id: str
     version: str
     title: str
     summary: str
+    validation_state: Literal["provisional", "approved"] = "provisional"
+    default_target: TargetView
     competencies: list[CompetencyView]
 
 
 class PriorityCompetencyView(StrictModel):
-    """A competency prioritized from evidence and optional assessment calibration."""
+    """A competency prioritized from non-authoritative planning and diagnostic signals."""
 
     id: str
     name: str
     category: str
-    mastery_percent: int
-    effective_percent: int
+    planning_signal_percent: int
+    diagnostic_signal_percent: int
     assessment_percent: int | None = None
-    gap_percent: int
+    priority_gap_percent: int
     focused: bool = False
 
 
@@ -126,7 +168,7 @@ class ActivityView(StrictModel):
 
 
 class EvidenceRecordView(StrictModel):
-    """A learner-attested evidence record; it is not an external assessment."""
+    """A learner-attested record that may prioritize later diagnosis but grants no mastery."""
 
     activity_id: str
     competency_id: str
@@ -137,7 +179,9 @@ class EvidenceRecordView(StrictModel):
     evidence_reference: str
     criteria_met: list[str]
     confidence: int
-    provisional_mastery_delta: int
+    planning_signal_delta: int = Field(
+        validation_alias=AliasChoices("planning_signal_delta", "provisional_mastery_delta")
+    )
     next_review_at: str
 
 
@@ -178,7 +222,7 @@ class AssessmentFeedbackView(StrictModel):
 
 
 class AssessmentRecordView(StrictModel):
-    """A bounded calibration result retained in signed learner state."""
+    """A bounded calibration result retained as a diagnostic signal, not mastery evidence."""
 
     attempt_id: str
     bank_version: str
@@ -192,16 +236,19 @@ class AssessmentRecordView(StrictModel):
 class LearnerState(StrictModel):
     """Signed learner state carried by the browser and optionally owned by durable storage."""
 
-    schema_version: Literal[1, 2, 3] = 3
+    schema_version: Literal[1, 2, 3, 4] = 4
     storage_mode: Literal["browser", "durable"] = "browser"
     learner_id: str
     learner_name: str
     target_role: Annotated[str, Field(min_length=2, max_length=80)]
+    target: TargetView | None = None
     weekly_hours: int
     experience_summary: str
     created_at: str
     sequence: int
-    mastery: dict[str, int]
+    planning_signal: dict[str, int] = Field(default_factory=dict)
+    # Legacy schema 1-3 field. New transitions clear it after migrating it into planning_signal.
+    mastery: dict[str, int] = Field(default_factory=dict)
     completed_activity_ids: list[str]
     activities: list[ActivityView]
     plan_revision: int = 0
@@ -212,15 +259,18 @@ class LearnerState(StrictModel):
 
 
 class PlanView(StrictModel):
-    """Dashboard projection plus the newly signed learner state."""
+    """Planning projection that never presents unverified evidence as mastery or readiness."""
 
     state_token: str
     learner_id: str
     learner_name: str
     role: RoleView
-    readiness_percent: int
-    evidence_readiness_percent: int
-    assessment_coverage_percent: int
+    target: TargetView
+    claim_state: ClaimState = "validation_locked"
+    verified_readiness_percent: Annotated[int, Field(ge=0, le=100)] | None = None
+    planning_signal_percent: Annotated[int, Field(ge=0, le=100)]
+    diagnostic_signal_percent: Annotated[int, Field(ge=0, le=100)]
+    assessment_coverage_percent: Annotated[int, Field(ge=0, le=100)]
     priority_competencies: list[PriorityCompetencyView]
     current_activity: ActivityView | None
     completed_count: int
@@ -235,7 +285,7 @@ class PlanView(StrictModel):
 
 
 class AssessmentSubmissionView(StrictModel):
-    """Post-assessment feedback plus the recalibrated learner plan."""
+    """Post-assessment feedback plus the recalibrated planning projection."""
 
     score_percent: int
     correct_count: int
