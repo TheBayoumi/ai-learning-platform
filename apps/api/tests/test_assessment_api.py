@@ -128,7 +128,7 @@ def test_start_hides_answers_and_selects_priority_competencies() -> None:
     assert "correct" not in json.dumps(token_payload)
 
 
-def test_submit_all_correct_calibrates_and_replans() -> None:
+def test_submit_all_correct_calibrates_and_replans_without_granting_readiness() -> None:
     plan = _create_plan()
     attempt = _start(plan)
     response = asyncio.run(
@@ -153,8 +153,10 @@ def test_submit_all_correct_calibrates_and_replans() -> None:
 
     updated = result["plan"]
     assert updated["assessment_coverage_percent"] == 40
-    assert updated["evidence_readiness_percent"] == 0
-    assert updated["readiness_percent"] > 0
+    assert updated["planning_signal_percent"] == 0
+    assert updated["diagnostic_signal_percent"] > 0
+    assert updated["verified_readiness_percent"] is None
+    assert updated["claim_state"] == "validation_locked"
     assert updated["plan_revision"] == 1
     assert updated["sequence"] == 1
     assert len(updated["assessment_history"]) == 1
@@ -176,7 +178,7 @@ def test_submit_all_correct_calibrates_and_replans() -> None:
     assert all(score == 100 for score in assessed_priorities.values())
 
 
-def test_wrong_answers_do_not_overstate_calibration() -> None:
+def test_wrong_answers_do_not_create_a_readiness_claim() -> None:
     plan = _create_plan()
     attempt = _start(plan, count=2)
     response = asyncio.run(
@@ -195,7 +197,8 @@ def test_wrong_answers_do_not_overstate_calibration() -> None:
     result = response.json()
     assert result["score_percent"] == 0
     assert not any(item["correct"] for item in result["feedback"])
-    assert result["plan"]["readiness_percent"] == 0
+    assert result["plan"]["diagnostic_signal_percent"] == 0
+    assert result["plan"]["verified_readiness_percent"] is None
     assert result["plan"]["assessment_coverage_percent"] == 20
 
 
