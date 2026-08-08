@@ -6,7 +6,7 @@ import hashlib
 import json
 from collections.abc import Mapping
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from pydantic import ValidationError
 from sqlalchemy import delete, insert, select, update
@@ -15,7 +15,7 @@ from sqlalchemy.engine import RowMapping
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from ai_learning_platform_api.learning.schemas import LearnerState
+from ai_learning_platform_api.learning.schemas import LearnerState, TaskExposureView
 from ai_learning_platform_api.persistence.contracts import (
     IdempotencyConflictError,
     LearnerStateCommit,
@@ -24,6 +24,7 @@ from ai_learning_platform_api.persistence.contracts import (
     PersistenceUnavailableError,
     ReplayDivergenceError,
     StoredLearnerState,
+    TaskExposureConflictError,
     validate_account_id,
 )
 from ai_learning_platform_api.persistence.models import (
@@ -31,13 +32,14 @@ from ai_learning_platform_api.persistence.models import (
     learner_events,
     learner_states,
     outbox_records,
+    task_exposures,
 )
 
 type RowData = Mapping[str, Any] | RowMapping
 
 
 class PostgresLearnerStateRepository(LearnerStateRepository):
-    """Persist snapshots, append-only events, and outbox work in one transaction."""
+    """Persist snapshots, events, outbox work, and task exposures in one transaction."""
 
     def __init__(self, engine: AsyncEngine) -> None:
         self._engine = engine
@@ -69,6 +71,58 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
         if row is None:
             return None
         return _stored_state(row)
+
+    async def list_recent_task_exposures(
+        self,
+        *,
+        item_family_ids: tuple[str, ...],
+        limit: int = 512,
+    ) -> tuple[TaskExposureView, ...]:
+        """Return recent cross-learner exposures for trusted item families."""
+        if not item_family_ids:
+            return ()
+        bounded_limit = max(1, min(limit, 2048))
+        statement = (
+            select(
+                task_exposures.c.instance_id,
+                task_exposures.c.item_family_id,
+                task_exposures.c.item_family_version,
+                task_exposures.c.blueprint_id,
+                task_exposures.c.blueprint_version,
+                task_exposures.c.rubric_version,
+                task_exposures.c.plan_version_id,
+                task_exposures.c.semantic_signature,
+                task_exposures.c.semantic_fingerprint,
+                task_exposures.c.semantic_tokens,
+                task_exposures.c.high_stakes_eligible,
+                task_exposures.c.served_at,
+            )
+            .where(task_exposures.c.item_family_id.in_(item_family_ids))
+            .order_by(task_exposures.c.served_at.desc())
+            .limit(bounded_limit)
+        )
+        try:
+            async with self._engine.connect() as connection:
+                rows = (await connection.execute(statement)).mappings().all()
+        except SQLAlchemyError as error:
+            raise PersistenceUnavailableError from error
+        return tuple(
+            TaskExposureView(
+                instance_id=str(row["instance_id"]),
+                item_family_id=str(row["item_family_id"]),
+                item_family_version=str(row["item_family_version"]),
+                blueprint_id=str(row["blueprint_id"]),
+                blueprint_version=str(row["blueprint_version"]),
+                rubric_version=str(row["rubric_version"]),
+                plan_version_id=str(row["plan_version_id"]),
+                semantic_signature=str(row["semantic_signature"]),
+                semantic_fingerprint=str(row["semantic_fingerprint"]),
+                semantic_tokens=[str(item) for item in row["semantic_tokens"]],
+                high_stakes_eligible=bool(row["high_stakes_eligible"]),
+                served_at=row["served_at"].isoformat(),
+            )
+            for row in rows
+        )
 
     async def delete_account(self, *, account_id: str) -> bool:
         """Delete one anonymous account and all dependent records by database cascade."""
@@ -127,7 +181,7 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
             raise ReplayDivergenceError from error
 
     async def commit(self, request: LearnerStateCommit) -> StoredLearnerState:
-        """Commit one state transition with optimistic concurrency and idempotency."""
+        """Commit state, event, exposure index, and outbox with optimistic concurrency."""
         command_hash = _command_hash(request)
         try:
             async with self._engine.begin() as connection:
@@ -153,6 +207,7 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
                 )
 
                 next_version = await _write_snapshot(connection, request)
+                await _write_task_exposures(connection, request)
                 event_id = uuid4()
                 state_payload = request.state.model_dump(mode="json")
                 await connection.execute(
@@ -198,6 +253,8 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
             recovered = await self._recover_idempotent(request, command_hash)
             if recovered is not None:
                 return recovered
+            if _is_task_exposure_collision(error):
+                raise TaskExposureConflictError from error
             raise LearnerStateConflictError from error
         except LearnerStateConflictError:
             recovered = await self._recover_idempotent(request, command_hash)
@@ -262,6 +319,47 @@ async def _write_snapshot(connection: AsyncConnection, request: LearnerStateComm
     return next_version
 
 
+async def _write_task_exposures(
+    connection: AsyncConnection,
+    request: LearnerStateCommit,
+) -> None:
+    active = next(
+        (
+            item
+            for item in request.state.plan_versions
+            if item.plan_version_id == request.state.active_plan_version_id
+        ),
+        None,
+    )
+    if active is None:
+        return
+    for exposure in active.task_exposures:
+        if exposure.plan_version_id != active.plan_version_id:
+            continue
+        statement = (
+            postgresql_insert(task_exposures)
+            .values(
+                id=uuid5(NAMESPACE_URL, f"task-exposure:{exposure.instance_id}"),
+                account_id=request.account_id,
+                learner_id=request.learner_id,
+                instance_id=exposure.instance_id,
+                item_family_id=exposure.item_family_id,
+                item_family_version=exposure.item_family_version,
+                blueprint_id=exposure.blueprint_id,
+                blueprint_version=exposure.blueprint_version,
+                rubric_version=exposure.rubric_version,
+                plan_version_id=exposure.plan_version_id,
+                semantic_signature=exposure.semantic_signature,
+                semantic_fingerprint=exposure.semantic_fingerprint,
+                semantic_tokens=list(exposure.semantic_tokens),
+                high_stakes_eligible=exposure.high_stakes_eligible,
+                served_at=datetime.fromisoformat(exposure.served_at),
+            )
+            .on_conflict_do_nothing(index_elements=[task_exposures.c.instance_id])
+        )
+        await connection.execute(statement)
+
+
 async def _find_idempotent(
     connection: AsyncConnection,
     *,
@@ -282,6 +380,11 @@ async def _find_idempotent(
         )
     )
     return result.mappings().one_or_none()
+
+
+def _is_task_exposure_collision(error: IntegrityError) -> bool:
+    diagnostics = getattr(error.orig, "diag", None)
+    return getattr(diagnostics, "constraint_name", None) == "uq_task_exposures_blueprint_semantic"
 
 
 def _idempotent_result(row: RowData, command_hash: str) -> StoredLearnerState:
