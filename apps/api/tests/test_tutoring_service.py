@@ -13,11 +13,7 @@ from ai_learning_platform_api.tutoring.contracts import (
     TutorTurnRequest,
 )
 from ai_learning_platform_api.tutoring.gateway import TutorGatewayRequest
-from ai_learning_platform_api.tutoring.service import (
-    TutorProposalError,
-    TutorService,
-    TutorUnavailableError,
-)
+from ai_learning_platform_api.tutoring.service import TutorProposalError, TutorService
 
 SECRET = "tutor-test-secret-that-is-long-enough-123456789"
 ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
