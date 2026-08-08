@@ -11,6 +11,7 @@ from ai_learning_platform_api.learning.schemas import (
     AssessmentStartRequest,
     AssessmentSubmitRequest,
     PlanRequest,
+    PlanView,
     ProgressRequest,
     ReplanRequest,
 )
@@ -21,6 +22,7 @@ from ai_learning_platform_api.persistence.contracts import (
     LearnerStateNotFoundError,
     LearnerStateRepository,
     StoredLearnerState,
+    TaskExposureIndexRepository,
 )
 from ai_learning_platform_api.persistence.schemas import (
     PersistentAssessmentAttemptView,
@@ -46,11 +48,13 @@ class PersistentLearningService:
         *,
         secret: str,
         repository: LearnerStateRepository,
+        exposure_repository: TaskExposureIndexRepository | None = None,
         clock: Clock | None = None,
     ) -> None:
         self._core = LearningPlanService(secret)
         self._codec = SignedStateCodec(secret)
         self._repository = repository
+        self._exposure_repository = exposure_repository
         self._clock = clock if clock is not None else lambda: datetime.now(UTC)
 
     async def create_plan(
@@ -69,6 +73,7 @@ class PersistentLearningService:
                 ratings=request.ratings,
             )
         )
+        plan = await self._deduplicate_plan(plan)
         state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
         stored = await self._repository.commit(
             LearnerStateCommit(
@@ -92,10 +97,9 @@ class PersistentLearningService:
         supplied_state = self._codec.decode(request.state_token)
         if supplied_state.storage_mode != "browser":
             raise LearnerStateNotFoundError
-        normalized = self._core.resume(request.state_token)
-        state = self._codec.decode(normalized.state_token).model_copy(
-            update={"storage_mode": "durable"}
-        )
+        plan = self._core.resume(request.state_token)
+        plan = await self._deduplicate_plan(plan)
+        state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
         stored = await self._repository.commit(
             LearnerStateCommit(
                 account_id=account_id,
@@ -138,6 +142,7 @@ class PersistentLearningService:
                 confidence=request.confidence,
             )
         )
+        plan = await self._deduplicate_plan(plan)
         return await self._commit_plan(
             account_id=account_id,
             stored=stored,
@@ -164,6 +169,7 @@ class PersistentLearningService:
         )
         if plan.sequence == stored.state.sequence:
             return self._view(stored)
+        plan = await self._deduplicate_plan(plan)
         return await self._commit_plan(
             account_id=account_id,
             stored=stored,
@@ -190,6 +196,7 @@ class PersistentLearningService:
                 focus_competency_ids=request.focus_competency_ids,
             )
         )
+        plan = await self._deduplicate_plan(plan)
         return await self._commit_plan(
             account_id=account_id,
             stored=stored,
@@ -231,6 +238,8 @@ class PersistentLearningService:
                 answers=request.answers,
             )
         )
+        plan = await self._deduplicate_plan(submission.plan)
+        submission = submission.model_copy(update={"plan": plan})
         committed = await self._repository.commit(
             LearnerStateCommit(
                 account_id=account_id,
@@ -245,6 +254,33 @@ class PersistentLearningService:
         return PersistentAssessmentSubmissionView(
             submission=submission.model_copy(update={"plan": self._view(committed).plan}),
             version=committed.version,
+        )
+
+    async def _deduplicate_plan(self, plan: PlanView) -> PlanView:
+        """Rebind only against prior cohort exposures; current instances are not self-collisions."""
+        if self._exposure_repository is None:
+            return plan
+        build_activities = [
+            item for item in plan.active_plan_version.activities if item.kind == "build"
+        ]
+        item_family_ids = tuple(
+            sorted({item.item_family_id for item in build_activities if item.item_family_id})
+        )
+        if not item_family_ids:
+            return plan
+        current_instance_ids = {item.id for item in build_activities}
+        exposures = await self._exposure_repository.list_recent_task_exposures(
+            item_family_ids=item_family_ids,
+            limit=512,
+        )
+        external = tuple(
+            item for item in exposures if item.instance_id not in current_instance_ids
+        )
+        if not external:
+            return plan
+        return self._core.rebind_external_exposures(
+            state_token=plan.state_token,
+            external_exposures=external,
         )
 
     async def _commit_plan(
