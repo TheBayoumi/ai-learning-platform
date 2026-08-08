@@ -20,19 +20,8 @@
       "status": "PASSED",
       "branch": "main",
       "dependencies": [],
-      "dod_contracts": [
-        "D01",
-        "D02",
-        "D04",
-        "D11"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dod_contracts": ["D01", "D02", "D04", "D11"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [
         "apps/api/src/ai_learning_platform_api/learning/schemas.py",
         "apps/api/src/ai_learning_platform_api/learning/targeting.py",
@@ -44,13 +33,8 @@
         "apps/web/tests/learning-contract.test.ts",
         ".github/workflows/ci.yml"
       ],
-      "human_simulations": [
-        "overconfident learner",
-        "returning legacy learner"
-      ],
-      "human_simulation_evidence": [
-        "apps/api/tests/test_claim_integrity.py"
-      ],
+      "human_simulations": ["overconfident learner", "returning legacy learner"],
+      "human_simulation_evidence": ["apps/api/tests/test_claim_integrity.py"],
       "accepted_sha": "7aa1c4775402ac63414f1056cd59e159e6008368",
       "production_acceptance": [
         "PR #28 exact-head five-job gate and public-page verification"
@@ -62,21 +46,9 @@
       "name": "Evidence and deterministic state contracts",
       "status": "PASSED",
       "branch": "main",
-      "dependencies": [
-        "G01"
-      ],
-      "dod_contracts": [
-        "D03",
-        "D05",
-        "D11"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dependencies": ["G01"],
+      "dod_contracts": ["D03", "D05", "D11"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [
         "apps/api/src/ai_learning_platform_api/learning/evidence.py",
         "apps/api/src/ai_learning_platform_api/learning/schemas.py",
@@ -101,9 +73,7 @@
         "returning learner",
         "disputed-evidence learner"
       ],
-      "human_simulation_evidence": [
-        "apps/api/tests/test_g02_human_simulation.py"
-      ],
+      "human_simulation_evidence": ["apps/api/tests/test_g02_human_simulation.py"],
       "accepted_sha": "869f57a5701d32e58e7aaf6c7952245029ae2a2d",
       "production_acceptance": [
         "Quality Gates run 31240621242: API/Web/Runtime/Phase/Gate projection passed on PR head 8e4d36c5ea6e3915a43e1806e1cc06057a1d7517",
@@ -117,21 +87,9 @@
       "name": "Deterministic curriculum planner",
       "status": "PASSED",
       "branch": "main",
-      "dependencies": [
-        "G02"
-      ],
-      "dod_contracts": [
-        "D02",
-        "D04",
-        "D06"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dependencies": ["G02"],
+      "dod_contracts": ["D02", "D04", "D06"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [
         "apps/api/src/ai_learning_platform_api/learning/role_profile.py",
         "apps/api/src/ai_learning_platform_api/learning/planner.py",
@@ -151,9 +109,7 @@
         "assisted learner",
         "returning learner"
       ],
-      "human_simulation_evidence": [
-        "apps/api/tests/test_g03_human_simulation.py"
-      ],
+      "human_simulation_evidence": ["apps/api/tests/test_g03_human_simulation.py"],
       "accepted_sha": "71b1c39fb5d830f66e2030a3188dcd9ece435fe3",
       "production_acceptance": [
         "Quality Gates run 31241825666: API/Web/Runtime/Phase/Gate projection passed on exact PR head b25012d90de9d2aceffeeb7e0927bae15dda6939",
@@ -166,20 +122,9 @@
       "name": "Tutor policy loop",
       "status": "PASSED",
       "branch": "main",
-      "dependencies": [
-        "G03"
-      ],
-      "dod_contracts": [
-        "D05",
-        "D07"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dependencies": ["G03"],
+      "dod_contracts": ["D05", "D07"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [
         "apps/api/src/ai_learning_platform_api/tutoring/contracts.py",
         "apps/api/src/ai_learning_platform_api/tutoring/policy.py",
@@ -203,14 +148,12 @@
         "fast learner",
         "provider-outage learner"
       ],
-      "human_simulation_evidence": [
-        "apps/api/tests/test_g04_human_simulation.py"
-      ],
-      "accepted_sha": "6cf739ec4173e65aba053e8cdad8a2338ec18c81",
+      "human_simulation_evidence": ["apps/api/tests/test_g04_human_simulation.py"],
+      "accepted_sha": "d257ded7119ee83ac4dfe752b741f332d8b46f4e",
       "production_acceptance": [
         "Quality Gates run 31261154324: API/Web/Runtime/Phase/Gate projection all passed on exact PR head d257ded7119ee83ac4dfe752b741f332d8b46f4e",
         "API quality run 31261154324 passed 602 tests with coverage gate, strict mypy, migration, topology, and recovery checks",
-        "Product deployment run 31261242576 passed on exact main SHA 6cf739ec4173e65aba053e8cdad8a2338ec18c81"
+        "Product deployment run 31261242576 passed on merged main SHA 6cf739ec4173e65aba053e8cdad8a2338ec18c81"
       ],
       "next_phase": "G05"
     },
@@ -219,29 +162,30 @@
       "name": "Trusted blueprint and unique-instance system",
       "status": "VALIDATING",
       "branch": "product/g05-trusted-blueprint-instances",
-      "dependencies": [
-        "G04"
-      ],
-      "dod_contracts": [
-        "D08"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dependencies": ["G04"],
+      "dod_contracts": ["D08"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [
         "apps/api/src/ai_learning_platform_api/learning/schemas.py",
         "apps/api/src/ai_learning_platform_api/learning/blueprints.py",
         "apps/api/src/ai_learning_platform_api/learning/blueprint_service.py",
         "apps/api/src/ai_learning_platform_api/learning/__init__.py",
-        "apps/api/src/ai_learning_platform_api/persistence/service.py"
+        "apps/api/src/ai_learning_platform_api/learning/service.py",
+        "apps/api/src/ai_learning_platform_api/learning/evidence.py",
+        "apps/api/src/ai_learning_platform_api/tutoring/service.py",
+        "apps/api/src/ai_learning_platform_api/persistence/contracts.py",
+        "apps/api/src/ai_learning_platform_api/persistence/models.py",
+        "apps/api/src/ai_learning_platform_api/persistence/postgres.py",
+        "apps/api/src/ai_learning_platform_api/persistence/service.py",
+        "apps/api/migrations/versions/20260808_02_task_exposure_index.py",
+        ".github/workflows/product-deployment.yml"
       ],
       "test_evidence": [
         "apps/api/tests/test_g05_blueprint_instances.py",
         "apps/api/tests/test_g05_human_simulation.py",
+        "apps/api/tests/test_g05_durable_exposure_index.py",
+        "apps/api/tests/test_signed_state_codec_security.py",
+        "apps/api/tests/test_tutoring_service.py",
         "apps/api/tests/test_product_gate.py",
         ".github/workflows/ci.yml"
       ],
@@ -249,10 +193,14 @@
         "same-track two-learner pair",
         "repeated regeneration",
         "returning learner",
-        "untrusted-content learner"
+        "untrusted-content learner",
+        "cross-learner collision learner",
+        "deletion and collision-tombstone learner",
+        "delayed-review learner"
       ],
       "human_simulation_evidence": [
-        "apps/api/tests/test_g05_human_simulation.py"
+        "apps/api/tests/test_g05_human_simulation.py",
+        "apps/api/tests/test_g05_durable_exposure_index.py"
       ],
       "accepted_sha": null,
       "production_acceptance": [],
@@ -263,20 +211,9 @@
       "name": "Independent retention and transfer engine",
       "status": "NOT_STARTED",
       "branch": null,
-      "dependencies": [
-        "G05"
-      ],
-      "dod_contracts": [
-        "D05",
-        "D09"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dependencies": ["G05"],
+      "dod_contracts": ["D05", "D09"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [],
       "test_evidence": [],
       "human_simulations": [
@@ -295,19 +232,9 @@
       "name": "Work provenance and simulations",
       "status": "NOT_STARTED",
       "branch": null,
-      "dependencies": [
-        "G06"
-      ],
-      "dod_contracts": [
-        "D10"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dependencies": ["G06"],
+      "dod_contracts": ["D10"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [],
       "test_evidence": [],
       "human_simulations": [
@@ -326,19 +253,9 @@
       "name": "Readiness projection",
       "status": "NOT_STARTED",
       "branch": null,
-      "dependencies": [
-        "G07"
-      ],
-      "dod_contracts": [
-        "D11"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dependencies": ["G07"],
+      "dod_contracts": ["D11"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [],
       "test_evidence": [],
       "human_simulations": [
@@ -357,21 +274,9 @@
       "name": "Integration hardening",
       "status": "NOT_STARTED",
       "branch": null,
-      "dependencies": [
-        "G08"
-      ],
-      "dod_contracts": [
-        "D03",
-        "D07",
-        "D12"
-      ],
-      "risk_tiers": [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-      ],
+      "dependencies": ["G08"],
+      "dod_contracts": ["D03", "D07", "D12"],
+      "risk_tiers": ["A", "B", "C", "D", "E"],
       "implementation_evidence": [],
       "test_evidence": [],
       "human_simulations": [
