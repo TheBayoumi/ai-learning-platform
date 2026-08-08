@@ -116,9 +116,9 @@ def test_repeated_replanning_rejects_exact_and_near_duplicate_history() -> None:
 
 def test_untrusted_blueprint_cannot_create_high_stakes_instance() -> None:
     role = ROLE_CATALOG["junior-python-backend-engineer"]
-    target = LearningPlanService(SECRET).create_plan(
-        PlanRequest(learner_name="Target Source")
-    ).target
+    target = (
+        LearningPlanService(SECRET).create_plan(PlanRequest(learner_name="Target Source")).target
+    )
     untrusted = TrustedActivityView(
         id="legacy-task",
         competency_id=role.competencies[0].identifier,

@@ -164,13 +164,19 @@ def semantic_similarity(left: Iterable[str], right: Iterable[str]) -> float:
 
 
 def collides(
-    *, semantic_fingerprint: str, semantic_tokens: Iterable[str], exposures: Iterable[TaskExposureView]
+    *,
+    semantic_fingerprint: str,
+    semantic_tokens: Iterable[str],
+    exposures: Iterable[TaskExposureView],
 ) -> bool:
     """Reject exact or near-duplicate content against supplied learner/cohort exposure history."""
     for exposure in exposures:
         if exposure.semantic_fingerprint == semantic_fingerprint:
             return True
-        if semantic_similarity(semantic_tokens, exposure.semantic_tokens) >= _NEAR_DUPLICATE_THRESHOLD:
+        if (
+            semantic_similarity(semantic_tokens, exposure.semantic_tokens)
+            >= _NEAR_DUPLICATE_THRESHOLD
+        ):
             return True
     return False
 
