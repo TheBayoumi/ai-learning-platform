@@ -252,7 +252,11 @@ class PersistentLearningService:
         )
         return PersistentAssessmentSubmissionView(
             submission=submission.model_copy(
-                update={"plan": committed_plan.model_copy(update={"state_token": self._codec.encode(committed.state)})}
+                update={
+                    "plan": committed_plan.model_copy(
+                        update={"state_token": self._codec.encode(committed.state)}
+                    )
+                }
             ),
             version=committed.version,
         )

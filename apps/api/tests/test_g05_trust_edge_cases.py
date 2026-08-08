@@ -102,10 +102,13 @@ def test_canonical_objective_change_requires_reviewed_manifest_refresh() -> None
     assert changed.item_family_trust == "trusted"
     assert changed.blueprint_trust == "legacy_unverified"
     assert changed.blueprint_approval_id == ""
-    assert attach_blueprint_identity(
-        role=changed_role,
-        activity=_catalog_activity(),
-    ).high_stakes_eligible is False
+    assert (
+        attach_blueprint_identity(
+            role=changed_role,
+            activity=_catalog_activity(),
+        ).high_stakes_eligible
+        is False
+    )
 
 
 def test_item_family_and_blueprint_trust_can_be_demoted_independently(
@@ -167,7 +170,9 @@ def test_similarity_and_collision_checks_cover_exact_near_and_distinct_cases() -
     )
 
 
-def test_generated_one_dimension_variant_is_near_duplicate_but_two_dimension_variant_is_not() -> None:
+def test_generated_one_dimension_variant_is_near_duplicate_but_two_dimension_variant_is_not() -> (
+    None
+):
     exposure = CollisionFingerprintView(
         item_family_id="family",
         blueprint_id="blueprint",
