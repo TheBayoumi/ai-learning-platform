@@ -1,0 +1,49 @@
+name: G02 Ruff normalization
+
+on:
+  push:
+    branches:
+      - product/g02-deterministic-evidence-state
+    paths:
+      - .github/workflows/g02-ruff-normalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: product/g02-deterministic-evidence-state
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: 0.11.18
+          python-version: 3.13.13
+          working-directory: apps/api
+      - name: Apply locked Ruff fixes and self-delete
+        shell: bash
+        run: |
+          uv sync --project apps/api --locked --all-groups
+          files=(
+            apps/api/src/ai_learning_platform_api/learning/schemas.py
+            apps/api/src/ai_learning_platform_api/learning/evidence.py
+            apps/api/src/ai_learning_platform_api/learning/service.py
+            apps/api/src/ai_learning_platform_api/persistence/schemas.py
+            apps/api/src/ai_learning_platform_api/persistence/service.py
+            apps/api/src/ai_learning_platform_api/tutoring/service.py
+            apps/api/tests/test_evidence_state.py
+            apps/api/tests/test_tutoring_service.py
+          )
+          uv run --project apps/api --locked ruff check --fix "${files[@]}"
+          uv run --project apps/api --locked ruff format "${files[@]}"
+          uv run --project apps/api --locked ruff check "${files[@]}"
+          rm .github/workflows/g02-ruff-normalize.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Normalize G02 evidence state with locked Ruff"
+          git push origin HEAD:product/g02-deterministic-evidence-state
