@@ -36,7 +36,9 @@ class PolicyAwareGateway:
                 "selected_move": policy["selected_move"],
                 "hint_level": policy["hint_level"],
                 "assistance": policy["assistance"],
-                "message": "State the invariant you expect, then show which observation would disprove it.",
+                "message": (
+                    "State the invariant you expect, then show which observation would disprove it."
+                ),
                 "follow_up_question": "Which assumption can you test without seeing the solution?",
                 "answer_revealed": self.reveal_answer,
             },
