@@ -3,7 +3,7 @@
   "program": "mission-aligned-product-completion",
   "mission_dod": "plans/product-completion-definition-of-done.md",
   "execution_dod": "plans/adaptive-product-definition-of-done.md",
-  "active_phase": "G07",
+  "active_phase": "G08",
   "engineering_claim_only": true,
   "validation_track_remains_external": true,
   "required_checks": [
@@ -335,8 +335,8 @@
     {
       "id": "G07",
       "name": "Work provenance and simulations",
-      "status": "VALIDATING",
-      "branch": "product/g07-work-provenance-simulations",
+      "status": "PASSED",
+      "branch": "main",
       "dependencies": [
         "G06"
       ],
@@ -374,15 +374,18 @@
       "human_simulation_evidence": [
         "apps/api/tests/test_g07_human_simulation.py"
       ],
-      "accepted_sha": null,
-      "production_acceptance": [],
+      "accepted_sha": "0c1a9cd00dc2ed9ed6debf462dacf4eab980f49f",
+      "production_acceptance": [
+        "Exact-head Quality Gates passed before merge on 0c1a9cd00dc2ed9ed6debf462dacf4eab980f49f",
+        "Product deployment run 31274384100 passed on main SHA f7935deb3e278178f7d924c72e4ff841255b5a4a containing merge 12db4ac47ce5cc337e8342a03d19f5ef3e0ceeaa"
+      ],
       "next_phase": "G08"
     },
     {
       "id": "G08",
       "name": "Readiness projection",
-      "status": "NOT_STARTED",
-      "branch": null,
+      "status": "VALIDATING",
+      "branch": "product/g08-readiness-projection",
       "dependencies": [
         "G07"
       ],
