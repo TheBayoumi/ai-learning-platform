@@ -6,6 +6,9 @@ import hashlib
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from ai_learning_platform_api.learning.blueprint_approval_manifest import (
+    APPROVED_ROLE_CATALOG_DIGESTS,
+)
 from ai_learning_platform_api.learning.catalog import RoleDefinition
 from ai_learning_platform_api.learning.schemas import (
     ActivityView,
@@ -20,8 +23,8 @@ _APPROVED_BY = "product-blueprint-review"
 _NEAR_DUPLICATE_THRESHOLD = 0.80
 _MAX_BIND_ATTEMPTS = 128
 
-# Explicit version-bound approval registry. A future role revision is untrusted until it is
-# deliberately added here after blueprint/rubric review; exact catalog matching alone is not trust.
+# ItemFamily and Blueprint trust are intentionally separate. A future role revision is untrusted
+# until it is deliberately added after review; exact catalog matching alone is not sufficient.
 _APPROVED_ITEM_FAMILY_ROLE_VERSIONS = {
     "junior-python-backend-engineer": "2026.07-provisional-1",
     "ai-application-engineer": "2026.08-provisional-1",
@@ -133,16 +136,42 @@ def _catalog_title(served_title: str) -> str:
     return title if separator else served_title
 
 
+def _catalog_digest(role: RoleDefinition) -> str:
+    """Fingerprint the exact reviewed catalog surface, including canonical objectives."""
+    parts = [role.identifier, role.version]
+    for competency in role.competencies:
+        parts.append(competency.identifier)
+        for index, template in enumerate(competency.activities, start=1):
+            parts.extend(
+                [
+                    str(index),
+                    template.title,
+                    template.objective,
+                    template.deliverable,
+                    *template.acceptance_criteria,
+                ]
+            )
+    return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
+
+
+def _catalog_is_approved(role: RoleDefinition) -> bool:
+    expected = APPROVED_ROLE_CATALOG_DIGESTS.get((role.identifier, role.version))
+    return expected is not None and expected == _catalog_digest(role)
+
+
 def _approval_for(
     *,
     role: RoleDefinition,
     competency_id: str,
     template_index: int,
     template_title: str,
+    template_objective: str,
     template_deliverable: str,
     template_criteria: Iterable[str],
 ) -> BlueprintApproval | None:
     if _APPROVED_BLUEPRINT_ROLE_VERSIONS.get(role.identifier) != role.version:
+        return None
+    if not _catalog_is_approved(role):
         return None
     reviewed_payload = "|".join(
         (
@@ -151,6 +180,7 @@ def _approval_for(
             competency_id,
             str(template_index),
             template_title,
+            template_objective,
             template_deliverable,
             *template_criteria,
             _APPROVAL_VERSION,
@@ -164,7 +194,7 @@ def _approval_for(
 
 
 def blueprint_identity(role: RoleDefinition, activity: ActivityView) -> BlueprintIdentity:
-    """Resolve trust only for an exact catalog match with explicit version-bound approval."""
+    """Resolve trust only for an exact catalog match with explicit reviewed approval state."""
     competency = next(
         (item for item in role.competencies if item.identifier == activity.competency_id),
         None,
@@ -185,11 +215,20 @@ def blueprint_identity(role: RoleDefinition, activity: ActivityView) -> Blueprin
                 competency_id=competency.identifier,
                 template_index=index,
                 template_title=template.title,
+                template_objective=template.objective,
                 template_deliverable=template.deliverable,
                 template_criteria=template.acceptance_criteria,
             )
             template_hash = _digest(
-                "|".join((family_id, str(index), template.title, template.deliverable)),
+                "|".join(
+                    (
+                        family_id,
+                        str(index),
+                        template.title,
+                        template.objective,
+                        template.deliverable,
+                    )
+                ),
                 16,
             )
             family_trusted = (
@@ -251,12 +290,24 @@ def attach_blueprint_identity(*, role: RoleDefinition, activity: ActivityView) -
 
 
 def semantic_similarity(left: Iterable[str], right: Iterable[str]) -> float:
+    """Compare scenario identity while treating one-dimension variants as near duplicates."""
     left_set = set(left)
     right_set = set(right)
     if not left_set and not right_set:
         return 1.0
+    shared = left_set & right_set
+    generated_shape = (
+        len(left_set) == 4
+        and len(right_set) == 4
+        and any(token.startswith("b:") for token in shared)
+    )
+    # Generated G05 task signatures contain blueprint/domain/failure/constraint. If two tasks
+    # share the blueprint plus any two scenario dimensions, only one dimension changed; treat
+    # that as a near duplicate even though ordinary Jaccard would report 3/5 == 0.60.
+    if generated_shape and len(shared) >= 3:
+        return 1.0
     union = left_set | right_set
-    return len(left_set & right_set) / max(len(union), 1)
+    return len(shared) / max(len(union), 1)
 
 
 def collides(
