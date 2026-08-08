@@ -1,0 +1,131 @@
+name: G06 finalize once
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.head_ref == 'product/g06-retention-transfer-engine' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+      - name: Ensure G06 contract wiring
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          def ensure_replace(path: str, old: str, new: str, proof: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if proof in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'marker missing in {path}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          schema = Path('apps/api/src/ai_learning_platform_api/learning/schemas.py')
+          text = schema.read_text(encoding='utf-8')
+          if 'VerificationClass = Literal[' not in text:
+              marker = 'ReasoningState = Literal["not_observed", "submitted", "verified"]\n'
+              text = text.replace(marker, marker + 'VerificationClass = Literal["independent", "retention_7d", "retention_30d", "transfer"]\nProbeStatus = Literal["scheduled", "passed", "failed"]\nProbeDisposition = Literal["passed", "failed"]\n', 1)
+          if 'class TrustedProbeVerdict' not in text:
+              marker = '\n\nclass CompetencyView(StrictModel):\n'
+              models = '''\n\nclass TrustedProbeVerdict(StrictModel):\n    probe_id: Annotated[str, Field(min_length=8, max_length=160)]\n    competency_id: Annotated[str, Field(min_length=1, max_length=64)]\n    verification_class: VerificationClass\n    disposition: ProbeDisposition\n    independence: EvidenceIndependence = "unverified"\n    assistance: AssistanceLevel = "unknown"\n    reasoning: ReasoningState = "not_observed"\n    evaluator_id: Annotated[str, Field(min_length=2, max_length=120)]\n    evaluator_version: Annotated[str, Field(min_length=1, max_length=80)]\n    confidence: Annotated[int, Field(ge=0, le=100)]\n    findings: Annotated[list[str], Field(max_length=12)] = Field(default_factory=list)\n\n\nclass VerificationProbeView(StrictModel):\n    probe_id: str\n    competency_id: str\n    verification_class: VerificationClass\n    source_evidence_id: str\n    due_at: str\n    status: ProbeStatus = "scheduled"\n    unseen_instance_fingerprint: str = ""\n    completed_at: str | None = None\n    evaluation_id: str = ""\n    evaluator_id: str = ""\n    evaluator_version: str = ""\n\n\nclass CompetencyQualificationState(StrictModel):\n    competency_id: str\n    satisfied_classes: list[VerificationClass] = Field(default_factory=list)\n    failed_classes: list[VerificationClass] = Field(default_factory=list)\n    independent_evidence_ids: list[str] = Field(default_factory=list)\n    assisted_evidence_ids: list[str] = Field(default_factory=list)\n    last_updated_at: str | None = None\n\n\nclass CompetencyQualificationView(StrictModel):\n    competency_id: str\n    satisfied_classes: list[VerificationClass]\n    missing_classes: list[VerificationClass]\n    failed_classes: list[VerificationClass]\n    independent_evidence_ids: list[str]\n    assisted_evidence_ids: list[str]\n    scheduled_probe_ids: list[str]\n    next_probe_at: str | None\n    fully_qualified: bool\n'''
+              text = text.replace(marker, models + marker, 1)
+          if 'competency_qualification: dict[str, CompetencyQualificationState]' not in text:
+              text = text.replace(
+                  '    competency_evidence: dict[str, CompetencyEvidenceState] = Field(default_factory=dict)\n',
+                  '    competency_evidence: dict[str, CompetencyEvidenceState] = Field(default_factory=dict)\n    competency_qualification: dict[str, CompetencyQualificationState] = Field(default_factory=dict)\n    verification_probes: list[VerificationProbeView] = Field(default_factory=list)\n', 1)
+          if '    qualifications: list[CompetencyQualificationView]' not in text:
+              text = text.replace(
+                  '    evidence_evaluations: list[EvidenceEvaluationRecord]\n',
+                  '    evidence_evaluations: list[EvidenceEvaluationRecord]\n    qualifications: list[CompetencyQualificationView] = Field(default_factory=list)\n    verification_probes: list[VerificationProbeView] = Field(default_factory=list)\n', 1)
+          schema.write_text(text, encoding='utf-8')
+
+          init = Path('apps/api/src/ai_learning_platform_api/learning/__init__.py')
+          text = init.read_text(encoding='utf-8')
+          if 'QualificationLearningPlanService as LearningPlanService' not in text:
+              text = text.replace('BlueprintLearningPlanService as LearningPlanService', 'QualificationLearningPlanService as LearningPlanService')
+              text = text.replace('ai_learning_platform_api.learning.blueprint_service', 'ai_learning_platform_api.learning.qualification_service')
+          init.write_text(text, encoding='utf-8')
+
+          ps = Path('apps/api/src/ai_learning_platform_api/persistence/schemas.py')
+          text = ps.read_text(encoding='utf-8')
+          if 'TrustedProbeVerdict' not in text:
+              text = text.replace('    TrustedEvidenceVerdict,\n', '    TrustedEvidenceVerdict,\n    TrustedProbeVerdict,\n', 1)
+          if 'class PersistentProbeEvaluationRequest' not in text:
+              marker = '\n\nclass PersistentPlanView(StrictModel):\n'
+              text = text.replace(marker, '''\n\nclass PersistentProbeEvaluationRequest(StrictModel):\n    learner_id: UUID\n    expected_version: Annotated[int, Field(ge=0)]\n    idempotency_key: Annotated[str, Field(min_length=8, max_length=160)]\n    verdict: TrustedProbeVerdict\n''' + marker, 1)
+          ps.write_text(text, encoding='utf-8')
+
+          pservice = Path('apps/api/src/ai_learning_platform_api/persistence/service.py')
+          text = pservice.read_text(encoding='utf-8')
+          if 'PersistentProbeEvaluationRequest' not in text:
+              text = text.replace('    PersistentProgressRequest,\n', '    PersistentProgressRequest,\n    PersistentProbeEvaluationRequest,\n', 1)
+          if 'async def evaluate_probe(' not in text:
+              marker = '\n    async def replan(\n'
+              addition = '''\n    async def evaluate_probe(\n        self,\n        *,\n        account_id: str,\n        request: PersistentProbeEvaluationRequest,\n    ) -> PersistentPlanView:\n        stored = await self._load_expected(\n            account_id=account_id,\n            learner_id=request.learner_id,\n            expected_version=request.expected_version,\n        )\n        plan = self._core.evaluate_probe(\n            state_token=self._codec.encode(stored.state),\n            verdict=request.verdict,\n        )\n        if plan.sequence == stored.state.sequence:\n            return self._view(stored)\n        return await self._commit_plan(\n            account_id=account_id,\n            stored=stored,\n            state_token=plan.state_token,\n            idempotency_key=request.idempotency_key,\n            event_type="learner.probe.evaluated",\n        )\n\n'''
+              text = text.replace(marker, addition + marker, 1)
+          pservice.write_text(text, encoding='utf-8')
+
+          state_path = Path('plans/adaptive-product-state.json')
+          state = json.loads(state_path.read_text(encoding='utf-8'))
+          state['active_phase'] = 'G06'
+          g05 = next(x for x in state['phases'] if x['id'] == 'G05')
+          g05.update({'status':'PASSED','branch':'main','accepted_sha':'d53e5457302b2106f68a410f2da6ed7001af60b2'})
+          g05['production_acceptance'] = [
+              'Quality Gates run 31269258470 passed on exact PR head d53e5457302b2106f68a410f2da6ed7001af60b2',
+              'Product deployment run 31269539912 passed on merged main SHA 51a9df280b3e705366880991e487171e01185641',
+          ]
+          g06 = next(x for x in state['phases'] if x['id'] == 'G06')
+          g06.update({'status':'VALIDATING','branch':'product/g06-retention-transfer-engine','accepted_sha':None,'production_acceptance':[]})
+          g06['implementation_evidence'] = [
+              'apps/api/src/ai_learning_platform_api/learning/qualification.py',
+              'apps/api/src/ai_learning_platform_api/learning/qualification_service.py',
+              'apps/api/src/ai_learning_platform_api/learning/schemas.py',
+              'apps/api/src/ai_learning_platform_api/persistence/schemas.py',
+              'apps/api/src/ai_learning_platform_api/persistence/service.py',
+          ]
+          g06['test_evidence'] = [
+              'apps/api/tests/test_g06_retention_transfer.py',
+              'apps/api/tests/test_g06_human_simulation.py',
+              'apps/api/tests/test_product_gate.py',
+              '.github/workflows/ci.yml',
+          ]
+          g06['human_simulation_evidence'] = ['apps/api/tests/test_g06_human_simulation.py']
+          state_path.write_text(json.dumps(state, indent=2)+'\n', encoding='utf-8')
+          PY
+      - name: Verify G06 exact source
+        working-directory: apps/api
+        run: |
+          uv run --locked ruff format src tests migrations/versions
+          uv run --locked ruff check --fix src tests migrations/versions
+          uv run --locked ruff format src tests migrations/versions
+          uv run --locked ruff check src tests migrations/versions
+          uv run --locked mypy src tests ../../scripts
+          uv run --locked pytest tests/test_g06_retention_transfer.py tests/test_g06_human_simulation.py tests/test_evidence_state.py tests/test_g05_blueprint_instances.py -q
+      - name: Commit and remove helpers
+        run: |
+          git rm -f .github/workflows/g06-wire-once.yml .github/workflows/g06-focused-once.yml .github/workflows/g06-finalize-once.yml 2>/dev/null || true
+          rm -f plans/g06-focused-failure.txt
+          git add -A
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Finalize deterministic G06 retention and transfer engine'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
