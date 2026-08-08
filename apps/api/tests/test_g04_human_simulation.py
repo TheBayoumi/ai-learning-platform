@@ -64,7 +64,11 @@ def test_struggling_learner_gets_progressive_help_without_answer_level_assistanc
         service = _service(plan, PolicyAwareGateway())
         token = None
         levels: list[tuple[int, str]] = []
-        for message in ("I do not know where to start", "Still stuck", "I tested it and still fail"):
+        for message in (
+            "I do not know where to start",
+            "Still stuck",
+            "I tested it and still fail",
+        ):
             prepared = await service.prepare(
                 account_id=ACCOUNT_ID,
                 request=TutorTurnRequest(
@@ -80,7 +84,10 @@ def test_struggling_learner_gets_progressive_help_without_answer_level_assistanc
             assert completed.proposal.answer_revealed is False
 
         assert levels == [(0, "none"), (1, "hint"), (2, "guided")]
-        assert all(item.assistance != "answer_level" for item in TutorSessionCodec(SECRET).decode(token).decisions)
+        assert all(
+            item.assistance != "answer_level"
+            for item in TutorSessionCodec(SECRET).decode(token).decisions
+        )
 
     asyncio.run(scenario())
 

@@ -126,7 +126,9 @@ class TutorPolicyEngine:
             selected_move = "explain"
             hint_level = 2
             assistance = "guided"
-            reason = "prior hint exists; allow guided explanation but still forbid answer-level help"
+            reason = (
+                "prior hint exists; allow guided explanation but still forbid answer-level help"
+            )
         decision_id = self._decision_id(
             learner_id=plan.learner_id,
             plan_version_id=plan.active_plan_version.plan_version_id,

@@ -21,7 +21,11 @@ from ai_learning_platform_api.tutoring.contracts import (
     TutorSessionState,
     TutorTurnRequest,
 )
-from ai_learning_platform_api.tutoring.gateway import TutorGatewayError, TutorGatewayMessage, TutorGatewayRequest
+from ai_learning_platform_api.tutoring.gateway import (
+    TutorGatewayError,
+    TutorGatewayMessage,
+    TutorGatewayRequest,
+)
 from ai_learning_platform_api.tutoring.limits import TutorTurnLimiter
 from ai_learning_platform_api.tutoring.policy import InvalidTutorSessionError
 from ai_learning_platform_api.tutoring.service import (
@@ -155,7 +159,9 @@ def test_tutoring_router_emits_metadata_only_after_validated_completion() -> Non
     assert "event: meta" in response.text
     assert '"authoritative":false' in response.text
     assert '"decision_id":"tutor-decision-transport"' in response.text
-    assert '"tutor_session_token":"signed-tutor-session-token-with-sufficient-length"' in response.text
+    assert (
+        '"tutor_session_token":"signed-tutor-session-token-with-sufficient-length"' in response.text
+    )
     assert 'event: delta\ndata: {"text":"First step"}' in response.text
     assert '"follow_up_question":"What would falsify that?"' in response.text
 
