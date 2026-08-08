@@ -123,9 +123,7 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         previous: LearnerPlanVersion | None,
     ) -> TrustedLearnerPlanVersion:
         prior_exposures = (
-            list(previous.task_exposures)
-            if isinstance(previous, TrustedLearnerPlanVersion)
-            else []
+            list(previous.task_exposures) if isinstance(previous, TrustedLearnerPlanVersion) else []
         )
         target_hash = target_fingerprint(target)
         bound: list[TrustedActivityView] = []
