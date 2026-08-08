@@ -3,7 +3,7 @@
   "program": "mission-aligned-product-completion",
   "mission_dod": "plans/product-completion-definition-of-done.md",
   "execution_dod": "plans/adaptive-product-definition-of-done.md",
-  "active_phase": "G02",
+  "active_phase": "G03",
   "engineering_claim_only": true,
   "validation_track_remains_external": true,
   "required_checks": [
@@ -42,8 +42,8 @@
     {
       "id": "G02",
       "name": "Evidence and deterministic state contracts",
-      "status": "VALIDATING",
-      "branch": "product/g02-deterministic-evidence-state",
+      "status": "PASSED",
+      "branch": "main",
       "dependencies": ["G01"],
       "dod_contracts": ["D03", "D05", "D11"],
       "risk_tiers": ["A", "B", "C", "D", "E"],
@@ -59,6 +59,8 @@
         "apps/api/tests/test_evidence_state.py",
         "apps/api/tests/test_claim_integrity.py",
         "apps/api/tests/test_g02_human_simulation.py",
+        "apps/api/tests/test_signed_state_codec_security.py",
+        "apps/api/tests/test_product_gate.py",
         "apps/web/tests/learning-contract.test.ts",
         "apps/web/tests/product-architecture.test.ts",
         ".github/workflows/ci.yml"
@@ -70,22 +72,42 @@
         "disputed-evidence learner"
       ],
       "human_simulation_evidence": ["apps/api/tests/test_g02_human_simulation.py"],
-      "accepted_sha": null,
-      "production_acceptance": [],
+      "accepted_sha": "869f57a5701d32e58e7aaf6c7952245029ae2a2d",
+      "production_acceptance": [
+        "Quality Gates run 31240621242: API/Web/Runtime/Phase/Gate projection passed on PR head 8e4d36c5ea6e3915a43e1806e1cc06057a1d7517",
+        "Product deployment run 31240715131 passed on main SHA 869f57a5701d32e58e7aaf6c7952245029ae2a2d",
+        "Sanitized deployment artifact 9016939998 sha256:9a79d7ba0b3845ceec2a1c8c3fb3e31e6b087c154f55704c367ccedee13897b3"
+      ],
       "next_phase": "G03"
     },
     {
       "id": "G03",
       "name": "Deterministic curriculum planner",
-      "status": "NOT_STARTED",
-      "branch": null,
+      "status": "IMPLEMENTING",
+      "branch": "product/g03-deterministic-curriculum-planner",
       "dependencies": ["G02"],
       "dod_contracts": ["D02", "D04", "D06"],
       "risk_tiers": ["A", "B", "C", "D", "E"],
-      "implementation_evidence": [],
-      "test_evidence": [],
-      "human_simulations": ["struggling learner", "fast learner", "assisted learner", "returning learner"],
-      "human_simulation_evidence": [],
+      "implementation_evidence": [
+        "apps/api/src/ai_learning_platform_api/learning/role_profile.py",
+        "apps/api/src/ai_learning_platform_api/learning/planner.py",
+        "apps/api/src/ai_learning_platform_api/learning/schemas.py",
+        "apps/api/src/ai_learning_platform_api/learning/service.py"
+      ],
+      "test_evidence": [
+        "apps/api/tests/test_g03_curriculum_planner.py",
+        "apps/api/tests/test_g03_human_simulation.py",
+        "apps/api/tests/test_product_gate.py",
+        "apps/web/tests/learning-contract.test.ts",
+        ".github/workflows/ci.yml"
+      ],
+      "human_simulations": [
+        "struggling learner",
+        "fast learner",
+        "assisted learner",
+        "returning learner"
+      ],
+      "human_simulation_evidence": ["apps/api/tests/test_g03_human_simulation.py"],
       "accepted_sha": null,
       "production_acceptance": [],
       "next_phase": "G04"
