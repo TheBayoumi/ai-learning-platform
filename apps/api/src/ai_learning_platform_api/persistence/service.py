@@ -73,7 +73,7 @@ class PersistentLearningService:
                 ratings=request.ratings,
             )
         )
-        plan = await self._deduplicate_plan(plan)
+        plan = await self._deduplicate_new_plan(plan)
         state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
         stored = await self._repository.commit(
             LearnerStateCommit(
@@ -98,7 +98,7 @@ class PersistentLearningService:
         if supplied_state.storage_mode != "browser":
             raise LearnerStateNotFoundError
         plan = self._core.resume(request.state_token)
-        plan = await self._deduplicate_plan(plan)
+        plan = await self._deduplicate_new_plan(plan)
         state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
         stored = await self._repository.commit(
             LearnerStateCommit(
@@ -118,7 +118,7 @@ class PersistentLearningService:
         return self._view(stored)
 
     async def delete_account(self, *, account_id: str) -> bool:
-        """Delete the current anonymous durable account and all database-owned history."""
+        """Delete personal history; repository-owned unlinkable collision tombstones remain."""
         return await self._repository.delete_account(account_id=account_id)
 
     async def complete_activity(
@@ -132,6 +132,8 @@ class PersistentLearningService:
             learner_id=request.learner_id,
             expected_version=request.expected_version,
         )
+        # Completing an already-served task creates evidence/review state but no new build
+        # instance, so cohort deduplication must not rebind the active task snapshot here.
         plan = self._core.complete_activity(
             ProgressRequest(
                 state_token=self._codec.encode(stored.state),
@@ -142,7 +144,6 @@ class PersistentLearningService:
                 confidence=request.confidence,
             )
         )
-        plan = await self._deduplicate_plan(plan)
         return await self._commit_plan(
             account_id=account_id,
             stored=stored,
@@ -169,7 +170,7 @@ class PersistentLearningService:
         )
         if plan.sequence == stored.state.sequence:
             return self._view(stored)
-        plan = await self._deduplicate_plan(plan)
+        plan = await self._deduplicate_new_plan(plan)
         return await self._commit_plan(
             account_id=account_id,
             stored=stored,
@@ -196,7 +197,7 @@ class PersistentLearningService:
                 focus_competency_ids=request.focus_competency_ids,
             )
         )
-        plan = await self._deduplicate_plan(plan)
+        plan = await self._deduplicate_new_plan(plan)
         return await self._commit_plan(
             account_id=account_id,
             stored=stored,
@@ -238,7 +239,7 @@ class PersistentLearningService:
                 answers=request.answers,
             )
         )
-        plan = await self._deduplicate_plan(submission.plan)
+        plan = await self._deduplicate_new_plan(submission.plan)
         submission = submission.model_copy(update={"plan": plan})
         committed = await self._repository.commit(
             LearnerStateCommit(
@@ -256,8 +257,8 @@ class PersistentLearningService:
             version=committed.version,
         )
 
-    async def _deduplicate_plan(self, plan: PlanView) -> PlanView:
-        """Rebind only against prior cohort exposures; current instances are not self-collisions."""
+    async def _deduplicate_new_plan(self, plan: PlanView) -> PlanView:
+        """Rebind newly generated builds against the complete unlinkable cohort history."""
         if self._exposure_repository is None:
             return plan
         build_activities = [
@@ -268,19 +269,14 @@ class PersistentLearningService:
         )
         if not item_family_ids:
             return plan
-        current_instance_ids = {item.id for item in build_activities}
-        exposures = await self._exposure_repository.list_recent_task_exposures(
-            item_family_ids=item_family_ids,
-            limit=512,
+        collisions = await self._exposure_repository.list_task_collision_fingerprints(
+            item_family_ids=item_family_ids
         )
-        external = tuple(
-            item for item in exposures if item.instance_id not in current_instance_ids
-        )
-        if not external:
+        if not collisions:
             return plan
         return self._core.rebind_external_exposures(
             state_token=plan.state_token,
-            external_exposures=external,
+            external_exposures=collisions,
         )
 
     async def _commit_plan(
