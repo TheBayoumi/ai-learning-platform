@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 2
+          fetch-depth: 50
           persist-credentials: true
       - name: Advance exactly one deployed G phase
         env:
@@ -54,18 +54,37 @@ jobs:
               print(f'{current} already advanced; no-op.')
               raise SystemExit(0)
 
-          parents = subprocess.check_output(['git', 'show', '-s', '--format=%P', 'HEAD'], text=True).strip().split()
+          merge_sha = subprocess.check_output(
+              ['git', 'rev-list', '--merges', '-n', '1', 'HEAD'], text=True
+          ).strip()
+          if not merge_sha:
+              raise SystemExit('no product merge commit found in deployed main ancestry')
+          parents = subprocess.check_output(
+              ['git', 'show', '-s', '--format=%P', merge_sha], text=True
+          ).strip().split()
           if len(parents) < 2:
-              raise SystemExit('deployed main head is not a merge commit; refusing progression')
+              raise SystemExit('latest merge commit has no product head parent')
+          message = subprocess.check_output(
+              ['git', 'show', '-s', '--format=%B', merge_sha], text=True
+          )
+          expected_branch = phase.get('branch')
+          if not expected_branch or expected_branch not in message:
+              raise SystemExit(
+                  f'latest merge {merge_sha} does not belong to active phase branch {expected_branch}'
+              )
           accepted_head = parents[1]
           deploy_sha = os.environ['DEPLOY_SHA']
+          if subprocess.run(
+              ['git', 'merge-base', '--is-ancestor', merge_sha, deploy_sha]
+          ).returncode != 0:
+              raise SystemExit('active phase merge is not an ancestor of deployed main')
           run_id = os.environ['DEPLOY_RUN_ID']
           phase['status'] = 'PASSED'
           phase['branch'] = 'main'
           phase['accepted_sha'] = accepted_head
           phase['production_acceptance'] = [
               f'Exact-head Quality Gates passed before merge on {accepted_head}',
-              f'Product deployment run {run_id} passed on merged main SHA {deploy_sha}',
+              f'Product deployment run {run_id} passed on main SHA {deploy_sha} containing merge {merge_sha}',
           ]
           next_id, next_branch = mapping[current]
           next_phase = next(item for item in state['phases'] if item['id'] == next_id)
