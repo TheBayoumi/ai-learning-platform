@@ -50,9 +50,11 @@ jobs:
 
           jobs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?per_page=100")
           jq -e --argjson required "$required" '
-            ($required | all(. as $name;
-              any(.jobs[]; .name == $name and .status == "completed" and .conclusion == "success")
-            ))
+            ($required - [
+              .jobs[]
+              | select(.status == "completed" and .conclusion == "success")
+              | .name
+            ]) | length == 0
           ' <<<"$jobs" >/dev/null
 
           # Give asynchronous review automation a bounded window to publish findings, then
