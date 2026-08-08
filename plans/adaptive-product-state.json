@@ -399,15 +399,31 @@
         "D",
         "E"
       ],
-      "implementation_evidence": [],
-      "test_evidence": [],
+      "implementation_evidence": [
+        "apps/api/src/ai_learning_platform_api/learning/readiness.py",
+        "apps/api/src/ai_learning_platform_api/learning/readiness_service.py",
+        "apps/api/src/ai_learning_platform_api/learning/schemas.py",
+        "apps/api/src/ai_learning_platform_api/learning/__init__.py",
+        "apps/web/lib/learning-contract.ts",
+        "apps/web/components/app/readiness-view.tsx"
+      ],
+      "test_evidence": [
+        "apps/api/tests/test_g08_readiness_projection.py",
+        "apps/api/tests/test_g08_human_simulation.py",
+        "apps/api/tests/test_product_gate.py",
+        "apps/web/tests/learning-contract.test.ts",
+        "apps/web/tests/product-architecture.test.ts",
+        ".github/workflows/ci.yml"
+      ],
       "human_simulations": [
         "overconfident learner",
         "incomplete-overlay learner",
         "fully evidenced learner",
         "disputed-evidence learner"
       ],
-      "human_simulation_evidence": [],
+      "human_simulation_evidence": [
+        "apps/api/tests/test_g08_human_simulation.py"
+      ],
       "accepted_sha": null,
       "production_acceptance": [],
       "next_phase": "G09"

@@ -87,8 +87,10 @@ describe("Career Atlas product architecture", () => {
     ]) {
       expect(combined).not.toContain(forbidden);
     }
-    expect(readiness).toContain("Readiness conclusion");
-    expect(readiness).toContain('value="Locked"');
+    expect(readiness).toContain("Public readiness claim");
+    expect(readiness).toContain("readiness_projection");
+    expect(readiness).toContain("mandatory_gap_ids");
+    expect(readiness).toContain("external approval required");
     expect(dashboard).toContain("planning_signal_percent");
   });
 
