@@ -7,7 +7,10 @@ from uuid import UUID
 import pytest
 
 from ai_learning_platform_api.learning import LearningPlanService
-from ai_learning_platform_api.learning.blueprint_service import UntrustedInstanceEvidenceError
+from ai_learning_platform_api.learning.blueprint_service import (
+    EvidenceInstanceContractMismatchError,
+    UntrustedInstanceEvidenceError,
+)
 from ai_learning_platform_api.learning.blueprints import (
     BlueprintTrustError,
     bind_learner_instance,
@@ -43,7 +46,7 @@ def _service() -> LearningPlanService:
     return LearningPlanService(SECRET, clock=lambda: NOW, id_factory=_ids())
 
 
-def test_same_track_learners_get_unique_instances_with_shared_rubric() -> None:
+def test_same_track_learners_get_unique_instances_with_shared_approved_rubric() -> None:
     service = _service()
     request = PlanRequest(
         learner_name="Same Name",
@@ -60,13 +63,21 @@ def test_same_track_learners_get_unique_instances_with_shared_rubric() -> None:
     right = second.current_activity
     assert left.item_family_trust == "trusted"
     assert left.blueprint_trust == "trusted"
+    assert left.blueprint_approval_id
+    assert left.blueprint_approved_by == "product-blueprint-review"
+    assert left.blueprint_approval_version == "g05-approval-v1"
     assert left.high_stakes_eligible is True
     assert right.high_stakes_eligible is True
     assert left.blueprint_id == right.blueprint_id
+    assert left.blueprint_approval_id == right.blueprint_approval_id
     assert left.rubric_version == right.rubric_version
     assert left.id != right.id
     assert left.instance_seed != right.instance_seed
     assert left.semantic_fingerprint != right.semantic_fingerprint
+    assert left.instance_contract_hash != right.instance_contract_hash
+    assert left.instance_requirements
+    assert set(left.instance_requirements).issubset(left.acceptance_criteria)
+    assert set(right.instance_requirements).issubset(right.acceptance_criteria)
     assert left.plan_version_id == first.active_plan_version.plan_version_id
     assert right.plan_version_id == second.active_plan_version.plan_version_id
 
@@ -85,10 +96,11 @@ def test_plan_version_carries_bounded_traceable_exposure_records() -> None:
         assert exposure.blueprint_id == activity.blueprint_id
         assert exposure.rubric_version == activity.rubric_version
         assert exposure.semantic_fingerprint == activity.semantic_fingerprint
+        assert exposure.instance_contract_hash == activity.instance_contract_hash
         assert exposure.high_stakes_eligible is True
 
 
-def test_repeated_replanning_rejects_exact_and_near_duplicate_history() -> None:
+def test_repeated_replanning_rejects_exact_and_near_duplicate_recent_cache() -> None:
     service = _service()
     plan = service.create_plan(PlanRequest(learner_name="Repeat Learner", weekly_hours=2))
     seen_tokens: list[list[str]] = []
@@ -142,6 +154,104 @@ def test_untrusted_blueprint_cannot_create_high_stakes_instance() -> None:
         )
 
 
+def test_partial_instance_requirements_cannot_become_high_stakes_evidence() -> None:
+    service = _service()
+    plan = service.create_plan(PlanRequest(learner_name="Partial Contract", weekly_hours=2))
+    assert plan.current_activity is not None
+    activity = plan.current_activity
+    assert len(activity.acceptance_criteria) > 1
+    completed = service.complete_activity(
+        ProgressRequest(
+            state_token=plan.state_token,
+            activity_id=activity.id,
+            reflection="I completed only part of the required learner-specific contract.",
+            evidence_reference="repo://partial",
+            criteria_met=activity.acceptance_criteria[:-1],
+            confidence=4,
+        )
+    )
+    evidence = completed.evidence_history[-1]
+    assert evidence.source_high_stakes_eligible is False
+
+    with pytest.raises(UntrustedInstanceEvidenceError):
+        service.evaluate_evidence(
+            state_token=completed.state_token,
+            verdict=TrustedEvidenceVerdict(
+                evidence_id=evidence.evidence_id,
+                competency_id=evidence.competency_id,
+                disposition="accepted",
+                independence="independent",
+                assistance="none",
+                reasoning="verified",
+                evaluator_id="trusted-evaluator",
+                evaluator_version="v1",
+                rubric_version=activity.rubric_version,
+                instance_contract_hash=activity.instance_contract_hash,
+                confidence=95,
+            ),
+        )
+
+
+def test_trusted_evaluator_must_attest_to_exact_instance_contract() -> None:
+    service = _service()
+    plan = service.create_plan(PlanRequest(learner_name="Exact Contract", weekly_hours=2))
+    assert plan.current_activity is not None
+    activity = plan.current_activity
+    completed = service.complete_activity(
+        ProgressRequest(
+            state_token=plan.state_token,
+            activity_id=activity.id,
+            reflection="I implemented, verified, debugged, and explained every task requirement.",
+            evidence_reference="repo://exact-contract",
+            criteria_met=list(activity.acceptance_criteria),
+            confidence=4,
+        )
+    )
+    evidence = completed.evidence_history[-1]
+    assert evidence.source_high_stakes_eligible is True
+    assert evidence.source_blueprint_approval_id == activity.blueprint_approval_id
+    assert evidence.source_instance_contract_hash == activity.instance_contract_hash
+
+    with pytest.raises(EvidenceInstanceContractMismatchError):
+        service.evaluate_evidence(
+            state_token=completed.state_token,
+            verdict=TrustedEvidenceVerdict(
+                evidence_id=evidence.evidence_id,
+                competency_id=evidence.competency_id,
+                disposition="accepted",
+                independence="independent",
+                assistance="none",
+                reasoning="verified",
+                evaluator_id="trusted-evaluator",
+                evaluator_version="v1",
+                rubric_version=activity.rubric_version,
+                instance_contract_hash="instance-wrong",
+                confidence=95,
+            ),
+        )
+
+    accepted = service.evaluate_evidence(
+        state_token=completed.state_token,
+        verdict=TrustedEvidenceVerdict(
+            evidence_id=evidence.evidence_id,
+            competency_id=evidence.competency_id,
+            disposition="accepted",
+            independence="independent",
+            assistance="none",
+            reasoning="verified",
+            evaluator_id="trusted-evaluator",
+            evaluator_version="v1",
+            rubric_version=activity.rubric_version,
+            instance_contract_hash=activity.instance_contract_hash,
+            confidence=95,
+        ),
+    )
+    assert any(
+        item.instance_contract_hash == activity.instance_contract_hash
+        for item in accepted.evidence_evaluations
+    )
+
+
 def test_untrusted_source_instance_cannot_be_promoted_by_trusted_evaluator() -> None:
     service = _service()
     plan = service.create_plan(PlanRequest(learner_name="Trust Boundary", weekly_hours=2))
@@ -158,28 +268,13 @@ def test_untrusted_source_instance_cannot_be_promoted_by_trusted_evaluator() -> 
         )
     )
     state = service._codec.decode(completed.state_token)
-    poisoned_activities = [
-        item.model_copy(update={"high_stakes_eligible": False}) if item.id == activity.id else item
-        for item in state.activities
+    poisoned_evidence = [
+        item.model_copy(update={"source_high_stakes_eligible": False})
+        if item.evidence_id == completed.evidence_history[-1].evidence_id
+        else item
+        for item in state.evidence_history
     ]
-    poisoned_versions = []
-    for version in state.plan_versions:
-        poisoned_versions.append(
-            version.model_copy(
-                update={
-                    "activities": [
-                        item.model_copy(update={"high_stakes_eligible": False})
-                        if item.id == activity.id
-                        else item
-                        for item in version.activities
-                    ]
-                }
-            )
-        )
-    poisoned = state.model_copy(
-        update={"activities": poisoned_activities, "plan_versions": poisoned_versions}
-    )
-    token = service._codec.encode(poisoned)
+    token = service._codec.encode(state.model_copy(update={"evidence_history": poisoned_evidence}))
     evidence = completed.evidence_history[-1]
 
     with pytest.raises(UntrustedInstanceEvidenceError):
@@ -195,6 +290,7 @@ def test_untrusted_source_instance_cannot_be_promoted_by_trusted_evaluator() -> 
                 evaluator_id="trusted-evaluator",
                 evaluator_version="v1",
                 rubric_version=activity.rubric_version,
+                instance_contract_hash=activity.instance_contract_hash,
                 confidence=95,
             ),
         )
