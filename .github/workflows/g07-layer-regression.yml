@@ -90,8 +90,15 @@ jobs:
                   'from datetime import UTC, datetime\nfrom typing import Any, cast\n',
                   1,
               )
+          if 'from ai_learning_platform_api.learning.blueprint_service import BlueprintLearningPlanService\n' not in text:
+              text = text.replace(
+                  'from ai_learning_platform_api.learning.evidence import (\n',
+                  'from ai_learning_platform_api.learning.blueprint_service import BlueprintLearningPlanService\n'
+                  'from ai_learning_platform_api.learning.evidence import (\n',
+                  1,
+              )
           marker = '''        persistent = PersistentLearningService(\n            secret=SECRET,\n            repository=repository,\n            clock=lambda: NOW,\n        )\n        created = await persistent.create_plan(\n'''
-          replacement = '''        persistent = PersistentLearningService(\n            secret=SECRET,\n            repository=repository,\n            clock=lambda: NOW,\n        )\n        # This G02 contract test intentionally exercises the deterministic evidence layer,\n        # not the later G07 provenance gate. Production PersistentLearningService still\n        # defaults to the full top-level service.\n        cast(Any, persistent)._core = LearningPlanService(SECRET, clock=lambda: NOW)\n        created = await persistent.create_plan(\n'''
+          replacement = '''        persistent = PersistentLearningService(\n            secret=SECRET,\n            repository=repository,\n            clock=lambda: NOW,\n        )\n        # This G02 durability test bypasses only the later G07 provenance layer.\n        # G05 source rubric/instance provenance remains enforced by the blueprint core.\n        cast(Any, persistent)._core = BlueprintLearningPlanService(\n            SECRET, clock=lambda: NOW\n        )\n        created = await persistent.create_plan(\n'''
           if marker not in text:
               raise SystemExit('G02 persistent evidence fixture marker missing')
           text = text.replace(marker, replacement, 1)
