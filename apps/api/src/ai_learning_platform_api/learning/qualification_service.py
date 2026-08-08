@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from ai_learning_platform_api.learning.blueprint_service import BlueprintLearningPlanService
 from ai_learning_platform_api.learning.catalog import ROLE_CATALOG, RoleDefinition
 from ai_learning_platform_api.learning.qualification import (
@@ -87,9 +89,7 @@ class QualificationLearningPlanService(BlueprintLearningPlanService):
         return self._project(updated, role)
 
     @staticmethod
-    def _parse_datetime(value: str):
-        from datetime import datetime
-
+    def _parse_datetime(value: str) -> datetime:
         return datetime.fromisoformat(value)
 
 

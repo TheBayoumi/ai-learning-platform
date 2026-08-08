@@ -13,10 +13,15 @@ from ai_learning_platform_api.learning.qualification import (
     UnknownProbeError,
 )
 from ai_learning_platform_api.learning.schemas import (
+    CompetencyQualificationView,
+    EvidenceRecordView,
     PlanRequest,
+    PlanView,
     ProgressRequest,
     TrustedEvidenceVerdict,
     TrustedProbeVerdict,
+    VerificationClass,
+    VerificationProbeView,
 )
 
 _SECRET = "g06-retention-transfer-secret-with-more-than-thirty-two-bytes"
@@ -42,7 +47,7 @@ def _service(clock: MutableClock) -> LearningPlanService:
     )
 
 
-def _recorded(service: LearningPlanService):
+def _recorded(service: LearningPlanService) -> tuple[PlanView, EvidenceRecordView]:
     plan = service.create_plan(PlanRequest(learner_name="Qualification Learner", weekly_hours=4))
     activity = plan.current_activity
     assert activity is not None
@@ -60,7 +65,9 @@ def _recorded(service: LearningPlanService):
     return progressed, evidence
 
 
-def _evidence_verdict(evidence, *, assisted: bool = False) -> TrustedEvidenceVerdict:
+def _evidence_verdict(
+    evidence: EvidenceRecordView, *, assisted: bool = False
+) -> TrustedEvidenceVerdict:
     return TrustedEvidenceVerdict(
         evidence_id=evidence.evidence_id,
         competency_id=evidence.competency_id,
@@ -76,7 +83,7 @@ def _evidence_verdict(evidence, *, assisted: bool = False) -> TrustedEvidenceVer
     )
 
 
-def _probe_verdict(probe, *, passed: bool = True) -> TrustedProbeVerdict:
+def _probe_verdict(probe: VerificationProbeView, *, passed: bool = True) -> TrustedProbeVerdict:
     return TrustedProbeVerdict(
         probe_id=probe.probe_id,
         competency_id=probe.competency_id,
@@ -91,11 +98,11 @@ def _probe_verdict(probe, *, passed: bool = True) -> TrustedProbeVerdict:
     )
 
 
-def _qualification(plan, competency_id: str):
+def _qualification(plan: PlanView, competency_id: str) -> CompetencyQualificationView:
     return next(item for item in plan.qualifications if item.competency_id == competency_id)
 
 
-def _probe(plan, verification_class: str):
+def _probe(plan: PlanView, verification_class: VerificationClass) -> VerificationProbeView:
     return next(
         item for item in plan.verification_probes if item.verification_class == verification_class
     )
@@ -189,9 +196,7 @@ def test_exact_probe_binding_rejects_unknown_and_mismatched_verdicts() -> None:
     with pytest.raises(UnknownProbeError):
         service.evaluate_probe(state_token=evaluated.state_token, verdict=unknown)
 
-    mismatched = _probe_verdict(transfer).model_copy(
-        update={"verification_class": "retention_7d"}
-    )
+    mismatched = _probe_verdict(transfer).model_copy(update={"verification_class": "retention_7d"})
     with pytest.raises(ProbeBindingMismatchError):
         service.evaluate_probe(state_token=evaluated.state_token, verdict=mismatched)
 
@@ -255,6 +260,12 @@ def test_failed_probe_reopens_class_and_conflicting_rewrite_is_rejected() -> Non
     assert "transfer" not in qualification.satisfied_classes
     assert qualification.failed_classes == ["transfer"]
     assert qualification.fully_qualified is False
+    retry = next(
+        item
+        for item in current.verification_probes
+        if item.verification_class == "transfer" and item.status == "scheduled"
+    )
+    assert retry.probe_id != transfer.probe_id
 
     duplicate = service.evaluate_probe(state_token=current.state_token, verdict=failed)
     assert duplicate.sequence == current.sequence

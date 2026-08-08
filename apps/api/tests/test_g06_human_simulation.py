@@ -5,10 +5,15 @@ from uuid import UUID
 
 from ai_learning_platform_api.learning import LearningPlanService
 from ai_learning_platform_api.learning.schemas import (
+    CompetencyQualificationView,
+    EvidenceRecordView,
     PlanRequest,
+    PlanView,
     ProgressRequest,
     TrustedEvidenceVerdict,
     TrustedProbeVerdict,
+    VerificationClass,
+    VerificationProbeView,
 )
 
 _SECRET = "g06-human-simulation-secret-with-more-than-thirty-two-bytes"
@@ -34,7 +39,7 @@ def _service(clock: Clock) -> LearningPlanService:
     )
 
 
-def _record(service: LearningPlanService):
+def _record(service: LearningPlanService) -> tuple[PlanView, EvidenceRecordView]:
     plan = service.create_plan(PlanRequest(learner_name="Human Simulation", weekly_hours=4))
     activity = plan.current_activity
     assert activity is not None
@@ -51,7 +56,7 @@ def _record(service: LearningPlanService):
     return completed, completed.evidence_history[-1]
 
 
-def _evidence(evidence, *, assisted: bool = False) -> TrustedEvidenceVerdict:
+def _evidence(evidence: EvidenceRecordView, *, assisted: bool = False) -> TrustedEvidenceVerdict:
     return TrustedEvidenceVerdict(
         evidence_id=evidence.evidence_id,
         competency_id=evidence.competency_id,
@@ -67,11 +72,11 @@ def _evidence(evidence, *, assisted: bool = False) -> TrustedEvidenceVerdict:
     )
 
 
-def _probe(plan, proof_class: str):
+def _probe(plan: PlanView, proof_class: VerificationClass) -> VerificationProbeView:
     return next(item for item in plan.verification_probes if item.verification_class == proof_class)
 
 
-def _pass(probe) -> TrustedProbeVerdict:
+def _pass(probe: VerificationProbeView) -> TrustedProbeVerdict:
     return TrustedProbeVerdict(
         probe_id=probe.probe_id,
         competency_id=probe.competency_id,
@@ -86,7 +91,7 @@ def _pass(probe) -> TrustedProbeVerdict:
     )
 
 
-def _qualification(plan, competency_id: str):
+def _qualification(plan: PlanView, competency_id: str) -> CompetencyQualificationView:
     return next(item for item in plan.qualifications if item.competency_id == competency_id)
 
 

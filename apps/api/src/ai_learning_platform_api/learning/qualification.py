@@ -102,11 +102,12 @@ def apply_evidence_qualification(
     if "independent" not in satisfied:
         satisfied.append("independent")
 
-    for verification_class, delay in (
+    schedule: tuple[tuple[VerificationClass, timedelta], ...] = (
         ("transfer", timedelta()),
         ("retention_7d", timedelta(days=7)),
         ("retention_30d", timedelta(days=30)),
-    ):
+    )
+    for verification_class, delay in schedule:
         if any(
             item.competency_id == verdict.competency_id
             and item.verification_class == verification_class
@@ -155,7 +156,11 @@ def apply_probe_verdict(
 ) -> QualificationTransitionResult:
     """Apply one exact scheduled no-hint proof verdict and reopen qualification on failure."""
     index = next(
-        (idx for idx, item in enumerate(state.verification_probes) if item.probe_id == verdict.probe_id),
+        (
+            idx
+            for idx, item in enumerate(state.verification_probes)
+            if item.probe_id == verdict.probe_id
+        ),
         None,
     )
     if index is None:
@@ -226,6 +231,21 @@ def apply_probe_verdict(
         satisfied = [item for item in satisfied if item != verdict.verification_class]
         if verdict.verification_class not in failed:
             failed.append(verdict.verification_class)
+        retry_delay: dict[VerificationClass, timedelta] = {
+            "independent": timedelta(days=1),
+            "transfer": timedelta(days=1),
+            "retention_7d": timedelta(days=7),
+            "retention_30d": timedelta(days=30),
+        }
+        probes.append(
+            _probe(
+                learner_id=state.learner_id,
+                competency_id=verdict.competency_id,
+                verification_class=verdict.verification_class,
+                source_evidence_id=probe.source_evidence_id,
+                due_at=occurred_at + retry_delay[verdict.verification_class],
+            )
+        )
 
     qualification = current.model_copy(
         update={

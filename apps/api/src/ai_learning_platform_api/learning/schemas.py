@@ -26,6 +26,9 @@ EvidenceDisposition = Literal["recorded", "accepted", "rejected", "disputed"]
 EvidenceIndependence = Literal["unverified", "assisted", "independent"]
 AssistanceLevel = Literal["unknown", "none", "hint", "guided", "answer_level"]
 ReasoningState = Literal["not_observed", "submitted", "verified"]
+VerificationClass = Literal["independent", "retention_7d", "retention_30d", "transfer"]
+ProbeStatus = Literal["scheduled", "passed", "failed"]
+ProbeDisposition = Literal["passed", "failed"]
 CompetencyEvidenceStatus = Literal["unverified", "partial", "independent"]
 MisconceptionStatus = Literal["active", "resolved"]
 ReviewStage = Literal["evidence_follow_up", "retention_candidate"]
@@ -146,6 +149,63 @@ class TrustedEvidenceVerdict(StrictModel):
     confidence: Annotated[int, Field(ge=0, le=100)]
     findings: Annotated[list[str], Field(max_length=12)] = Field(default_factory=list)
     misconception_codes: Annotated[list[str], Field(max_length=12)] = Field(default_factory=list)
+
+
+class TrustedProbeVerdict(StrictModel):
+    """Internal trusted verdict for one scheduled retention/transfer probe."""
+
+    probe_id: Annotated[str, Field(min_length=8, max_length=160)]
+    competency_id: Annotated[str, Field(min_length=1, max_length=64)]
+    verification_class: VerificationClass
+    disposition: ProbeDisposition
+    independence: EvidenceIndependence = "unverified"
+    assistance: AssistanceLevel = "unknown"
+    reasoning: ReasoningState = "not_observed"
+    evaluator_id: Annotated[str, Field(min_length=2, max_length=120)]
+    evaluator_version: Annotated[str, Field(min_length=1, max_length=80)]
+    confidence: Annotated[int, Field(ge=0, le=100)]
+    findings: Annotated[list[str], Field(max_length=12)] = Field(default_factory=list)
+
+
+class VerificationProbeView(StrictModel):
+    """One server-scheduled independent retention or unseen-transfer obligation."""
+
+    probe_id: str
+    competency_id: str
+    verification_class: VerificationClass
+    source_evidence_id: str
+    due_at: str
+    status: ProbeStatus = "scheduled"
+    unseen_instance_fingerprint: str = ""
+    completed_at: str | None = None
+    evaluation_id: str = ""
+    evaluator_id: str = ""
+    evaluator_version: str = ""
+
+
+class CompetencyQualificationState(StrictModel):
+    """Authoritative exact proof classes for one competency."""
+
+    competency_id: str
+    satisfied_classes: list[VerificationClass] = Field(default_factory=list)
+    failed_classes: list[VerificationClass] = Field(default_factory=list)
+    independent_evidence_ids: list[str] = Field(default_factory=list)
+    assisted_evidence_ids: list[str] = Field(default_factory=list)
+    last_updated_at: str | None = None
+
+
+class CompetencyQualificationView(StrictModel):
+    """Projection of exact immediate/retention/transfer proof obligations."""
+
+    competency_id: str
+    satisfied_classes: list[VerificationClass]
+    missing_classes: list[VerificationClass]
+    failed_classes: list[VerificationClass]
+    independent_evidence_ids: list[str]
+    assisted_evidence_ids: list[str]
+    scheduled_probe_ids: list[str]
+    next_probe_at: str | None
+    fully_qualified: bool
 
 
 class CompetencyView(StrictModel):
@@ -466,6 +526,8 @@ class LearnerState(StrictModel):
     evidence_history: list[EvidenceRecordView] = Field(default_factory=list)
     evidence_evaluations: list[EvidenceEvaluationRecord] = Field(default_factory=list)
     competency_evidence: dict[str, CompetencyEvidenceState] = Field(default_factory=dict)
+    competency_qualification: dict[str, CompetencyQualificationState] = Field(default_factory=dict)
+    verification_probes: list[VerificationProbeView] = Field(default_factory=list)
     misconceptions: list[MisconceptionRecord] = Field(default_factory=list)
     review_state: dict[str, ReviewState] = Field(default_factory=dict)
     assessment_scores: dict[str, int] = Field(default_factory=dict)
@@ -488,6 +550,8 @@ class PlanView(StrictModel):
     priority_competencies: list[PriorityCompetencyView]
     competency_evidence: list[CompetencyEvidenceState]
     evidence_evaluations: list[EvidenceEvaluationRecord]
+    qualifications: list[CompetencyQualificationView] = Field(default_factory=list)
+    verification_probes: list[VerificationProbeView] = Field(default_factory=list)
     active_misconceptions: list[MisconceptionRecord]
     review_state: list[ReviewState]
     current_activity: ActivityView | None

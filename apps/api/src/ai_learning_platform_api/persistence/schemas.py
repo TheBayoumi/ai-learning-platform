@@ -16,6 +16,7 @@ from ai_learning_platform_api.learning.schemas import (
     StrictModel,
     TargetRequest,
     TrustedEvidenceVerdict,
+    TrustedProbeVerdict,
 )
 
 IdempotencyKey = Annotated[str, Field(min_length=16, max_length=160, pattern=r"^[^\s]+$")]
@@ -85,6 +86,15 @@ class PersistentAssessmentSubmitRequest(PersistentMutationRequest):
 
     attempt_token: Annotated[str, Field(min_length=20, max_length=16_384)]
     answers: Annotated[list[AssessmentAnswer], Field(min_length=1, max_length=4)]
+
+
+class PersistentProbeEvaluationRequest(StrictModel):
+    """Durable internal command for one trusted retention/transfer probe verdict."""
+
+    learner_id: UUID
+    expected_version: Annotated[int, Field(ge=0)]
+    idempotency_key: Annotated[str, Field(min_length=8, max_length=160)]
+    verdict: TrustedProbeVerdict
 
 
 class PersistentPlanView(StrictModel):
