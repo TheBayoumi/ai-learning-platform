@@ -1,0 +1,74 @@
+name: Product phase merge guard
+
+on:
+  pull_request:
+    branches: [main]
+    types: [ready_for_review]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: product-phase-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  merge:
+    if: startsWith(github.head_ref, 'product/g')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Wait for exact-head canonical gates and merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          required='["API quality","Web quality","Runtime smoke","Phase gate","Gate projection"]'
+
+          run_id=""
+          for _ in $(seq 1 72); do
+            runs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&event=pull_request&per_page=100")
+            run_id=$(jq -r --arg sha "$HEAD_SHA" '
+              [.workflow_runs[]
+               | select(.name == "Quality Gates" and .head_sha == $sha)]
+              | sort_by(.created_at) | reverse | .[0].id // empty
+            ' <<<"$runs")
+            if test -n "$run_id"; then
+              status=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq .status)
+              if test "$status" = "completed"; then
+                break
+              fi
+            fi
+            sleep 5
+          done
+          test -n "$run_id"
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq .conclusion)" = "success"
+
+          jobs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?per_page=100")
+          jq -e --argjson required "$required" '
+            ($required | all(. as $name;
+              any(.jobs[]; .name == $name and .status == "completed" and .conclusion == "success")
+            ))
+          ' <<<"$jobs" >/dev/null
+
+          # Give asynchronous review automation a bounded window to publish findings, then
+          # fail closed if any review thread remains unresolved.
+          sleep 30
+          read -r owner repo <<<"${GITHUB_REPOSITORY/\// }"
+          unresolved=$(gh api graphql \
+            -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved}}}}}' \
+            -f owner="$owner" -f repo="$repo" -F number="$PR_NUMBER" \
+            --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')
+          test "$unresolved" = "0"
+
+          current_head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .head.sha)
+          test "$current_head" = "$HEAD_SHA"
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .draft)" = "false"
+
+          result=$(gh api --method PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/merge" \
+            -f merge_method=merge -f sha="$HEAD_SHA")
+          jq -e '.merged == true' <<<"$result" >/dev/null
