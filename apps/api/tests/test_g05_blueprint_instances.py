@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -26,7 +27,7 @@ SECRET = "g05-blueprint-test-secret-that-is-long-enough-123456"
 NOW = datetime(2026, 8, 8, 12, 0, tzinfo=UTC)
 
 
-def _ids() -> callable:
+def _ids() -> Callable[[], UUID]:
     values = iter(
         [
             UUID("11111111-1111-4111-8111-111111111111"),
@@ -77,7 +78,9 @@ def test_plan_version_carries_bounded_traceable_exposure_records() -> None:
     exposures = plan.active_plan_version.task_exposures
     assert exposures
     for exposure in exposures:
-        activity = next(item for item in plan.active_plan_version.activities if item.id == exposure.instance_id)
+        activity = next(
+            item for item in plan.active_plan_version.activities if item.id == exposure.instance_id
+        )
         assert exposure.plan_version_id == plan.active_plan_version.plan_version_id
         assert exposure.blueprint_id == activity.blueprint_id
         assert exposure.rubric_version == activity.rubric_version
@@ -95,7 +98,9 @@ def test_repeated_replanning_rejects_exact_and_near_duplicate_history() -> None:
         assert plan.current_activity is not None
         activity = plan.current_activity
         assert activity.semantic_fingerprint not in seen_fingerprints
-        assert all(semantic_similarity(activity.semantic_tokens, prior) < 0.80 for prior in seen_tokens)
+        assert all(
+            semantic_similarity(activity.semantic_tokens, prior) < 0.80 for prior in seen_tokens
+        )
         seen_fingerprints.add(activity.semantic_fingerprint)
         seen_tokens.append(list(activity.semantic_tokens))
         plan = service.replan(
@@ -111,7 +116,9 @@ def test_repeated_replanning_rejects_exact_and_near_duplicate_history() -> None:
 
 def test_untrusted_blueprint_cannot_create_high_stakes_instance() -> None:
     role = ROLE_CATALOG["junior-python-backend-engineer"]
-    target = LearningPlanService(SECRET).create_plan(PlanRequest(learner_name="Target Source")).target
+    target = LearningPlanService(SECRET).create_plan(
+        PlanRequest(learner_name="Target Source")
+    ).target
     untrusted = TrustedActivityView(
         id="legacy-task",
         competency_id=role.competencies[0].identifier,
