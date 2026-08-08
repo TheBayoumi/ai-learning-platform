@@ -67,7 +67,9 @@ class PersistentLearningService:
                 ratings=request.ratings,
             )
         )
-        state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
+        state = self._codec.decode(plan.state_token).model_copy(
+            update={"storage_mode": "durable"}
+        )
         stored = await self._repository.commit(
             LearnerStateCommit(
                 account_id=account_id,
@@ -91,7 +93,9 @@ class PersistentLearningService:
         if supplied_state.storage_mode != "browser":
             raise LearnerStateNotFoundError
         normalized = self._core.resume(request.state_token)
-        state = self._codec.decode(normalized.state_token).model_copy(update={"storage_mode": "durable"})
+        state = self._codec.decode(normalized.state_token).model_copy(
+            update={"storage_mode": "durable"}
+        )
         stored = await self._repository.commit(
             LearnerStateCommit(
                 account_id=account_id,
