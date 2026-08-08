@@ -51,6 +51,7 @@ const activity = {
 };
 
 const evidence = {
+  evidence_id: "evidence-123",
   activity_id: activity.id,
   competency_id: "python",
   competency_name: "Python engineering",
@@ -60,8 +61,59 @@ const evidence = {
   evidence_reference: "pull/7",
   criteria_met: ["Typed", "Tested"],
   confidence: 3,
+  source: "learner_attested" as const,
+  disposition: "accepted" as const,
+  independence: "independent" as const,
+  assistance: "none" as const,
+  reasoning: "verified" as const,
   planning_signal_delta: 18,
   next_review_at: "2026-07-31T12:00:00+00:00"
+};
+
+const competencyEvidence = {
+  competency_id: "python",
+  status: "independent" as const,
+  accepted_evidence_ids: [evidence.evidence_id],
+  disputed_evidence_ids: [],
+  last_evaluated_at: "2026-07-24T12:10:00+00:00",
+  no_hint_verified: true,
+  reasoning_verified: true,
+  assistance: "none" as const
+};
+
+const evaluation = {
+  evaluation_id: "evaluation-123",
+  evidence_id: evidence.evidence_id,
+  competency_id: "python",
+  source: "trusted_evaluator" as const,
+  disposition: "accepted" as const,
+  independence: "independent" as const,
+  assistance: "none" as const,
+  reasoning: "verified" as const,
+  evaluator_id: "deterministic-evaluator",
+  evaluator_version: "g02-v1",
+  rubric_version: "role-rubric-v1",
+  confidence: 92,
+  findings: ["Behavior matched the evaluated criterion."],
+  misconception_codes: ["boundary-condition-omission"],
+  occurred_at: "2026-07-24T12:10:00+00:00"
+};
+
+const misconception = {
+  misconception_id: "misconception-123",
+  competency_id: "python",
+  code: "boundary-condition-omission",
+  status: "active" as const,
+  evidence_id: evidence.evidence_id,
+  observed_at: evaluation.occurred_at
+};
+
+const reviewState = {
+  competency_id: "python",
+  due_at: "2026-07-31T12:10:00+00:00",
+  stage: "retention_candidate" as const,
+  source_evidence_id: evidence.evidence_id,
+  reason: "Independent evidence qualified for a later retention probe."
 };
 
 const assessment = {
@@ -94,13 +146,18 @@ const validPlan = {
       diagnostic_signal_percent: 48,
       assessment_percent: 100,
       priority_gap_percent: 52,
+      evidence_status: "independent" as const,
       focused: true
     }
   ],
+  competency_evidence: [competencyEvidence],
+  evidence_evaluations: [evaluation],
+  active_misconceptions: [misconception],
+  review_state: [reviewState],
   current_activity: activity,
   completed_count: 0,
   total_count: 4,
-  sequence: 1,
+  sequence: 2,
   weekly_hours: 8,
   plan_revision: 1,
   focus_competency_ids: ["python"],
@@ -110,12 +167,12 @@ const validPlan = {
 };
 
 describe("learning contract guards", () => {
-  it("accepts resolved targets and validation-locked planning projections", () => {
+  it("accepts resolved targets and deterministic evidence projections", () => {
     expect(isRoleList([role])).toBe(true);
     expect(isPlanView(validPlan)).toBe(true);
   });
 
-  it("rejects malformed nested adaptive data and fake readiness claims", () => {
+  it("rejects malformed nested evidence state and fake readiness claims", () => {
     expect(isRoleList([{ ...role, competencies: [{ id: "python" }] }])).toBe(false);
     expect(
       isPlanView({
@@ -126,7 +183,19 @@ describe("learning contract guards", () => {
     expect(
       isPlanView({
         ...validPlan,
-        evidence_history: [{ ...evidence, criteria_met: "not-an-array" }]
+        evidence_history: [{ ...evidence, source: "invented" }]
+      })
+    ).toBe(false);
+    expect(
+      isPlanView({
+        ...validPlan,
+        competency_evidence: [{ ...competencyEvidence, status: "mastered" }]
+      })
+    ).toBe(false);
+    expect(
+      isPlanView({
+        ...validPlan,
+        evidence_evaluations: [{ ...evaluation, source: "learner_attested" }]
       })
     ).toBe(false);
     expect(
