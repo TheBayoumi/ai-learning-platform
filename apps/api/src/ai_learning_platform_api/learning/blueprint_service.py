@@ -118,9 +118,9 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
                 "semantic_fingerprint": hashlib.sha256(
                     f"review|{source.semantic_fingerprint}|{generation}".encode()
                 ).hexdigest()[:24],
-                "semantic_signature": hashlib.sha256("|".join(semantic_tokens).encode()).hexdigest()[
-                    :24
-                ],
+                "semantic_signature": hashlib.sha256(
+                    "|".join(semantic_tokens).encode()
+                ).hexdigest()[:24],
                 "semantic_tokens": semantic_tokens,
                 "scenario_tags": ["review", f"g:{generation}"],
                 "instance_requirements": [],
@@ -239,10 +239,9 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         if not state.evidence_history:
             return projected
         evidence = state.evidence_history[-1]
-        fully_satisfied = (
-            len(evidence.criteria_met) == len(source.acceptance_criteria)
-            and set(evidence.criteria_met) == set(source.acceptance_criteria)
-        )
+        fully_satisfied = len(evidence.criteria_met) == len(source.acceptance_criteria) and set(
+            evidence.criteria_met
+        ) == set(source.acceptance_criteria)
         trusted_source = bool(
             source.high_stakes_eligible
             and source.blueprint_approval_id

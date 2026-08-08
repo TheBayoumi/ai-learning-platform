@@ -93,7 +93,9 @@ def test_persistent_service_rebinds_a_forced_cross_learner_collision() -> None:
     rebound = asyncio.run(_persistent_service(exposure_repository)._deduplicate_new_plan(plan))
 
     assert exposure_repository.calls
-    assert rebound.active_plan_version.task_exposures[0].semantic_signature != first.semantic_signature
+    assert (
+        rebound.active_plan_version.task_exposures[0].semantic_signature != first.semantic_signature
+    )
     assert rebound.active_plan_version.activities[0].id != plan.active_plan_version.activities[0].id
     assert set(rebound.active_plan_version.delta.added_activity_ids) == {
         item.id for item in rebound.active_plan_version.activities
@@ -125,9 +127,7 @@ def test_collision_rebind_recomputes_delta_against_previous_plan() -> None:
     assert rebound.active_plan_version.delta.added_activity_ids == [
         item for item in current_ids if item not in previous_ids
     ]
-    assert all(
-        item in current_ids for item in rebound.active_plan_version.delta.added_activity_ids
-    )
+    assert all(item in current_ids for item in rebound.active_plan_version.delta.added_activity_ids)
 
 
 def test_collision_rebind_preserves_delayed_review_outside_active_snapshot() -> None:

@@ -301,7 +301,9 @@ def bind_learner_instance(
         or not activity.blueprint_approved_by
         or not activity.blueprint_approval_version
     ):
-        raise BlueprintTrustError("unapproved blueprint cannot create a high-stakes served instance")
+        raise BlueprintTrustError(
+            "unapproved blueprint cannot create a high-stakes served instance"
+        )
     prior = tuple(exposures)
     for nonce in range(_MAX_BIND_ATTEMPTS):
         full_seed = hashlib.sha256(
