@@ -6,6 +6,7 @@ import base64
 import hashlib
 import hmac
 import json
+import zlib
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
@@ -57,6 +58,8 @@ _MAX_ASSESSMENT_HISTORY = 12
 _MAX_COMPLETED_IDS = 128
 _MAX_PLAN_VERSIONS = 3
 _REVIEW_INTERVAL_DAYS = {0: 1, 1: 2, 2: 4, 3: 7, 4: 14}
+_MAX_STATE_PAYLOAD_BYTES = 262_144
+_STATE_COMPRESSION_PREFIX = b"Z1"
 
 
 class LearningPlanError(ValueError):
@@ -132,8 +135,32 @@ def _parse_timestamp(value: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def _decode_state_payload(packed: bytes) -> bytes:
+    """Decode compressed state with an explicit output bound; raw JSON is legacy-only."""
+    if packed.startswith(_STATE_COMPRESSION_PREFIX):
+        decompressor = zlib.decompressobj()
+        try:
+            payload = decompressor.decompress(
+                packed[len(_STATE_COMPRESSION_PREFIX) :],
+                _MAX_STATE_PAYLOAD_BYTES + 1,
+            )
+        except zlib.error as error:
+            raise InvalidStateTokenError from error
+        if (
+            len(payload) > _MAX_STATE_PAYLOAD_BYTES
+            or not decompressor.eof
+            or decompressor.unused_data
+            or decompressor.unconsumed_tail
+        ):
+            raise InvalidStateTokenError
+        return payload
+    if len(packed) > _MAX_STATE_PAYLOAD_BYTES or not packed.startswith(b"{"):
+        raise InvalidStateTokenError
+    return packed
+
+
 class SignedStateCodec:
-    """Canonical HMAC codec for browser-carried learner state."""
+    """Canonical HMAC codec for bounded compressed browser-carried learner state."""
 
     def __init__(self, secret: str) -> None:
         if len(secret.encode("utf-8")) < 32:
@@ -147,18 +174,25 @@ class SignedStateCodec:
             separators=(",", ":"),
             sort_keys=True,
         ).encode("utf-8")
-        signature = hmac.new(self._secret, payload, hashlib.sha256).digest()
-        return f"{_urlsafe_encode(payload)}.{_urlsafe_encode(signature)}"
+        if len(payload) > _MAX_STATE_PAYLOAD_BYTES:
+            raise InvalidStateTokenError
+        packed = _STATE_COMPRESSION_PREFIX + zlib.compress(payload, level=9)
+        signature = hmac.new(self._secret, packed, hashlib.sha256).digest()
+        token = f"{_urlsafe_encode(packed)}.{_urlsafe_encode(signature)}"
+        if len(token) > 65_536:
+            raise InvalidStateTokenError
+        return token
 
     def decode(self, token: str) -> LearnerState:
         if len(token) > 65_536 or token.count(".") != 1:
             raise InvalidStateTokenError
         encoded_payload, encoded_signature = token.split(".", maxsplit=1)
-        payload = _urlsafe_decode(encoded_payload)
+        packed = _urlsafe_decode(encoded_payload)
         signature = _urlsafe_decode(encoded_signature)
-        expected = hmac.new(self._secret, payload, hashlib.sha256).digest()
+        expected = hmac.new(self._secret, packed, hashlib.sha256).digest()
         if not hmac.compare_digest(signature, expected):
             raise InvalidStateTokenError
+        payload = _decode_state_payload(packed)
         try:
             decoded = json.loads(payload)
             return LearnerState.model_validate(decoded)
