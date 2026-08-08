@@ -1,0 +1,50 @@
+name: G03 Ruff formatter
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.head_ref == 'product/g03-deterministic-curriculum-planner' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+      - name: Apply canonical Ruff formatting
+        working-directory: apps/api
+        run: |
+          uv run --locked ruff format \
+            src/ai_learning_platform_api/learning/planner.py \
+            src/ai_learning_platform_api/learning/role_profile.py \
+            tests/test_g03_curriculum_planner.py \
+            tests/test_g03_human_simulation.py \
+            tests/test_product_gate.py
+          git diff --check
+      - name: Commit exact formatter output
+        run: |
+          if git diff --quiet -- apps/api/src apps/api/tests; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/api/src/ai_learning_platform_api/learning/planner.py \
+            apps/api/src/ai_learning_platform_api/learning/role_profile.py \
+            apps/api/tests/test_g03_curriculum_planner.py \
+            apps/api/tests/test_g03_human_simulation.py \
+            apps/api/tests/test_product_gate.py
+          git commit -m 'Apply canonical Ruff formatting to G03'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
