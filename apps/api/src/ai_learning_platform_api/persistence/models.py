@@ -87,6 +87,43 @@ learner_events = Table(
     ),
 )
 
+task_exposures = Table(
+    "task_exposures",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    Column(
+        "account_id",
+        String(160),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    ),
+    Column(
+        "learner_id",
+        UUID(as_uuid=True),
+        ForeignKey("learner_states.learner_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    ),
+    Column("instance_id", String(160), nullable=False, unique=True),
+    Column("item_family_id", String(80), nullable=False, index=True),
+    Column("item_family_version", String(40), nullable=False),
+    Column("blueprint_id", String(80), nullable=False, index=True),
+    Column("blueprint_version", String(40), nullable=False),
+    Column("rubric_version", String(80), nullable=False),
+    Column("plan_version_id", String(120), nullable=False),
+    Column("semantic_signature", String(64), nullable=False),
+    Column("semantic_fingerprint", String(64), nullable=False),
+    Column("semantic_tokens", JSONB, nullable=False),
+    Column("high_stakes_eligible", Integer, nullable=False),
+    Column("served_at", DateTime(timezone=True), nullable=False, index=True),
+    UniqueConstraint(
+        "blueprint_id",
+        "semantic_signature",
+        name="uq_task_exposures_blueprint_semantic",
+    ),
+)
+
 outbox_records = Table(
     "outbox_records",
     metadata,
