@@ -83,7 +83,7 @@
     {
       "id": "G03",
       "name": "Deterministic curriculum planner",
-      "status": "IMPLEMENTING",
+      "status": "VALIDATING",
       "branch": "product/g03-deterministic-curriculum-planner",
       "dependencies": ["G02"],
       "dod_contracts": ["D02", "D04", "D06"],
