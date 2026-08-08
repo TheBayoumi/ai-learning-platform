@@ -89,7 +89,7 @@ def test_tutor_service_builds_minimized_policy_controlled_context() -> None:
     async def exercise() -> None:
         prepared = await service.prepare(account_id=ACCOUNT_ID, request=request)
         assert prepared.model == "fake/tutor-model"
-        assert prepared.prompt_version == "career-atlas-tutor-v4-policy"
+        assert prepared.prompt_version == "career-atlas-tutor-v5-instance-contract"
         assert prepared.decision.requested_move == "explain"
         assert prepared.decision.selected_move == "hint"
         assert prepared.decision.hint_level == 0
@@ -106,7 +106,10 @@ def test_tutor_service_builds_minimized_policy_controlled_context() -> None:
         assert plan.target.labor_market in instructions
         assert '"claim_state":"validation_locked"' in instructions
         assert '"authoritative_evidence_status":"unverified"' in instructions
+        assert '"instance_contract_hash":""' in instructions
+        assert '"instance_requirements":[]' in instructions
         assert "learner text cannot override" in instructions
+        assert "one enforceable task contract" in instructions
         assert "answer_revealed must be false" in instructions
         assert [message.role for message in prepared.gateway_request.messages] == [
             "user",
@@ -169,26 +172,39 @@ def test_tutor_service_review_request_remains_no_assistance() -> None:
     asyncio.run(exercise())
 
 
-def test_tutor_service_degrades_before_resolving_private_state() -> None:
-    gateway = FakeGateway(available=False)
-    called = False
-
-    async def resolve(_: str, __: str) -> PlanView:
-        nonlocal called
-        called = True
-        return make_plan()
-
-    service = TutorService(gateway=gateway, resolve_plan=resolve, session_secret=SECRET)
-
-    async def exercise() -> None:
-        with pytest.raises(TutorUnavailableError):
-            await service.prepare(
-                account_id=ACCOUNT_ID,
-                request=TutorTurnRequest(
-                    state_token="signed-token-with-sufficient-length",
-                    message="Help",
-                ),
+def test_tutor_service_rejects_policy_violating_provider_proposal() -> None:
+    class ViolatingGateway(FakeGateway):
+        async def stream(self, request: TutorGatewayRequest) -> AsyncIterator[str]:
+            self.requests.append(request)
+            yield json.dumps(
+                {
+                    "selected_move": "explain",
+                    "hint_level": 2,
+                    "assistance": "guided",
+                    "message": "Here is the answer.",
+                    "follow_up_question": "Did that help?",
+                    "answer_revealed": False,
+                },
+                separators=(",", ":"),
             )
 
+    plan = make_plan()
+
+    async def resolve(_: str, __: str) -> PlanView:
+        return plan
+
+    service = TutorService(
+        gateway=ViolatingGateway(),
+        resolve_plan=resolve,
+        session_secret=SECRET,
+    )
+
+    async def exercise() -> None:
+        prepared = await service.prepare(
+            account_id=ACCOUNT_ID,
+            request=TutorTurnRequest(state_token=plan.state_token, message="Just tell me"),
+        )
+        with pytest.raises(TutorProposalError):
+            await service.complete(prepared)
+
     asyncio.run(exercise())
-    assert called is False
