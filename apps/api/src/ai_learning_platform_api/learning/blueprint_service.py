@@ -28,6 +28,8 @@ from ai_learning_platform_api.learning.schemas import (
 )
 from ai_learning_platform_api.learning.service import (
     LearningPlanError,
+)
+from ai_learning_platform_api.learning.service import (
     LearningPlanService as BaseLearningPlanService,
 )
 
