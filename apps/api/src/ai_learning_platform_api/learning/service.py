@@ -656,7 +656,7 @@ class LearningPlanService:
             ),
             current_activity=current,
             completed_count=len(state.completed_activity_ids),
-            total_count=len(state.completed_activity_ids) + len(available),
+            total_count=len(state.activities),
             sequence=state.sequence,
             weekly_hours=state.weekly_hours,
             plan_revision=state.plan_revision,
