@@ -41,6 +41,7 @@ from ai_learning_platform_api.persistence.schemas import (
 )
 
 Clock = Callable[[], datetime]
+_MAX_EXPOSURE_COMMIT_ATTEMPTS = 3
 
 
 class PersistentLearningService:
@@ -76,18 +77,13 @@ class PersistentLearningService:
                 ratings=request.ratings,
             )
         )
-        plan = await self._deduplicate_new_plan(plan)
-        state = self._codec.decode(plan.state_token).model_copy(update={"storage_mode": "durable"})
-        stored = await self._repository.commit(
-            LearnerStateCommit(
-                account_id=account_id,
-                learner_id=UUID(state.learner_id),
-                expected_version=None,
-                idempotency_key=request.idempotency_key,
-                event_type="learner.plan.created",
-                state=state,
-                occurred_at=self._now(),
-            )
+        stored, _ = await self._commit_generated_plan(
+            account_id=account_id,
+            learner_id=UUID(plan.learner_id),
+            expected_version=None,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.plan.created",
+            plan=plan,
         )
         return self._view(stored)
 
@@ -175,14 +171,15 @@ class PersistentLearningService:
         )
         if plan.sequence == stored.state.sequence:
             return self._view(stored)
-        plan = await self._deduplicate_new_plan(plan)
-        return await self._commit_plan(
+        committed, _ = await self._commit_generated_plan(
             account_id=account_id,
-            stored=stored,
-            state_token=plan.state_token,
+            learner_id=stored.learner_id,
+            expected_version=stored.version,
             idempotency_key=request.idempotency_key,
             event_type="learner.evidence.evaluated",
+            plan=plan,
         )
+        return self._view(committed)
 
     async def replan(
         self,
@@ -202,14 +199,15 @@ class PersistentLearningService:
                 focus_competency_ids=request.focus_competency_ids,
             )
         )
-        plan = await self._deduplicate_new_plan(plan)
-        return await self._commit_plan(
+        committed, _ = await self._commit_generated_plan(
             account_id=account_id,
-            stored=stored,
-            state_token=plan.state_token,
+            learner_id=stored.learner_id,
+            expected_version=stored.version,
             idempotency_key=request.idempotency_key,
             event_type="learner.plan.replanned",
+            plan=plan,
         )
+        return self._view(committed)
 
     async def start_assessment(
         self,
@@ -244,21 +242,18 @@ class PersistentLearningService:
                 answers=request.answers,
             )
         )
-        plan = await self._deduplicate_new_plan(submission.plan)
-        submission = submission.model_copy(update={"plan": plan})
-        committed = await self._repository.commit(
-            LearnerStateCommit(
-                account_id=account_id,
-                learner_id=stored.learner_id,
-                expected_version=stored.version,
-                idempotency_key=request.idempotency_key,
-                event_type="learner.assessment.submitted",
-                state=self._codec.decode(submission.plan.state_token),
-                occurred_at=self._now(),
-            )
+        committed, committed_plan = await self._commit_generated_plan(
+            account_id=account_id,
+            learner_id=stored.learner_id,
+            expected_version=stored.version,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.assessment.submitted",
+            plan=submission.plan,
         )
         return PersistentAssessmentSubmissionView(
-            submission=submission.model_copy(update={"plan": self._view(committed).plan}),
+            submission=submission.model_copy(
+                update={"plan": committed_plan.model_copy(update={"state_token": self._codec.encode(committed.state)})}
+            ),
             version=committed.version,
         )
 
@@ -303,6 +298,47 @@ class PersistentLearningService:
             state_token=plan.state_token,
             external_exposures=collisions,
         )
+
+    async def _commit_generated_plan(
+        self,
+        *,
+        account_id: str,
+        learner_id: UUID,
+        expected_version: int | None,
+        idempotency_key: str,
+        event_type: str,
+        plan: PlanView,
+    ) -> tuple[StoredLearnerState, PlanView]:
+        """Reserve newly generated work with bounded reread/rebind retry on exposure races."""
+        candidate = await self._deduplicate_new_plan(plan)
+        for attempt in range(_MAX_EXPOSURE_COMMIT_ATTEMPTS):
+            state = self._codec.decode(candidate.state_token).model_copy(
+                update={"storage_mode": "durable"}
+            )
+            try:
+                stored = await self._repository.commit(
+                    LearnerStateCommit(
+                        account_id=account_id,
+                        learner_id=learner_id,
+                        expected_version=expected_version,
+                        idempotency_key=idempotency_key,
+                        event_type=event_type,
+                        state=state,
+                        occurred_at=self._now(),
+                    )
+                )
+                return stored, candidate
+            except TaskExposureConflictError:
+                if (
+                    self._exposure_repository is None
+                    or attempt + 1 >= _MAX_EXPOSURE_COMMIT_ATTEMPTS
+                ):
+                    raise
+                # The conflicting transaction has become visible in the durable fingerprint
+                # authority. Reread it, deterministically rebind the new plan, and retry the same
+                # atomic command. Import/completion never enter this path.
+                candidate = await self._deduplicate_new_plan(candidate)
+        raise TaskExposureConflictError
 
     async def _commit_plan(
         self,
