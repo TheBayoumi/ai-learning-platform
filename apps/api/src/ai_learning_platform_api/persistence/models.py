@@ -116,12 +116,33 @@ task_exposures = Table(
     Column("semantic_signature", String(64), nullable=False),
     Column("semantic_fingerprint", String(64), nullable=False),
     Column("semantic_tokens", JSONB, nullable=False),
+    Column("instance_contract_hash", String(80), nullable=False),
     Column("high_stakes_eligible", Boolean, nullable=False),
     Column("served_at", DateTime(timezone=True), nullable=False, index=True),
     UniqueConstraint(
         "blueprint_id",
         "semantic_signature",
         name="uq_task_exposures_blueprint_semantic",
+    ),
+)
+
+# Privacy-preserving cohort collision history. It intentionally contains no account, learner,
+# instance, plan, rubric, or artifact identifier, so account deletion removes personal history
+# while previously served semantic scenarios remain unavailable to future learners.
+task_collision_fingerprints = Table(
+    "task_collision_fingerprints",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    Column("item_family_id", String(80), nullable=False, index=True),
+    Column("blueprint_id", String(80), nullable=False, index=True),
+    Column("semantic_signature", String(64), nullable=False),
+    Column("semantic_fingerprint", String(64), nullable=False),
+    Column("semantic_tokens", JSONB, nullable=False),
+    Column("served_at", DateTime(timezone=True), nullable=False, index=True),
+    UniqueConstraint(
+        "blueprint_id",
+        "semantic_signature",
+        name="uq_task_collision_fingerprints_blueprint_semantic",
     ),
 )
 
