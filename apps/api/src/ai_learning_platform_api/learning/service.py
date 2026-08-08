@@ -491,7 +491,7 @@ class LearningPlanService:
         planning_signal: dict[str, int],
         assessment_scores: dict[str, int],
     ) -> dict[str, int]:
-        """Blend planning inputs and calibration only for prioritization, never mastery/readiness."""
+        """Blend planning and calibration only for prioritization."""
         return {
             competency.identifier: (
                 round(
