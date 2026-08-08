@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  diagnose:
+  normalize:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
@@ -23,10 +23,46 @@ jobs:
           version: 0.11.18
           python-version: 3.13.13
           working-directory: apps/api
-      - name: Persist exact locked-Ruff diagnostics
+      - name: Apply exact diagnostics, verify, and self-delete
         shell: bash
         run: |
           uv sync --project apps/api --locked --all-groups
+          python - <<'PY'
+          from pathlib import Path
+
+          service = Path("apps/api/src/ai_learning_platform_api/learning/service.py")
+          text = service.read_text(encoding="utf-8")
+          before = 'f"{learner_id}|{activity_id}|{submitted_at}".encode("utf-8")'
+          after = 'f"{learner_id}|{activity_id}|{submitted_at}".encode()'
+          if text.count(before) != 1:
+              raise SystemExit("service UP012 marker mismatch")
+          service.write_text(text.replace(before, after), encoding="utf-8")
+
+          test = Path("apps/api/tests/test_evidence_state.py")
+          text = test.read_text(encoding="utf-8")
+          before = '''            reflection=(
+                "I built the bounded deliverable, recorded the decisions, and described what should "
+                "be verified independently next."
+            ),'''
+          after = '''            reflection=(
+                "I built the bounded deliverable, recorded the decisions, and described what "
+                "should be verified independently next."
+            ),'''
+          if text.count(before) != 1:
+              raise SystemExit("test E501 marker mismatch")
+          text = text.replace(before, after)
+          before = '''def evidence_status(plan: object, competency_id: str) -> object:
+    states = getattr(plan, "competency_evidence")
+    return next(item for item in states if item.competency_id == competency_id)
+'''
+          after = '''def evidence_status(plan: object, competency_id: str) -> object:
+    states = plan.competency_evidence
+    return next(item for item in states if item.competency_id == competency_id)
+'''
+          if text.count(before) != 1:
+              raise SystemExit("test B009 marker mismatch")
+          test.write_text(text.replace(before, after), encoding="utf-8")
+          PY
           files=(
             apps/api/src/ai_learning_platform_api/learning/schemas.py
             apps/api/src/ai_learning_platform_api/learning/evidence.py
@@ -37,14 +73,12 @@ jobs:
             apps/api/tests/test_evidence_state.py
             apps/api/tests/test_tutoring_service.py
           )
-          set +e
-          uv run --project apps/api --locked ruff check "${files[@]}" >g02-ruff-diagnostics.txt 2>&1
-          status=$?
-          set -e
-          printf '\nRUFF_EXIT_STATUS=%s\n' "$status" >>g02-ruff-diagnostics.txt
+          uv run --project apps/api --locked ruff format "${files[@]}"
+          uv run --project apps/api --locked ruff check "${files[@]}"
+          rm -f g02-ruff-diagnostics.txt .github/workflows/g02-ruff-normalize.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add g02-ruff-diagnostics.txt
+          git add -A
           git diff --cached --check
-          git commit -m "Capture exact G02 Ruff diagnostics"
+          git commit -m "Resolve G02 Ruff diagnostics"
           git push origin HEAD:product/g02-deterministic-evidence-state
