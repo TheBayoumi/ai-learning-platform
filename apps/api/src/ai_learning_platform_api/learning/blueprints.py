@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from ai_learning_platform_api.learning.blueprint_contracts import (
     TaskExposureView,
@@ -89,7 +89,7 @@ class BlueprintIdentity:
 
 
 def _digest(value: str, length: int = 24) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:length]
+    return hashlib.sha256(value.encode()).hexdigest()[:length]
 
 
 def _rubric_version(deliverable: str, criteria: Iterable[str]) -> str:
@@ -97,8 +97,13 @@ def _rubric_version(deliverable: str, criteria: Iterable[str]) -> str:
     return f"rubric-{_digest(payload, 20)}"
 
 
+def _catalog_title(served_title: str) -> str:
+    _, separator, title = served_title.partition(". ")
+    return title if separator else served_title
+
+
 def blueprint_identity(role: RoleDefinition, activity: TrustedActivityView) -> BlueprintIdentity:
-    """Resolve trust only when the served activity exactly matches a code-reviewed catalog template."""
+    """Resolve trust only for an exact code-reviewed catalog template match."""
     competency = next(
         (item for item in role.competencies if item.identifier == activity.competency_id),
         None,
@@ -110,7 +115,7 @@ def blueprint_identity(role: RoleDefinition, activity: TrustedActivityView) -> B
         if (
             template.deliverable == activity.deliverable
             and list(template.acceptance_criteria) == list(activity.acceptance_criteria)
-            and activity.title.removeprefix(activity.title[:4]).strip() == template.title
+            and _catalog_title(activity.title) == template.title
         ):
             return BlueprintIdentity(
                 item_family_id=family_id,
@@ -169,7 +174,7 @@ def collides(
     semantic_tokens: Iterable[str],
     exposures: Iterable[TaskExposureView],
 ) -> bool:
-    """Reject exact or near-duplicate content against supplied learner/cohort exposure history."""
+    """Reject exact or near-duplicate content against supplied exposure history."""
     for exposure in exposures:
         if exposure.semantic_fingerprint == semantic_fingerprint:
             return True
@@ -191,7 +196,7 @@ def bind_learner_instance(
     position: int,
     exposures: Iterable[TaskExposureView],
 ) -> TrustedActivityView:
-    """Bind a trusted blueprint to one learner and choose a non-colliding scenario deterministically."""
+    """Bind a trusted blueprint to a deterministic non-colliding learner scenario."""
     if activity.item_family_trust != "trusted" or activity.blueprint_trust != "trusted":
         raise BlueprintTrustError("untrusted blueprint cannot create a high-stakes served instance")
     prior = tuple(exposures)
@@ -208,7 +213,7 @@ def bind_learner_instance(
                     str(position),
                     str(nonce),
                 )
-            ).encode("utf-8")
+            ).encode()
         ).hexdigest()
         domain = _DOMAIN_SCENARIOS[int(seed[0:4], 16) % len(_DOMAIN_SCENARIOS)]
         failure = _FAILURE_SCENARIOS[int(seed[4:8], 16) % len(_FAILURE_SCENARIOS)]
