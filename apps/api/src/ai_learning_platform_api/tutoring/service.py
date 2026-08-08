@@ -14,7 +14,7 @@ from ai_learning_platform_api.tutoring.gateway import (
     TutorGatewayRequest,
 )
 
-TUTOR_PROMPT_VERSION = "career-atlas-tutor-v2"
+TUTOR_PROMPT_VERSION = "career-atlas-tutor-v3"
 PlanResolver = Callable[[str, str], Awaitable[PlanView]]
 
 
@@ -101,6 +101,7 @@ def _instructions(*, plan: PlanView, move: str) -> str:
                 "competency": competency.name,
                 "category": competency.category,
                 "planning_priority_gap_percent": competency.priority_gap_percent,
+                "authoritative_evidence_status": competency.evidence_status,
             }
             for competency in plan.priority_competencies[:4]
         ],
@@ -108,6 +109,9 @@ def _instructions(*, plan: PlanView, move: str) -> str:
             {
                 "competency": evidence.competency_name,
                 "title": evidence.title,
+                "source": evidence.source,
+                "disposition": evidence.disposition,
+                "independence": evidence.independence,
                 "self_reported_confidence": evidence.confidence,
             }
             for evidence in plan.evidence_history[-3:]
@@ -135,6 +139,8 @@ def _instructions(*, plan: PlanView, move: str) -> str:
             "The deterministic platform, not you, owns mastery, curriculum, evidence acceptance, "
             "assessment, and readiness. Never claim that the learner passed, mastered a skill, "
             "met acceptance criteria, or is job-ready.",
+            "Evidence status in the context is read-only deterministic state. Never promote, "
+            "downgrade, accept, reject, or dispute it in your response.",
             "Planning and diagnostic percentages in the context are prioritization signals only. "
             "Never describe them as mastery, competence, or readiness.",
             "Never request or reveal credentials, tokens, private keys, personal identifiers, or "

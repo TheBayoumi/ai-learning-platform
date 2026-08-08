@@ -23,8 +23,8 @@ export function ProjectsView() {
     <div className={styles.page}>
       <PageHeader
         eyebrow="Projects & recorded work"
-        title="A submitted artifact is a lead for verification—not proof by itself."
-        description="This view records learner-attested work so the engine can schedule stronger checks later. Provenance, assistance, modification/debugging, defense, no-hint, retention, and transfer gates are still required before work can contribute to verified mastery or readiness."
+        title="Every artifact starts as an evidence candidate—not proof."
+        description="Career Atlas now preserves source, disposition, independence, assistance, and reasoning state for recorded work. Learner attestation stays unverified until a separate trusted evaluator transition accepts it; provenance, retention, transfer, modification/debugging, defense, and realistic-work gates remain later requirements."
         action={<Link className="button button-primary" href="/app/learn">Open current mission</Link>}
       />
 
@@ -52,23 +52,26 @@ export function ProjectsView() {
         </article>
 
         <article className={styles.card}>
-          <span className={styles.label}>Learner-attested work history</span>
+          <span className={styles.label}>Evidence candidate history</span>
           <h2>{plan.evidence_history.length} recorded items</h2>
           <p>
-            These records may change what the platform asks you to prove next. They do not increase
-            verified mastery or role readiness by themselves.
+            A record can change planning priority, but only a trusted server-side evaluation can move
+            the matching competency to partial or independent evidence state.
           </p>
           {plan.evidence_history.length === 0 ? (
             <p>No work has been recorded yet. Complete the first mission with a defensible deliverable.</p>
           ) : (
             <ul className={styles.timeline}>
               {[...plan.evidence_history].reverse().map((record) => (
-                <li key={`${record.activity_id}-${record.submitted_at}`}>
+                <li key={record.evidence_id}>
                   <time dateTime={record.submitted_at}>{formatDate(record.submitted_at)}</time>
                   <div>
                     <strong>{record.title}</strong>
                     <p>
-                      {record.competency_name} · +{record.planning_signal_delta} planning signal · self-reported confidence {record.confidence}/4
+                      {record.competency_name} · {record.source.replaceAll("_", " ")} · {record.disposition} · {record.independence}
+                    </p>
+                    <p>
+                      assistance {record.assistance} · reasoning {record.reasoning.replaceAll("_", " ")} · +{record.planning_signal_delta} planning signal
                     </p>
                     {record.evidence_reference ? <p>Reference: {record.evidence_reference}</p> : null}
                   </div>
@@ -77,6 +80,29 @@ export function ProjectsView() {
             </ul>
           )}
         </article>
+      </section>
+
+      <section className={styles.card}>
+        <span className={styles.label}>Trusted evaluator history</span>
+        <h2>{plan.evidence_evaluations.length} immutable evaluation records</h2>
+        {plan.evidence_evaluations.length === 0 ? (
+          <p>No trusted evaluator verdict has been committed yet.</p>
+        ) : (
+          <ul className={styles.timeline}>
+            {[...plan.evidence_evaluations].reverse().map((evaluation) => (
+              <li key={evaluation.evaluation_id}>
+                <time dateTime={evaluation.occurred_at}>{formatDate(evaluation.occurred_at)}</time>
+                <div>
+                  <strong>{evaluation.competency_id} · {evaluation.disposition}</strong>
+                  <p>
+                    {evaluation.independence} · assistance {evaluation.assistance} · reasoning {evaluation.reasoning} · evaluator confidence {evaluation.confidence}%
+                  </p>
+                  <p>Rubric {evaluation.rubric_version} · evaluator {evaluation.evaluator_id}@{evaluation.evaluator_version}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

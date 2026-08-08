@@ -21,6 +21,14 @@ ClaimState = Literal[
     "partial_profile_evidence",
     "ready_against_profile",
 ]
+EvidenceSource = Literal["learner_attested", "calibration", "trusted_evaluator"]
+EvidenceDisposition = Literal["recorded", "accepted", "rejected", "disputed"]
+EvidenceIndependence = Literal["unverified", "assisted", "independent"]
+AssistanceLevel = Literal["unknown", "none", "hint", "guided", "answer_level"]
+ReasoningState = Literal["not_observed", "submitted", "verified"]
+CompetencyEvidenceStatus = Literal["unverified", "partial", "independent"]
+MisconceptionStatus = Literal["active", "resolved"]
+ReviewStage = Literal["evidence_follow_up", "retention_candidate"]
 
 
 class CompetencyRating(StrictModel):
@@ -115,6 +123,23 @@ class AssessmentSubmitRequest(ResumeRequest):
     answers: Annotated[list[AssessmentAnswer], Field(min_length=1, max_length=4)]
 
 
+class TrustedEvidenceVerdict(StrictModel):
+    """Server-side trusted evaluator verdict; this contract is not a learner HTTP request."""
+
+    evidence_id: Annotated[str, Field(min_length=8, max_length=160)]
+    competency_id: Annotated[str, Field(min_length=1, max_length=64)]
+    disposition: Literal["accepted", "rejected", "disputed"]
+    independence: EvidenceIndependence = "unverified"
+    assistance: AssistanceLevel = "unknown"
+    reasoning: ReasoningState = "not_observed"
+    evaluator_id: Annotated[str, Field(min_length=2, max_length=120)]
+    evaluator_version: Annotated[str, Field(min_length=1, max_length=80)]
+    rubric_version: Annotated[str, Field(min_length=1, max_length=80)]
+    confidence: Annotated[int, Field(ge=0, le=100)]
+    findings: Annotated[list[str], Field(max_length=12)] = Field(default_factory=list)
+    misconception_codes: Annotated[list[str], Field(max_length=12)] = Field(default_factory=list)
+
+
 class CompetencyView(StrictModel):
     """Public competency metadata."""
 
@@ -137,6 +162,19 @@ class RoleView(StrictModel):
     competencies: list[CompetencyView]
 
 
+class CompetencyEvidenceState(StrictModel):
+    """Deterministic authoritative evidence state for one competency."""
+
+    competency_id: str
+    status: CompetencyEvidenceStatus = "unverified"
+    accepted_evidence_ids: list[str] = Field(default_factory=list)
+    disputed_evidence_ids: list[str] = Field(default_factory=list)
+    last_evaluated_at: str | None = None
+    no_hint_verified: bool = False
+    reasoning_verified: bool = False
+    assistance: AssistanceLevel = "unknown"
+
+
 class PriorityCompetencyView(StrictModel):
     """A competency prioritized from non-authoritative planning and diagnostic signals."""
 
@@ -147,6 +185,7 @@ class PriorityCompetencyView(StrictModel):
     diagnostic_signal_percent: int
     assessment_percent: int | None = None
     priority_gap_percent: int
+    evidence_status: CompetencyEvidenceStatus = "unverified"
     focused: bool = False
 
 
@@ -168,8 +207,9 @@ class ActivityView(StrictModel):
 
 
 class EvidenceRecordView(StrictModel):
-    """A learner-attested record that may prioritize later diagnosis but grants no mastery."""
+    """A recorded evidence candidate; source/trust fields prevent silent promotion."""
 
+    evidence_id: str = ""
     activity_id: str
     competency_id: str
     competency_name: str
@@ -179,10 +219,56 @@ class EvidenceRecordView(StrictModel):
     evidence_reference: str
     criteria_met: list[str]
     confidence: int
+    source: EvidenceSource = "learner_attested"
+    disposition: EvidenceDisposition = "recorded"
+    independence: EvidenceIndependence = "unverified"
+    assistance: AssistanceLevel = "unknown"
+    reasoning: ReasoningState = "not_observed"
     planning_signal_delta: int = Field(
         validation_alias=AliasChoices("planning_signal_delta", "provisional_mastery_delta")
     )
     next_review_at: str
+
+
+class EvidenceEvaluationRecord(StrictModel):
+    """Immutable trusted evaluator observation retained in learner state and event snapshots."""
+
+    evaluation_id: str
+    evidence_id: str
+    competency_id: str
+    source: Literal["trusted_evaluator"] = "trusted_evaluator"
+    disposition: Literal["accepted", "rejected", "disputed"]
+    independence: EvidenceIndependence
+    assistance: AssistanceLevel
+    reasoning: ReasoningState
+    evaluator_id: str
+    evaluator_version: str
+    rubric_version: str
+    confidence: int
+    findings: list[str]
+    misconception_codes: list[str]
+    occurred_at: str
+
+
+class MisconceptionRecord(StrictModel):
+    """A deterministic misconception marker sourced from a trusted evaluation."""
+
+    misconception_id: str
+    competency_id: str
+    code: str
+    status: MisconceptionStatus = "active"
+    evidence_id: str
+    observed_at: str
+
+
+class ReviewState(StrictModel):
+    """Explicit review state; retention qualification is implemented by later DoD slices."""
+
+    competency_id: str
+    due_at: str
+    stage: ReviewStage
+    source_evidence_id: str
+    reason: str
 
 
 class AssessmentOptionView(StrictModel):
@@ -236,7 +322,7 @@ class AssessmentRecordView(StrictModel):
 class LearnerState(StrictModel):
     """Signed learner state carried by the browser and optionally owned by durable storage."""
 
-    schema_version: Literal[1, 2, 3, 4] = 4
+    schema_version: Literal[1, 2, 3, 4, 5] = 5
     storage_mode: Literal["browser", "durable"] = "browser"
     learner_id: str
     learner_name: str
@@ -254,12 +340,16 @@ class LearnerState(StrictModel):
     plan_revision: int = 0
     focus_competency_ids: list[str] = Field(default_factory=list)
     evidence_history: list[EvidenceRecordView] = Field(default_factory=list)
+    evidence_evaluations: list[EvidenceEvaluationRecord] = Field(default_factory=list)
+    competency_evidence: dict[str, CompetencyEvidenceState] = Field(default_factory=dict)
+    misconceptions: list[MisconceptionRecord] = Field(default_factory=list)
+    review_state: dict[str, ReviewState] = Field(default_factory=dict)
     assessment_scores: dict[str, int] = Field(default_factory=dict)
     assessment_history: list[AssessmentRecordView] = Field(default_factory=list)
 
 
 class PlanView(StrictModel):
-    """Planning projection that never presents unverified evidence as mastery or readiness."""
+    """Projection that separates planning signals from authoritative competency evidence."""
 
     state_token: str
     learner_id: str
@@ -272,6 +362,10 @@ class PlanView(StrictModel):
     diagnostic_signal_percent: Annotated[int, Field(ge=0, le=100)]
     assessment_coverage_percent: Annotated[int, Field(ge=0, le=100)]
     priority_competencies: list[PriorityCompetencyView]
+    competency_evidence: list[CompetencyEvidenceState]
+    evidence_evaluations: list[EvidenceEvaluationRecord]
+    active_misconceptions: list[MisconceptionRecord]
+    review_state: list[ReviewState]
     current_activity: ActivityView | None
     completed_count: int
     total_count: int

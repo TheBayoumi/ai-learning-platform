@@ -1,3 +1,10 @@
+export type EvidenceSource = "learner_attested" | "calibration" | "trusted_evaluator";
+export type EvidenceDisposition = "recorded" | "accepted" | "rejected" | "disputed";
+export type EvidenceIndependence = "unverified" | "assisted" | "independent";
+export type AssistanceLevel = "unknown" | "none" | "hint" | "guided" | "answer_level";
+export type ReasoningState = "not_observed" | "submitted" | "verified";
+export type CompetencyEvidenceStatus = "unverified" | "partial" | "independent";
+
 export interface CompetencyView {
   readonly id: string;
   readonly name: string;
@@ -31,6 +38,17 @@ export interface RoleView {
   readonly competencies: readonly CompetencyView[];
 }
 
+export interface CompetencyEvidenceState {
+  readonly competency_id: string;
+  readonly status: CompetencyEvidenceStatus;
+  readonly accepted_evidence_ids: readonly string[];
+  readonly disputed_evidence_ids: readonly string[];
+  readonly last_evaluated_at: string | null;
+  readonly no_hint_verified: boolean;
+  readonly reasoning_verified: boolean;
+  readonly assistance: AssistanceLevel;
+}
+
 export interface PriorityCompetencyView {
   readonly id: string;
   readonly name: string;
@@ -39,6 +57,7 @@ export interface PriorityCompetencyView {
   readonly diagnostic_signal_percent: number;
   readonly assessment_percent: number | null;
   readonly priority_gap_percent: number;
+  readonly evidence_status: CompetencyEvidenceStatus;
   readonly focused: boolean;
 }
 
@@ -58,6 +77,7 @@ export interface ActivityView {
 }
 
 export interface EvidenceRecordView {
+  readonly evidence_id: string;
   readonly activity_id: string;
   readonly competency_id: string;
   readonly competency_name: string;
@@ -67,8 +87,48 @@ export interface EvidenceRecordView {
   readonly evidence_reference: string;
   readonly criteria_met: readonly string[];
   readonly confidence: number;
+  readonly source: EvidenceSource;
+  readonly disposition: EvidenceDisposition;
+  readonly independence: EvidenceIndependence;
+  readonly assistance: AssistanceLevel;
+  readonly reasoning: ReasoningState;
   readonly planning_signal_delta: number;
   readonly next_review_at: string;
+}
+
+export interface EvidenceEvaluationRecord {
+  readonly evaluation_id: string;
+  readonly evidence_id: string;
+  readonly competency_id: string;
+  readonly source: "trusted_evaluator";
+  readonly disposition: "accepted" | "rejected" | "disputed";
+  readonly independence: EvidenceIndependence;
+  readonly assistance: AssistanceLevel;
+  readonly reasoning: ReasoningState;
+  readonly evaluator_id: string;
+  readonly evaluator_version: string;
+  readonly rubric_version: string;
+  readonly confidence: number;
+  readonly findings: readonly string[];
+  readonly misconception_codes: readonly string[];
+  readonly occurred_at: string;
+}
+
+export interface MisconceptionRecord {
+  readonly misconception_id: string;
+  readonly competency_id: string;
+  readonly code: string;
+  readonly status: "active" | "resolved";
+  readonly evidence_id: string;
+  readonly observed_at: string;
+}
+
+export interface ReviewState {
+  readonly competency_id: string;
+  readonly due_at: string;
+  readonly stage: "evidence_follow_up" | "retention_candidate";
+  readonly source_evidence_id: string;
+  readonly reason: string;
 }
 
 export interface AssessmentRecordView {
@@ -127,6 +187,10 @@ export interface PlanView {
   readonly diagnostic_signal_percent: number;
   readonly assessment_coverage_percent: number;
   readonly priority_competencies: readonly PriorityCompetencyView[];
+  readonly competency_evidence: readonly CompetencyEvidenceState[];
+  readonly evidence_evaluations: readonly EvidenceEvaluationRecord[];
+  readonly active_misconceptions: readonly MisconceptionRecord[];
+  readonly review_state: readonly ReviewState[];
   readonly current_activity: ActivityView | null;
   readonly completed_count: number;
   readonly total_count: number;
@@ -157,6 +221,22 @@ function isStringArray(value: unknown): value is readonly string[] {
 
 function isNumberRecord(value: unknown): value is Readonly<Record<string, number>> {
   return isRecord(value) && Object.values(value).every((item) => typeof item === "number");
+}
+
+function isAssistance(value: unknown): value is AssistanceLevel {
+  return ["unknown", "none", "hint", "guided", "answer_level"].includes(String(value));
+}
+
+function isIndependence(value: unknown): value is EvidenceIndependence {
+  return ["unverified", "assisted", "independent"].includes(String(value));
+}
+
+function isReasoning(value: unknown): value is ReasoningState {
+  return ["not_observed", "submitted", "verified"].includes(String(value));
+}
+
+function isEvidenceStatus(value: unknown): value is CompetencyEvidenceStatus {
+  return value === "unverified" || value === "partial" || value === "independent";
 }
 
 function isCompetency(value: unknown): value is CompetencyView {
@@ -202,6 +282,20 @@ function isRole(value: unknown): value is RoleView {
   );
 }
 
+function isCompetencyEvidence(value: unknown): value is CompetencyEvidenceState {
+  return (
+    isRecord(value) &&
+    typeof value.competency_id === "string" &&
+    isEvidenceStatus(value.status) &&
+    isStringArray(value.accepted_evidence_ids) &&
+    isStringArray(value.disputed_evidence_ids) &&
+    (value.last_evaluated_at === null || typeof value.last_evaluated_at === "string") &&
+    typeof value.no_hint_verified === "boolean" &&
+    typeof value.reasoning_verified === "boolean" &&
+    isAssistance(value.assistance)
+  );
+}
+
 function isPriority(value: unknown): value is PriorityCompetencyView {
   return (
     isRecord(value) &&
@@ -212,6 +306,7 @@ function isPriority(value: unknown): value is PriorityCompetencyView {
     typeof value.diagnostic_signal_percent === "number" &&
     (value.assessment_percent === null || typeof value.assessment_percent === "number") &&
     typeof value.priority_gap_percent === "number" &&
+    isEvidenceStatus(value.evidence_status) &&
     typeof value.focused === "boolean"
   );
 }
@@ -237,6 +332,7 @@ function isActivity(value: unknown): value is ActivityView {
 function isEvidence(value: unknown): value is EvidenceRecordView {
   return (
     isRecord(value) &&
+    typeof value.evidence_id === "string" &&
     typeof value.activity_id === "string" &&
     typeof value.competency_id === "string" &&
     typeof value.competency_name === "string" &&
@@ -246,8 +342,57 @@ function isEvidence(value: unknown): value is EvidenceRecordView {
     typeof value.evidence_reference === "string" &&
     isStringArray(value.criteria_met) &&
     typeof value.confidence === "number" &&
+    ["learner_attested", "calibration", "trusted_evaluator"].includes(String(value.source)) &&
+    ["recorded", "accepted", "rejected", "disputed"].includes(String(value.disposition)) &&
+    isIndependence(value.independence) &&
+    isAssistance(value.assistance) &&
+    isReasoning(value.reasoning) &&
     typeof value.planning_signal_delta === "number" &&
     typeof value.next_review_at === "string"
+  );
+}
+
+function isEvidenceEvaluation(value: unknown): value is EvidenceEvaluationRecord {
+  return (
+    isRecord(value) &&
+    typeof value.evaluation_id === "string" &&
+    typeof value.evidence_id === "string" &&
+    typeof value.competency_id === "string" &&
+    value.source === "trusted_evaluator" &&
+    ["accepted", "rejected", "disputed"].includes(String(value.disposition)) &&
+    isIndependence(value.independence) &&
+    isAssistance(value.assistance) &&
+    isReasoning(value.reasoning) &&
+    typeof value.evaluator_id === "string" &&
+    typeof value.evaluator_version === "string" &&
+    typeof value.rubric_version === "string" &&
+    typeof value.confidence === "number" &&
+    isStringArray(value.findings) &&
+    isStringArray(value.misconception_codes) &&
+    typeof value.occurred_at === "string"
+  );
+}
+
+function isMisconception(value: unknown): value is MisconceptionRecord {
+  return (
+    isRecord(value) &&
+    typeof value.misconception_id === "string" &&
+    typeof value.competency_id === "string" &&
+    typeof value.code === "string" &&
+    (value.status === "active" || value.status === "resolved") &&
+    typeof value.evidence_id === "string" &&
+    typeof value.observed_at === "string"
+  );
+}
+
+function isReviewState(value: unknown): value is ReviewState {
+  return (
+    isRecord(value) &&
+    typeof value.competency_id === "string" &&
+    typeof value.due_at === "string" &&
+    (value.stage === "evidence_follow_up" || value.stage === "retention_candidate") &&
+    typeof value.source_evidence_id === "string" &&
+    typeof value.reason === "string"
   );
 }
 
@@ -310,6 +455,14 @@ export function isPlanView(value: unknown): value is PlanView {
     typeof value.assessment_coverage_percent === "number" &&
     Array.isArray(value.priority_competencies) &&
     value.priority_competencies.every(isPriority) &&
+    Array.isArray(value.competency_evidence) &&
+    value.competency_evidence.every(isCompetencyEvidence) &&
+    Array.isArray(value.evidence_evaluations) &&
+    value.evidence_evaluations.every(isEvidenceEvaluation) &&
+    Array.isArray(value.active_misconceptions) &&
+    value.active_misconceptions.every(isMisconception) &&
+    Array.isArray(value.review_state) &&
+    value.review_state.every(isReviewState) &&
     (value.current_activity === null || isActivity(value.current_activity)) &&
     typeof value.completed_count === "number" &&
     typeof value.total_count === "number" &&

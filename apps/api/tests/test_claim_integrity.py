@@ -84,9 +84,10 @@ def test_self_report_and_attested_completion_never_grant_mastery_or_readiness() 
     assert created.claim_state == "validation_locked"
     assert created.verified_readiness_percent is None
     assert created.planning_signal_percent > 0
-    assert created_state.schema_version == 4
+    assert created_state.schema_version == 5
     assert created_state.planning_signal["python"] == 100
     assert created_state.mastery == {}
+    assert all(item.status == "unverified" for item in created_state.competency_evidence.values())
 
     assert created.current_activity is not None
     progressed = service.complete_activity(
@@ -108,6 +109,9 @@ def test_self_report_and_attested_completion_never_grant_mastery_or_readiness() 
     assert progressed.evidence_history[-1].planning_signal_delta > 0
     assert progressed_state.mastery == {}
     assert progressed_state.planning_signal[created.current_activity.competency_id] > 0
+    assert all(
+        item.status == "unverified" for item in progressed_state.competency_evidence.values()
+    )
 
 
 def test_legacy_schema_three_mastery_is_migrated_only_to_planning_signal() -> None:
@@ -130,9 +134,11 @@ def test_legacy_schema_three_mastery_is_migrated_only_to_planning_signal() -> No
     assert resumed.claim_state == "validation_locked"
     assert resumed.verified_readiness_percent is None
     assert resumed.target.role_id == "junior-python-backend-engineer"
-    assert migrated.schema_version == 4
+    assert migrated.schema_version == 5
     assert migrated.planning_signal == {"python": 75}
     assert migrated.mastery == {}
+    assert migrated.evidence_evaluations == []
+    assert all(item.status == "unverified" for item in migrated.competency_evidence.values())
 
 
 def test_durable_creation_accepts_non_python_tracks_and_persists_resolved_target() -> None:

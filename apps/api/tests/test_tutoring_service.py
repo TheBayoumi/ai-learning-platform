@@ -68,7 +68,7 @@ def test_tutor_service_builds_minimized_non_authoritative_context() -> None:
     async def exercise() -> None:
         prepared = await service.prepare(account_id=ACCOUNT_ID, request=request)
         assert prepared.model == "fake/tutor-model"
-        assert prepared.prompt_version == "career-atlas-tutor-v2"
+        assert prepared.prompt_version == "career-atlas-tutor-v3"
         assert seen == [(ACCOUNT_ID, plan.state_token)]
         instructions = prepared.gateway_request.instructions
         assert "Private Learner Name" not in instructions
@@ -81,6 +81,8 @@ def test_tutor_service_builds_minimized_non_authoritative_context() -> None:
         assert plan.target.labor_market in instructions
         assert '"claim_state":"validation_locked"' in instructions
         assert "planning_priority_gap_percent" in instructions
+        assert '"authoritative_evidence_status":"unverified"' in instructions
+        assert "read-only deterministic state" in instructions
         assert "Never claim" in instructions
         assert "prioritization signals only" in instructions
         assert [message.role for message in prepared.gateway_request.messages] == [

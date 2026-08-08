@@ -26,6 +26,7 @@ from ai_learning_platform_api.persistence.schemas import (
     PersistentAssessmentStartRequest,
     PersistentAssessmentSubmissionView,
     PersistentAssessmentSubmitRequest,
+    PersistentEvidenceEvaluationRequest,
     PersistentPlanCreateRequest,
     PersistentPlanImportRequest,
     PersistentPlanView,
@@ -142,6 +143,32 @@ class PersistentLearningService:
             state_token=plan.state_token,
             idempotency_key=request.idempotency_key,
             event_type="learner.activity.completed",
+        )
+
+    async def evaluate_evidence(
+        self,
+        *,
+        account_id: str,
+        request: PersistentEvidenceEvaluationRequest,
+    ) -> PersistentPlanView:
+        """Commit one trusted evaluator verdict through the durable aggregate boundary."""
+        stored = await self._load_expected(
+            account_id=account_id,
+            learner_id=request.learner_id,
+            expected_version=request.expected_version,
+        )
+        plan = self._core.evaluate_evidence(
+            state_token=self._codec.encode(stored.state),
+            verdict=request.verdict,
+        )
+        if plan.sequence == stored.state.sequence:
+            return self._view(stored)
+        return await self._commit_plan(
+            account_id=account_id,
+            stored=stored,
+            state_token=plan.state_token,
+            idempotency_key=request.idempotency_key,
+            event_type="learner.evidence.evaluated",
         )
 
     async def replan(
