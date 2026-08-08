@@ -450,6 +450,18 @@ function isPlanVersion(value: unknown): value is LearnerPlanVersion {
   );
 }
 
+function hasValidPlanHistory(value: Record<string, unknown>): boolean {
+  const active = value.active_plan_version;
+  const history = value.plan_history;
+  return (
+    isPlanVersion(active) &&
+    Array.isArray(history) &&
+    history.length > 0 &&
+    history.every(isPlanVersion) &&
+    history.some((item) => item.plan_version_id === active.plan_version_id)
+  );
+}
+
 function isEvidence(value: unknown): value is EvidenceRecordView {
   return (
     isRecord(value) &&
@@ -590,13 +602,7 @@ export function isPlanView(value: unknown): value is PlanView {
     typeof value.sequence === "number" &&
     typeof value.weekly_hours === "number" &&
     typeof value.plan_revision === "number" &&
-    isPlanVersion(value.active_plan_version) &&
-    Array.isArray(value.plan_history) &&
-    value.plan_history.length > 0 &&
-    value.plan_history.every(isPlanVersion) &&
-    value.plan_history.some(
-      (item) => item.plan_version_id === value.active_plan_version.plan_version_id
-    ) &&
+    hasValidPlanHistory(value) &&
     isStringArray(value.focus_competency_ids) &&
     Array.isArray(value.evidence_history) &&
     value.evidence_history.every(isEvidence) &&
