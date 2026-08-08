@@ -319,6 +319,11 @@ jq -e '
   and .verified_readiness_percent == null
   and (.planning_signal_percent | type) == "number"
   and (.diagnostic_signal_percent | type) == "number"
+  and (.competency_evidence | length) == (.role.competencies | length)
+  and ([.competency_evidence[].status] | all(. == "unverified"))
+  and .evidence_evaluations == []
+  and .active_misconceptions == []
+  and .review_state == []
   and (has("readiness_percent") | not)
   and (has("evidence_readiness_percent") | not)
 ' "$plan" >/dev/null
@@ -362,7 +367,17 @@ jq -e '
   and .completed_count == 1
   and .claim_state == "validation_locked"
   and .verified_readiness_percent == null
+  and (.evidence_history[-1].evidence_id | startswith("evidence-"))
+  and .evidence_history[-1].source == "learner_attested"
+  and .evidence_history[-1].disposition == "recorded"
+  and .evidence_history[-1].independence == "unverified"
+  and .evidence_history[-1].assistance == "unknown"
+  and .evidence_history[-1].reasoning == "submitted"
   and (.evidence_history[-1].planning_signal_delta | type) == "number"
+  and (.evidence_history[-1].competency_id as $competency
+    | any(.competency_evidence[];
+        .competency_id == $competency and .status == "unverified"))
+  and .evidence_evaluations == []
 ' "$progress" >/dev/null
 
 phase="deployed-progressed-resume"
@@ -425,8 +440,11 @@ jq -n \
   --arg target_role "$(jq -r '.target.role_id' "$plan")" \
   --argjson initial_planning_signal "$(jq '.planning_signal_percent' "$plan")" \
   --argjson progressed_planning_signal "$(jq '.planning_signal_percent' "$progress")" \
+  --arg attestation_source "$(jq -r '.evidence_history[-1].source' "$progress")" \
+  --arg attestation_disposition "$(jq -r '.evidence_history[-1].disposition' "$progress")" \
+  --arg attestation_competency "$(jq -r '.evidence_history[-1].competency_id' "$progress")" \
   '{
-    schema_version:2,
+    schema_version:3,
     result:"PASSED",
     commit_sha:$commit_sha,
     environment:$environment,
@@ -451,6 +469,13 @@ jq -n \
       claim_state:$claim_state,
       verified_readiness:"locked",
       initial_planning_signal:$initial_planning_signal,
-      progressed_planning_signal:$progressed_planning_signal
+      progressed_planning_signal:$progressed_planning_signal,
+      learner_attestation:{
+        source:$attestation_source,
+        disposition:$attestation_disposition,
+        competency_id:$attestation_competency,
+        competency_evidence_after_attestation:"unverified",
+        trusted_evaluator_public_route:"absent"
+      }
     }
   }' >"$EVIDENCE_PATH"
