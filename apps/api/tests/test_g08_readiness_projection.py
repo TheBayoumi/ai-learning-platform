@@ -3,23 +3,30 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from ai_learning_platform_api.learning.catalog import ROLE_CATALOG
+from ai_learning_platform_api.learning.catalog import ROLE_CATALOG, RoleDefinition
 from ai_learning_platform_api.learning.readiness import project_readiness
 from ai_learning_platform_api.learning.readiness_service import ReadinessLearningPlanService
 from ai_learning_platform_api.learning.schemas import (
     CompetencyEvidenceState,
     CompetencyQualificationState,
+    CompetencyRating,
     EvidenceRecordView,
     LearnerState,
     MisconceptionRecord,
     PlanRequest,
+    VerificationClass,
     WorkProvenanceState,
 )
 
 _SECRET = "g08-readiness-projection-secret-with-more-than-thirty-two-bytes"
 _NOW = datetime(2026, 8, 8, 15, 0, tzinfo=UTC)
 _ROLE_ID = "junior-python-backend-engineer"
-_REQUIRED = ["independent", "retention_7d", "retention_30d", "transfer"]
+_REQUIRED: list[VerificationClass] = [
+    "independent",
+    "retention_7d",
+    "retention_30d",
+    "transfer",
+]
 
 
 def _service() -> ReadinessLearningPlanService:
@@ -30,7 +37,7 @@ def _service() -> ReadinessLearningPlanService:
     )
 
 
-def _base_state() -> tuple[LearnerState, object]:
+def _base_state() -> tuple[LearnerState, RoleDefinition]:
     service = _service()
     plan = service.create_plan(
         PlanRequest(
@@ -38,7 +45,7 @@ def _base_state() -> tuple[LearnerState, object]:
             target_role=_ROLE_ID,
             weekly_hours=8,
             ratings=[
-                {"competency_id": item.id, "score": 4}
+                CompetencyRating(competency_id=item.id, score=4)
                 for item in service.list_roles()[0].competencies
             ],
         )
@@ -116,14 +123,15 @@ def _complete_competency(state: LearnerState, competency_id: str) -> LearnerStat
 
 
 def _complete_all(state: LearnerState) -> LearnerState:
-    for competency_id in ROLE_CATALOG[_ROLE_ID].competencies:
-        state = _complete_competency(state, competency_id.identifier)
+    for competency in ROLE_CATALOG[_ROLE_ID].competencies:
+        state = _complete_competency(state, competency.identifier)
     return state
 
 
 def test_high_self_report_never_removes_mandatory_readiness_gaps() -> None:
     state, role = _base_state()
-    projection = project_readiness(state=state, role=role, target=state.target)  # type: ignore[arg-type]
+    assert state.target is not None
+    projection = project_readiness(state=state, role=role, target=state.target)
 
     assert projection.engineering_evidence_complete is False
     assert set(projection.mandatory_gap_ids) == {
@@ -137,7 +145,8 @@ def test_one_complete_competency_cannot_compensate_for_other_mandatory_gaps() ->
     state, role = _base_state()
     first = ROLE_CATALOG[_ROLE_ID].competencies[0].identifier
     state = _complete_competency(state, first)
-    projection = project_readiness(state=state, role=role, target=state.target)  # type: ignore[arg-type]
+    assert state.target is not None
+    projection = project_readiness(state=state, role=role, target=state.target)
 
     first_view = next(item for item in projection.competencies if item.competency_id == first)
     assert first_view.engineering_complete is True
@@ -161,7 +170,8 @@ def test_disputed_evidence_reopens_a_mandatory_blocker() -> None:
             }
         }
     )
-    projection = project_readiness(state=state, role=role, target=state.target)  # type: ignore[arg-type]
+    assert state.target is not None
+    projection = project_readiness(state=state, role=role, target=state.target)
 
     view = next(item for item in projection.competencies if item.competency_id == competency_id)
     assert "disputed_evidence_present" in view.blocker_codes
@@ -187,7 +197,8 @@ def test_active_misconception_reopens_a_completed_competency() -> None:
             ]
         }
     )
-    projection = project_readiness(state=state, role=role, target=state.target)  # type: ignore[arg-type]
+    assert state.target is not None
+    projection = project_readiness(state=state, role=role, target=state.target)
     view = next(item for item in projection.competencies if item.competency_id == competency_id)
 
     assert view.engineering_complete is False
@@ -198,7 +209,8 @@ def test_active_misconception_reopens_a_completed_competency() -> None:
 def test_full_engineering_evidence_does_not_unlock_external_readiness_claim() -> None:
     state, role = _base_state()
     state = _complete_all(state)
-    projection = project_readiness(state=state, role=role, target=state.target)  # type: ignore[arg-type]
+    assert state.target is not None
+    projection = project_readiness(state=state, role=role, target=state.target)
 
     assert projection.engineering_evidence_complete is True
     assert projection.mandatory_gap_ids == []
@@ -229,3 +241,13 @@ def test_provisional_overlays_are_exposed_as_unresolved_not_hidden_in_a_score() 
     assert projection.active_overlays
     assert projection.unresolved_overlay_deltas == projection.active_overlays
     assert "overlay_deltas_not_externally_validated" in projection.uncertainties
+
+
+def test_top_level_service_projects_readiness_without_a_percentage() -> None:
+    service = _service()
+    plan = service.create_plan(PlanRequest(learner_name="Projected Learner", weekly_hours=4))
+
+    assert plan.readiness_projection is not None
+    assert plan.readiness_projection.claim_state == "validation_locked"
+    assert plan.verified_readiness_percent is None
+    assert plan.readiness_projection.mandatory_gap_ids
