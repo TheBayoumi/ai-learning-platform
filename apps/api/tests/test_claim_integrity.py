@@ -4,7 +4,12 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
-from ai_learning_platform_api.learning.schemas import PlanRequest, ProgressRequest, TargetRequest
+from ai_learning_platform_api.learning.schemas import (
+    CompetencyRating,
+    PlanRequest,
+    ProgressRequest,
+    TargetRequest,
+)
 from ai_learning_platform_api.learning.service import LearningPlanService, SignedStateCodec
 from ai_learning_platform_api.persistence.contracts import LearnerStateCommit, StoredLearnerState
 from ai_learning_platform_api.persistence.schemas import PersistentPlanCreateRequest
@@ -69,7 +74,7 @@ def test_self_report_and_attested_completion_never_grant_mastery_or_readiness() 
             learner_name="Mona",
             target_role="junior-python-backend-engineer",
             target=_resolved_target(),
-            ratings=[{"competency_id": "python", "score": 4}],
+            ratings=[CompetencyRating(competency_id="python", score=4)],
         )
     )
 
