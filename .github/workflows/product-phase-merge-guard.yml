@@ -6,7 +6,7 @@ on:
     types: [ready_for_review]
 
 permissions:
-  actions: read
+  actions: write
   contents: write
   pull-requests: write
 
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
-      - name: Wait for exact-head canonical gates and merge
+      - name: Wait for exact-head canonical gates, merge, and dispatch deployment
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -57,8 +57,6 @@ jobs:
             ]) | length == 0
           ' <<<"$jobs" >/dev/null
 
-          # Give asynchronous review automation a bounded window to publish findings, then
-          # fail closed if any review thread remains unresolved.
           sleep 30
           read -r owner repo <<<"${GITHUB_REPOSITORY/\// }"
           unresolved=$(gh api graphql \
@@ -74,3 +72,12 @@ jobs:
           result=$(gh api --method PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/merge" \
             -f merge_method=merge -f sha="$HEAD_SHA")
           jq -e '.merged == true' <<<"$result" >/dev/null
+          merge_sha=$(jq -r '.sha' <<<"$result")
+          test -n "$merge_sha"
+
+          # GITHUB_TOKEN merges suppress push-triggered workflows. Explicitly dispatch the
+          # production verification workflow on main so the next phase can only start after
+          # exact-main deployment succeeds.
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/product-deployment.yml/dispatches" \
+            -f ref=main
