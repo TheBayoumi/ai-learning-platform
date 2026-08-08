@@ -11,8 +11,12 @@ from ai_learning_platform_api.learning.blueprints import (
     bind_learner_instance,
     exposure_from_activity,
 )
-from ai_learning_platform_api.learning.catalog import RoleDefinition
-from ai_learning_platform_api.learning.planner import CurriculumDecision, target_fingerprint
+from ai_learning_platform_api.learning.catalog import ROLE_CATALOG, RoleDefinition
+from ai_learning_platform_api.learning.planner import (
+    CurriculumDecision,
+    plan_version_id,
+    target_fingerprint,
+)
 from ai_learning_platform_api.learning.schemas import (
     ActivityView,
     CurriculumTrigger,
@@ -86,6 +90,10 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         seed = hashlib.sha256(
             f"review|{source.id}|{generation}|{available_from.isoformat()}".encode()
         ).hexdigest()[:32]
+        semantic_tokens = [
+            f"r:{hashlib.sha256(source.blueprint_id.encode()).hexdigest()[:8]}",
+            f"s:{source.semantic_fingerprint[:8]}",
+        ]
         return review.model_copy(
             update={
                 "item_family_id": source.item_family_id,
@@ -99,10 +107,10 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
                 "semantic_fingerprint": hashlib.sha256(
                     f"review|{source.semantic_fingerprint}|{generation}".encode()
                 ).hexdigest()[:24],
-                "semantic_tokens": [
-                    f"r:{hashlib.sha256(source.blueprint_id.encode()).hexdigest()[:8]}",
-                    f"s:{source.semantic_fingerprint[:8]}",
+                "semantic_signature": hashlib.sha256("|".join(semantic_tokens).encode()).hexdigest()[
+                    :24
                 ],
+                "semantic_tokens": semantic_tokens,
                 "scenario_tags": ["review", f"g:{generation}"],
                 "high_stakes_eligible": False,
             }
@@ -170,15 +178,16 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
             activities=activities,
             previous=previous,
         )
-        plan_version_id = base_version.plan_version_id
+        current_plan_version_id = base_version.plan_version_id
         finalized = [
-            activity.model_copy(update={"plan_version_id": plan_version_id}) for activity in bound
+            activity.model_copy(update={"plan_version_id": current_plan_version_id})
+            for activity in bound
         ]
         activities[:] = finalized
         current_exposures = [
             exposure_from_activity(
                 activity=activity,
-                plan_version_id=plan_version_id,
+                plan_version_id=current_plan_version_id,
                 served_at=created_at.isoformat(),
             )
             for activity in finalized
@@ -198,13 +207,92 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         archived = [item.model_copy(update={"task_exposures": []}) for item in state.plan_versions]
         return [*archived, version][-_MAX_PLAN_VERSIONS:]
 
+    def rebind_external_exposures(
+        self,
+        *,
+        state_token: str,
+        external_exposures: tuple[TaskExposureView, ...],
+    ) -> PlanView:
+        """Rebind active build instances against durable cohort history before serving."""
+        if not external_exposures:
+            return self.resume(state_token)
+        state = self._codec.decode(state_token)
+        role = ROLE_CATALOG.get(state.target_role)
+        if role is None:
+            raise LearningPlanError
+        state = self._upgrade_state(state, role)
+        active = self._active_plan_version(state)
+        prior_exposures = [
+            item for item in active.task_exposures if item.plan_version_id != active.plan_version_id
+        ]
+        collision_scope = [*external_exposures, *prior_exposures]
+        rebound: list[ActivityView] = []
+        for position, activity in enumerate(active.activities, start=1):
+            candidate = activity
+            if activity.kind == "build":
+                candidate = bind_learner_instance(
+                    role=role,
+                    activity=activity,
+                    learner_id=state.learner_id,
+                    target_fingerprint=target_fingerprint(state.target),
+                    revision=active.revision,
+                    position=position,
+                    exposures=collision_scope,
+                )
+                collision_scope.append(
+                    exposure_from_activity(
+                        activity=candidate,
+                        plan_version_id="pending",
+                        served_at=active.created_at,
+                    )
+                )
+            rebound.append(candidate)
+        next_id = plan_version_id(
+            learner_id=state.learner_id,
+            role_version=role.version,
+            revision=active.revision,
+            target_hash=active.target_fingerprint,
+            trigger=active.trigger,
+            activity_ids=[item.id for item in rebound],
+            priority_ids=[item.competency_id for item in active.priorities],
+        )
+        finalized = [item.model_copy(update={"plan_version_id": next_id}) for item in rebound]
+        current_exposures = [
+            exposure_from_activity(
+                activity=item,
+                plan_version_id=next_id,
+                served_at=active.created_at,
+            )
+            for item in finalized
+            if item.kind == "build"
+        ]
+        updated_version = active.model_copy(
+            update={
+                "plan_version_id": next_id,
+                "activities": finalized,
+                "task_exposures": [*prior_exposures, *current_exposures][-_MAX_TASK_EXPOSURES:],
+            }
+        )
+        versions = [
+            updated_version if item.plan_version_id == active.plan_version_id else item
+            for item in state.plan_versions
+        ]
+        updated_state = state.model_copy(
+            update={
+                "activities": finalized,
+                "plan_versions": versions,
+                "active_plan_version_id": next_id,
+            }
+        )
+        return self._project(updated_state, role)
+
     def evaluate_evidence(
         self,
         *,
         state_token: str,
         verdict: TrustedEvidenceVerdict,
     ) -> PlanView:
-        """Reject high-stakes evaluator promotion when the source task was not trusted."""
+        """Require immutable trusted source provenance and the exact served rubric."""
         state = self._codec.decode(state_token)
         evidence = next(
             (item for item in state.evidence_history if item.evidence_id == verdict.evidence_id),
@@ -212,12 +300,12 @@ class BlueprintLearningPlanService(BaseLearningPlanService):
         )
         if evidence is None:
             return super().evaluate_evidence(state_token=state_token, verdict=verdict)
-        activities = [
-            activity for version in state.plan_versions for activity in version.activities
-        ]
-        source = next((item for item in activities if item.id == evidence.activity_id), None)
-        if source is None or not source.high_stakes_eligible:
+        if not evidence.source_high_stakes_eligible:
             raise UntrustedInstanceEvidenceError
+        if not evidence.source_blueprint_id or not evidence.source_rubric_version:
+            raise UntrustedInstanceEvidenceError
+        if verdict.rubric_version != evidence.source_rubric_version:
+            raise EvidenceRubricMismatchError
         return super().evaluate_evidence(state_token=state_token, verdict=verdict)
 
 
