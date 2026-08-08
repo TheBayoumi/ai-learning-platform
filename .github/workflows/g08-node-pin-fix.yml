@@ -1,0 +1,37 @@
+name: G08 node pin fix
+
+on:
+  push:
+    branches: [product/g08-readiness-projection]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: product/g08-readiness-projection
+          persist-credentials: true
+      - name: Use the canonical setup-node pin
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/g08-finalize.yml')
+          text = path.read_text(encoding='utf-8')
+          old = 'actions/setup-node@1e60f620b9541dca1515407b5ea144e2b71b71c9'
+          new = 'actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e'
+          if old not in text:
+              raise SystemExit('obsolete G08 setup-node pin not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          git rm -f .github/workflows/g08-node-pin-fix.yml
+          git add .github/workflows/g08-finalize.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Use canonical Node action pin for G08 verifier'
+          git push origin HEAD:product/g08-readiness-projection
