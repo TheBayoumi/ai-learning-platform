@@ -29,7 +29,9 @@ from ai_learning_platform_api.learning.service import LearningPlanError
 _SECRET = "g05-edge-case-secret-with-more-than-thirty-two-bytes"
 
 
-def _catalog_activity(*, competency_id: str | None = None, mutate_criteria: bool = False) -> ActivityView:
+def _catalog_activity(
+    *, competency_id: str | None = None, mutate_criteria: bool = False
+) -> ActivityView:
     role = ROLE_CATALOG["junior-python-backend-engineer"]
     competency = role.competencies[0]
     template = competency.activities[0]
