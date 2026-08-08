@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+from typing import Any, cast
 from uuid import UUID
 
 from pydantic import SecretStr
 
 from ai_learning_platform_api.app import create_app
+from ai_learning_platform_api.learning.blueprint_service import BlueprintLearningPlanService
 from ai_learning_platform_api.learning.evidence import (
     EvidenceCompetencyMismatchError,
     UnknownEvidenceError,
@@ -342,6 +344,9 @@ def test_durable_trusted_evaluation_commits_a_versioned_evidence_event() -> None
             repository=repository,
             clock=lambda: NOW,
         )
+        # This G02 durability test bypasses only the later G07 provenance layer.
+        # G05 source rubric/instance provenance remains enforced by the blueprint core.
+        cast(Any, persistent)._core = BlueprintLearningPlanService(SECRET, clock=lambda: NOW)
         created = await persistent.create_plan(
             account_id=ACCOUNT_ID,
             request=PersistentPlanCreateRequest(

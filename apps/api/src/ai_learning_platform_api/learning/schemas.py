@@ -29,6 +29,11 @@ ReasoningState = Literal["not_observed", "submitted", "verified"]
 VerificationClass = Literal["independent", "retention_7d", "retention_30d", "transfer"]
 ProbeStatus = Literal["scheduled", "passed", "failed"]
 ProbeDisposition = Literal["passed", "failed"]
+WorkVerificationKind = Literal["modification", "debugging", "defense"]
+WorkProvenanceStatus = Literal[
+    "challenge_issued", "captured", "verified", "reviewed_blocked", "rejected", "disputed"
+]
+Sha256Hex = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 CompetencyEvidenceStatus = Literal["unverified", "partial", "independent"]
 MisconceptionStatus = Literal["active", "resolved"]
 ReviewStage = Literal["evidence_follow_up", "retention_candidate"]
@@ -206,6 +211,93 @@ class CompetencyQualificationView(StrictModel):
     scheduled_probe_ids: list[str]
     next_probe_at: str | None
     fully_qualified: bool
+
+
+class ArtifactCheckpointView(StrictModel):
+    """One immutable learner work checkpoint bound to content hash and declared assistance."""
+
+    checkpoint_id: Annotated[str, Field(min_length=4, max_length=160)]
+    artifact_sha256: Sha256Hex
+    parent_checkpoint_id: Annotated[str, Field(max_length=160)] = ""
+    created_at: Annotated[str, Field(min_length=10, max_length=64)]
+    change_summary: Annotated[str, Field(min_length=2, max_length=1000)]
+    toolchain: Annotated[list[str], Field(min_length=1, max_length=24)]
+    assistance: AssistanceLevel = "unknown"
+
+
+class WorkVerificationChallengeView(StrictModel):
+    """Post-artifact hidden modification/debugging/defense challenge."""
+
+    challenge_id: str
+    evidence_id: str
+    kind: WorkVerificationKind
+    prompt: str
+    issued_at: str
+
+
+class WorkProvenanceSubmission(StrictModel):
+    """Learner-declared artifact history and responses to server-issued work challenges."""
+
+    evidence_id: Annotated[str, Field(min_length=8, max_length=160)]
+    artifact_id: Annotated[str, Field(min_length=4, max_length=160)]
+    final_artifact_sha256: Sha256Hex
+    checkpoints: Annotated[list[ArtifactCheckpointView], Field(min_length=1, max_length=24)]
+    assistance_disclosure: AssistanceLevel = "unknown"
+    source_attribution: Annotated[str, Field(max_length=1000)] = ""
+    modification_challenge_id: Annotated[str, Field(min_length=8, max_length=160)]
+    modification_evidence_reference: Annotated[str, Field(max_length=1000)] = ""
+    debugging_challenge_id: Annotated[str, Field(min_length=8, max_length=160)]
+    debugging_evidence_reference: Annotated[str, Field(max_length=1000)] = ""
+    defense_challenge_id: Annotated[str, Field(min_length=8, max_length=160)]
+    defense_response: Annotated[str, Field(max_length=4000)] = ""
+
+
+class TrustedWorkProvenanceVerdict(StrictModel):
+    """Trusted evaluator result for authorship, modification/debugging work, and defense."""
+
+    evidence_id: Annotated[str, Field(min_length=8, max_length=160)]
+    artifact_id: Annotated[str, Field(min_length=4, max_length=160)]
+    disposition: Literal["accepted", "rejected", "disputed"]
+    authorship_verified: bool
+    modification_verified: bool
+    debugging_verified: bool
+    defense_verified: bool
+    evaluator_id: Annotated[str, Field(min_length=2, max_length=120)]
+    evaluator_version: Annotated[str, Field(min_length=1, max_length=80)]
+    confidence: Annotated[int, Field(ge=0, le=100)]
+    findings: Annotated[list[str], Field(max_length=16)] = Field(default_factory=list)
+
+
+class WorkProvenanceState(StrictModel):
+    """Deterministic work provenance state; missing legacy history remains explicitly missing."""
+
+    evidence_id: str
+    artifact_id: str = ""
+    status: WorkProvenanceStatus = "challenge_issued"
+    challenges: Annotated[list[WorkVerificationChallengeView], Field(max_length=3)] = Field(
+        default_factory=list
+    )
+    final_artifact_sha256: str = ""
+    checkpoints: Annotated[list[ArtifactCheckpointView], Field(max_length=24)] = Field(
+        default_factory=list
+    )
+    assistance_disclosure: AssistanceLevel = "unknown"
+    source_attribution: str = ""
+    modification_evidence_reference: str = ""
+    debugging_evidence_reference: str = ""
+    defense_response: str = ""
+    source_high_stakes_eligible: bool = False
+    authorship_verified: bool = False
+    modification_verified: bool = False
+    debugging_verified: bool = False
+    defense_verified: bool = False
+    evaluator_id: str = ""
+    evaluator_version: str = ""
+    evaluation_id: str = ""
+    captured_at: str = ""
+    evaluated_at: str | None = None
+    issues: Annotated[list[str], Field(max_length=24)] = Field(default_factory=list)
+    eligible_for_readiness: bool = False
 
 
 class CompetencyView(StrictModel):
@@ -528,6 +620,7 @@ class LearnerState(StrictModel):
     competency_evidence: dict[str, CompetencyEvidenceState] = Field(default_factory=dict)
     competency_qualification: dict[str, CompetencyQualificationState] = Field(default_factory=dict)
     verification_probes: list[VerificationProbeView] = Field(default_factory=list)
+    work_provenance: dict[str, WorkProvenanceState] = Field(default_factory=dict)
     misconceptions: list[MisconceptionRecord] = Field(default_factory=list)
     review_state: dict[str, ReviewState] = Field(default_factory=dict)
     assessment_scores: dict[str, int] = Field(default_factory=dict)
@@ -552,6 +645,7 @@ class PlanView(StrictModel):
     evidence_evaluations: list[EvidenceEvaluationRecord]
     qualifications: list[CompetencyQualificationView] = Field(default_factory=list)
     verification_probes: list[VerificationProbeView] = Field(default_factory=list)
+    work_provenance: list[WorkProvenanceState] = Field(default_factory=list)
     active_misconceptions: list[MisconceptionRecord]
     review_state: list[ReviewState]
     current_activity: ActivityView | None

@@ -6,7 +6,9 @@ from uuid import UUID
 
 import pytest
 
-from ai_learning_platform_api.learning import LearningPlanService
+from ai_learning_platform_api.learning.blueprint_service import (
+    BlueprintLearningPlanService as LearningPlanService,
+)
 from ai_learning_platform_api.learning.blueprint_service import (
     EvidenceInstanceContractMismatchError,
     UntrustedInstanceEvidenceError,
