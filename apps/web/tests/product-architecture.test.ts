@@ -92,6 +92,27 @@ describe("Career Atlas product architecture", () => {
     expect(dashboard).toContain("planning_signal_percent");
   });
 
+  it("keeps trusted evaluator mutations behind the server boundary", () => {
+    const client = source("lib/platform-client.ts");
+    const routedApplication = [
+      source("components/app/app-provider.tsx"),
+      source("components/app/learning-view.tsx"),
+      source("components/app/projects-view.tsx"),
+      source("components/app/readiness-view.tsx")
+    ].join("\n");
+
+    for (const forbidden of [
+      "evidence/evaluate",
+      "trusted-evaluator",
+      "trusted_evaluator",
+      "TrustedEvidenceVerdict"
+    ]) {
+      expect(client).not.toContain(forbidden);
+      expect(routedApplication).not.toContain(forbidden);
+    }
+    expect(source("lib/learning-contract.ts")).toContain('source: "trusted_evaluator"');
+  });
+
   it("keeps assessment answer keys out of the routed client application", () => {
     const assessment = source("components/app/assessments-view.tsx");
 
