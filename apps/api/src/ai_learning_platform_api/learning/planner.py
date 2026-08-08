@@ -7,6 +7,7 @@ import json
 from dataclasses import dataclass
 
 from ai_learning_platform_api.learning.catalog import CompetencyDefinition, RoleDefinition
+from ai_learning_platform_api.learning.role_profile import CompetencyProfile, profile_for
 from ai_learning_platform_api.learning.schemas import (
     CompetencyEvidenceState,
     CompetencyEvidenceStatus,
@@ -23,6 +24,7 @@ class CurriculumDecision:
     """One replayable competency scheduling decision."""
 
     competency: CompetencyDefinition
+    profile: CompetencyProfile
     evidence_status: CompetencyEvidenceStatus
     diagnostic_signal_percent: int
     authoritative_gap_percent: int
@@ -39,7 +41,7 @@ class CurriculumDecision:
             evidence_status=self.evidence_status,
             diagnostic_signal_percent=self.diagnostic_signal_percent,
             authoritative_gap_percent=self.authoritative_gap_percent,
-            prerequisite_ids=list(self.competency.prerequisites),
+            prerequisite_ids=list(self.profile.prerequisites),
             blocked_by=list(self.blocked_by),
             active_misconception_codes=list(self.active_misconception_codes),
             focused=self.focused,
@@ -76,6 +78,7 @@ def rank_curriculum(
     focus_competency_ids: list[str],
 ) -> tuple[CurriculumDecision, ...]:
     """Rank from authoritative gaps first; diagnostics only break unresolved ties."""
+    graph = profile_for(role)
     known_ids = {item.identifier for item in role.competencies}
     diagnostic = diagnostic_signal_values(role, planning_signal, assessment_scores)
     active_by_competency: dict[str, list[str]] = {}
@@ -85,13 +88,14 @@ def rank_curriculum(
 
     decisions: list[CurriculumDecision] = []
     for competency in role.competencies:
+        competency_profile = graph.competencies[competency.identifier]
         evidence = competency_evidence.get(
             competency.identifier,
             CompetencyEvidenceState(competency_id=competency.identifier),
         )
         blocked_by = tuple(
             prerequisite
-            for prerequisite in competency.prerequisites
+            for prerequisite in competency_profile.prerequisites
             if competency_evidence.get(
                 prerequisite,
                 CompetencyEvidenceState(competency_id=prerequisite),
@@ -130,6 +134,7 @@ def rank_curriculum(
         decisions.append(
             CurriculumDecision(
                 competency=competency,
+                profile=competency_profile,
                 evidence_status=evidence.status,
                 diagnostic_signal_percent=diagnostic.get(competency.identifier, 0),
                 authoritative_gap_percent=authoritative_gap,
