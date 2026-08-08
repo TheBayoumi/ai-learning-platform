@@ -8,11 +8,18 @@ from ai_learning_platform_api.learning.role_profile import profile_for
 from ai_learning_platform_api.learning.schemas import (
     CompetencyReadinessView,
     LearnerState,
+    ReadinessBlockerCode,
     ReadinessProjectionView,
     TargetView,
+    VerificationClass,
 )
 
-_REQUIRED_PROOF_CLASSES = ("independent", "retention_7d", "retention_30d", "transfer")
+_REQUIRED_PROOF_CLASSES: tuple[VerificationClass, ...] = (
+    "independent",
+    "retention_7d",
+    "retention_30d",
+    "transfer",
+)
 
 
 def project_readiness(
@@ -55,7 +62,7 @@ def project_readiness(
         ]
         verified_work_evidence_ids.extend(eligible_work_ids)
         misconception_codes = sorted(active_misconceptions.get(competency_id, []))
-        blockers: list[str] = []
+        blockers: list[ReadinessBlockerCode] = []
         if evidence_state is None or evidence_state.status != "independent":
             blockers.append("independent_evidence_missing")
         if disputed_ids:
@@ -89,9 +96,7 @@ def project_readiness(
     ]
     active_overlays = _active_overlays(target)
     unresolved_overlay_deltas = active_overlays if target.validation_state != "approved" else []
-    uncertainties: list[str] = []
-    if role.validation_state != "approved":
-        uncertainties.append("role_profile_external_validation_pending")
+    uncertainties: list[str] = ["role_profile_external_validation_pending"]
     if target.validation_state != "approved":
         uncertainties.append("target_external_validation_pending")
     if unresolved_overlay_deltas:
@@ -118,7 +123,7 @@ def project_readiness(
         target_role_id=target.role_id,
         target_role_version=target.role_version,
         target_validation_state=target.validation_state,
-        role_validation_state=role.validation_state,
+        role_validation_state="provisional",
         claim_state="validation_locked",
         engineering_evidence_complete=engineering_evidence_complete,
         external_approval_required=True,
