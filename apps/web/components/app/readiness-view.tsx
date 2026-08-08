@@ -6,99 +6,128 @@ import { useCareerApp } from "./app-provider";
 import { Metric, NoPlan, PageHeader } from "./workspace-ui";
 import styles from "./workspace.module.css";
 
+function label(value: string) {
+  return value.replaceAll("_", " ").replaceAll(":", " · ");
+}
+
 export function ReadinessView() {
   const { plan } = useCareerApp();
   if (plan === null) {
     return <NoPlan />;
   }
 
-  const evidenceCounts = plan.competency_evidence.reduce(
-    (counts, item) => ({ ...counts, [item.status]: counts[item.status] + 1 }),
-    { unverified: 0, partial: 0, independent: 0 }
-  );
+  const readiness = plan.readiness_projection;
+  if (readiness === null || readiness === undefined) {
+    return (
+      <div className={styles.page}>
+        <PageHeader
+          eyebrow="Readiness evidence gate"
+          title="Readiness projection is unavailable for this legacy state."
+          description="Resume or replan this learner state to project exact mandatory evidence, retention, transfer, provenance, overlay, and validation blockers. No readiness claim is inferred while that projection is absent."
+          action={<Link className="button button-primary" href="/app/learn">Resume learning</Link>}
+        />
+      </div>
+    );
+  }
+
+  const completeCount = readiness.competencies.filter((item) => item.engineering_complete).length;
+  const gapCount = readiness.mandatory_gap_ids.length;
 
   return (
     <div className={styles.page}>
       <PageHeader
         eyebrow="Readiness evidence gate"
-        title="Readiness stays locked while evidence quality is built explicitly."
-        description="Career Atlas now tracks authoritative competency evidence separately from self-report, activity completion, and calibration. Independent evidence is still not role readiness: retention, transfer, provenance, realistic work, overlay coverage, and external validation remain required."
-        action={<Link className="button button-primary" href="/app/learn">Work the next evidence gap</Link>}
+        title="Exact role evidence is projected without turning it into a hiring score."
+        description={`This projection is bound to ${readiness.role_id} ${readiness.role_version} / ${readiness.graph_version}. Every mandatory competency is evaluated independently from trusted evidence, delayed retention, unseen transfer, verified work provenance, disputes, and misconceptions. External practitioner validation remains a separate gate.`}
+        action={<Link className="button button-primary" href="/app/learn">Work the next mandatory gap</Link>}
       />
 
       <section className={styles.metrics}>
-        <Metric label="Readiness conclusion" value="Locked" note={`Claim state · ${plan.claim_state}`} />
-        <Metric label="Independent evidence" value={`${evidenceCounts.independent}`} note={`${evidenceCounts.partial} partial · ${evidenceCounts.unverified} unverified competencies`} />
-        <Metric label="Calibration coverage" value={`${plan.assessment_coverage_percent}%`} note="Diagnostic coverage only · not authoritative competency evidence" />
+        <Metric
+          label="Public readiness claim"
+          value="Locked"
+          note={`${label(readiness.claim_state)} · external approval required`}
+        />
+        <Metric
+          label="Engineering evidence"
+          value={readiness.engineering_evidence_complete ? "Complete" : `${gapCount} gaps`}
+          note={`${completeCount}/${readiness.mandatory_competency_ids.length} mandatory competencies complete`}
+        />
+        <Metric
+          label="Profile binding"
+          value={readiness.role_version}
+          note={`${readiness.graph_version} · ${readiness.evidence_policy_version}`}
+        />
       </section>
 
       <section className={styles.grid2}>
         <article className={styles.card}>
-          <span className={styles.label}>Competency evidence state</span>
-          <h2>What has actually passed a trusted evidence transition</h2>
+          <span className={styles.label}>Mandatory competency blockers</span>
+          <h2>Strong evidence in one area cannot compensate for another required gap.</h2>
           <ul className={styles.competencyList}>
-            {plan.priority_competencies.map((competency) => (
-              <li key={competency.id}>
+            {readiness.competencies.map((competency) => (
+              <li key={competency.competency_id}>
                 <span className={styles.itemTitle}>
-                  <strong>{competency.name}</strong>
+                  <strong>{competency.competency_name}</strong>
                   <small>
-                    evidence {competency.evidence_status} · diagnostic priority gap {competency.priority_gap_percent}%
+                    evidence {competency.evidence_status} · proof {competency.satisfied_proof_classes.length}/4 · verified work {competency.verified_work_evidence_ids.length}
                   </small>
-                  <span className={styles.progress}><span style={{ width: `${competency.diagnostic_signal_percent}%` }} /></span>
+                  {competency.blocker_codes.length > 0 ? (
+                    <small>{competency.blocker_codes.map(label).join(" · ")}</small>
+                  ) : (
+                    <small>Independent, retained, transferred, provenance-verified evidence complete.</small>
+                  )}
                 </span>
-                <span className={styles.score}>{competency.evidence_status}</span>
+                <span className={styles.score}>
+                  {competency.engineering_complete ? "complete" : "blocked"}
+                </span>
               </li>
             ))}
           </ul>
         </article>
 
         <article className={styles.card}>
-          <span className={styles.label}>Why readiness is still locked</span>
-          <h2>Independent evidence is necessary, but not sufficient.</h2>
+          <span className={styles.label}>Claim boundary</span>
+          <h2>Engineering completeness never self-promotes to job readiness.</h2>
           <ul className={styles.criteria}>
-            <li>Learner-attested work remains unverified until a trusted evaluator accepts it.</li>
-            <li>Independent status requires no-hint performance, no answer-level assistance, and verified reasoning.</li>
-            <li>Retention-candidate review is a scheduled future check, not proof of retention.</li>
-            <li>Transfer work, provenance, modification/debugging, defense, and realistic simulations still need later DoD slices.</li>
-            <li>Mandatory gaps and active/unresolved overlays must eventually be evaluated against one exact RoleProfile version.</li>
-            <li>Formal practitioner/cohort validation gates remain external and cannot be inferred from engineering implementation.</li>
+            <li>Claim state: {label(readiness.claim_state)}.</li>
+            <li>RoleProfile validation: {readiness.role_validation_state}.</li>
+            <li>Target validation: {readiness.target_validation_state}.</li>
+            <li>External human/practitioner approval remains required.</li>
+            <li>Self-report, calibration score, chat fluency, completion, and unreviewed work are excluded from readiness authority.</li>
+            <li>No percentage is emitted because mandatory evidence classes are non-compensatory.</li>
           </ul>
         </article>
       </section>
 
       <section className={styles.grid2}>
         <article className={styles.card}>
-          <span className={styles.label}>Active misconceptions</span>
-          <h2>{plan.active_misconceptions.length} trusted observations need attention</h2>
-          {plan.active_misconceptions.length === 0 ? (
-            <p>No trusted evaluator misconception record is active.</p>
-          ) : (
-            <ul className={styles.criteria}>
-              {plan.active_misconceptions.map((item) => (
-                <li key={item.misconception_id}>{item.competency_id} · {item.code}</li>
-              ))}
-            </ul>
-          )}
+          <span className={styles.label}>Target overlays and exclusions</span>
+          <h2>{readiness.unresolved_overlay_deltas.length} overlay deltas remain unresolved</h2>
+          <ul className={styles.criteria}>
+            {readiness.active_overlays.length === 0 ? (
+              <li>No active overlays were recorded.</li>
+            ) : (
+              readiness.active_overlays.map((item) => <li key={item}>{label(item)}</li>)
+            )}
+            {readiness.exclusions.map((item) => <li key={`exclusion-${item}`}>Excluded · {item}</li>)}
+          </ul>
         </article>
 
         <article className={styles.card}>
-          <span className={styles.label}>Evidence follow-up state</span>
-          <h2>{plan.review_state.length} scheduled evidence checks</h2>
-          {plan.review_state.length === 0 ? (
-            <p>No trusted-evidence follow-up is scheduled yet.</p>
-          ) : (
-            <ul className={styles.timeline}>
-              {plan.review_state.map((item) => (
-                <li key={`${item.competency_id}-${item.source_evidence_id}`}>
-                  <time dateTime={item.due_at}>{new Date(item.due_at).toLocaleDateString()}</time>
-                  <div>
-                    <strong>{item.competency_id} · {item.stage.replaceAll("_", " ")}</strong>
-                    <p>{item.reason}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <span className={styles.label}>Disputes and uncertainty</span>
+          <h2>Unknowns stay visible instead of becoming optimistic defaults.</h2>
+          <ul className={styles.criteria}>
+            {readiness.disputed_evidence_ids.map((item) => (
+              <li key={item}>Disputed evidence · {item}</li>
+            ))}
+            {readiness.stale_evidence_ids.map((item) => (
+              <li key={`stale-${item}`}>Stale evidence · {item}</li>
+            ))}
+            {readiness.uncertainties.map((item) => (
+              <li key={item}>{label(item)}</li>
+            ))}
+          </ul>
         </article>
       </section>
     </div>
