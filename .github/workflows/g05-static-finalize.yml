@@ -82,6 +82,8 @@ jobs:
         working-directory: apps/api
         run: |
           uv run --locked ruff format src tests migrations/versions
+          uv run --locked ruff check --fix src tests migrations/versions
+          uv run --locked ruff format src tests migrations/versions
           uv run --locked ruff check src tests migrations/versions
           uv run --locked mypy src tests ../../scripts
           uv run --locked pytest tests/test_g05_blueprint_instances.py tests/test_g05_human_simulation.py tests/test_g05_durable_exposure_index.py -q
