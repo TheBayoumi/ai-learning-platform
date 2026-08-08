@@ -262,9 +262,7 @@ class PersistentLearningService:
             version=committed.version,
         )
 
-    async def _collision_history(
-        self, plan: PlanView
-    ) -> tuple[CollisionFingerprintView, ...]:
+    async def _collision_history(self, plan: PlanView) -> tuple[CollisionFingerprintView, ...]:
         if self._exposure_repository is None:
             return ()
         item_family_ids = tuple(

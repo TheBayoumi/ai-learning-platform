@@ -26,6 +26,7 @@ from ai_learning_platform_api.persistence.contracts import (
 )
 from ai_learning_platform_api.persistence.database import DatabaseRuntime
 from ai_learning_platform_api.persistence.postgres import PostgresLearnerStateRepository
+from ai_learning_platform_api.persistence.schemas import PersistentPlanImportRequest
 from ai_learning_platform_api.persistence.service import PersistentLearningService
 
 _SECRET = "g05-durable-index-secret-with-more-than-thirty-two-bytes"
@@ -177,7 +178,10 @@ def test_evaluator_uses_immutable_source_contract_after_plan_history_pruning() -
     )
     evidence = progressed.evidence_history[-1]
     assert evidence.source_rubric_version == activity.rubric_version
+    assert evidence.source_item_family_id == activity.item_family_id
+    assert evidence.source_item_family_version == activity.item_family_version
     assert evidence.source_blueprint_id == activity.blueprint_id
+    assert evidence.source_blueprint_version == activity.blueprint_version
     assert evidence.source_blueprint_approval_id == activity.blueprint_approval_id
     assert evidence.source_instance_contract_hash == activity.instance_contract_hash
     assert evidence.source_high_stakes_eligible is True
@@ -306,3 +310,39 @@ def test_postgres_index_fails_closed_and_tombstone_survives_account_deletion() -
             await runtime.shutdown()
 
     asyncio.run(scenario())
+
+
+def test_browser_import_fails_closed_without_rebinding_served_work() -> None:
+    core = LearningPlanService(_SECRET, clock=lambda: _NOW)
+    plan = core.create_plan(PlanRequest(learner_name="Browser Import", weekly_hours=4))
+    activity = plan.current_activity
+    assert activity is not None
+    progressed = core.complete_activity(
+        ProgressRequest(
+            state_token=plan.state_token,
+            activity_id=activity.id,
+            reflection="Completed the already-served browser task before import.",
+            evidence_reference="repo://browser-import",
+            criteria_met=list(activity.acceptance_criteria),
+            confidence=4,
+        )
+    )
+    collision = _fingerprint(progressed.active_plan_version.task_exposures[0])
+    service = _persistent_service(ExposureRepository(collision))
+
+    with pytest.raises(TaskExposureConflictError):
+        asyncio.run(
+            service.import_plan(
+                account_id="cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+                request=PersistentPlanImportRequest(
+                    idempotency_key="g05-browser-import-0001",
+                    state_token=progressed.state_token,
+                ),
+            )
+        )
+
+    resumed = core.resume(progressed.state_token)
+    assert resumed.state_token == progressed.state_token
+    assert resumed.evidence_history[-1].source_plan_version_id == (
+        progressed.evidence_history[-1].source_plan_version_id
+    )

@@ -22,7 +22,12 @@ _MAX_BIND_ATTEMPTS = 128
 
 # Explicit version-bound approval registry. A future role revision is untrusted until it is
 # deliberately added here after blueprint/rubric review; exact catalog matching alone is not trust.
-_APPROVED_ROLE_VERSIONS = {
+_APPROVED_ITEM_FAMILY_ROLE_VERSIONS = {
+    "junior-python-backend-engineer": "2026.07-provisional-1",
+    "ai-application-engineer": "2026.08-provisional-1",
+    "data-engineer": "2026.08-provisional-1",
+}
+_APPROVED_BLUEPRINT_ROLE_VERSIONS = {
     "junior-python-backend-engineer": "2026.07-provisional-1",
     "ai-application-engineer": "2026.08-provisional-1",
     "data-engineer": "2026.08-provisional-1",
@@ -137,7 +142,7 @@ def _approval_for(
     template_deliverable: str,
     template_criteria: Iterable[str],
 ) -> BlueprintApproval | None:
-    if _APPROVED_ROLE_VERSIONS.get(role.identifier) != role.version:
+    if _APPROVED_BLUEPRINT_ROLE_VERSIONS.get(role.identifier) != role.version:
         return None
     reviewed_payload = "|".join(
         (
@@ -187,14 +192,17 @@ def blueprint_identity(role: RoleDefinition, activity: ActivityView) -> Blueprin
                 "|".join((family_id, str(index), template.title, template.deliverable)),
                 16,
             )
-            trusted = approval is not None
+            family_trusted = (
+                _APPROVED_ITEM_FAMILY_ROLE_VERSIONS.get(role.identifier) == role.version
+            )
+            blueprint_trusted = approval is not None
             return BlueprintIdentity(
                 item_family_id=family_id,
                 item_family_version=_ITEM_FAMILY_VERSION,
-                item_family_trust="trusted" if trusted else "legacy_unverified",
+                item_family_trust=("trusted" if family_trusted else "legacy_unverified"),
                 blueprint_id=f"blueprint-{template_hash}",
                 blueprint_version=_BLUEPRINT_VERSION,
-                blueprint_trust="trusted" if trusted else "legacy_unverified",
+                blueprint_trust=("trusted" if blueprint_trusted else "legacy_unverified"),
                 blueprint_approval_id="" if approval is None else approval.approval_id,
                 blueprint_approved_by="" if approval is None else approval.approved_by,
                 blueprint_approval_version="" if approval is None else approval.approval_version,

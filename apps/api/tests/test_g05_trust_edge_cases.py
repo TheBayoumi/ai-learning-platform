@@ -82,6 +82,28 @@ def test_blueprint_identity_fails_closed_for_unknown_or_unapproved_catalog_state
     assert attached.high_stakes_eligible is False
 
 
+def test_item_family_and_blueprint_trust_can_be_demoted_independently(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import ai_learning_platform_api.learning.blueprints as blueprints_module
+
+    role = ROLE_CATALOG["junior-python-backend-engineer"]
+    activity = _catalog_activity()
+    identity = blueprint_identity(role, activity)
+    assert identity.item_family_trust == "trusted"
+    assert identity.blueprint_trust == "trusted"
+
+    monkeypatch.setitem(
+        blueprints_module._APPROVED_ITEM_FAMILY_ROLE_VERSIONS,
+        role.identifier,
+        "different-unapproved-version",
+    )
+    separated = blueprint_identity(role, activity)
+    assert separated.item_family_trust == "legacy_unverified"
+    assert separated.blueprint_trust == "trusted"
+    assert attach_blueprint_identity(role=role, activity=activity).high_stakes_eligible is False
+
+
 def test_similarity_and_collision_checks_cover_exact_near_and_distinct_cases() -> None:
     assert semantic_similarity([], []) == 1.0
     assert semantic_similarity(["a", "b"], ["a", "c"]) == pytest.approx(1 / 3)

@@ -340,7 +340,9 @@ class EvidenceRecordView(StrictModel):
     )
     next_review_at: str
     source_item_family_id: str = ""
+    source_item_family_version: str = ""
     source_blueprint_id: str = ""
+    source_blueprint_version: str = ""
     source_blueprint_approval_id: str = ""
     source_rubric_version: str = ""
     source_instance_contract_hash: str = ""

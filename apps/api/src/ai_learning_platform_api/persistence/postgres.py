@@ -362,8 +362,6 @@ async def _write_task_exposures(
     if active is None:
         return
     for exposure in active.task_exposures:
-        if exposure.plan_version_id != active.plan_version_id:
-            continue
         existing = await _existing_exposure(connection, instance_id=exposure.instance_id)
         if existing is not None:
             if _matches_existing_exposure(
