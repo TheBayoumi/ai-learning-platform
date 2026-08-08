@@ -1,0 +1,89 @@
+name: Product phase progression
+
+on:
+  workflow_run:
+    workflows: [Product deployment]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: product-phase-progression
+  cancel-in-progress: false
+
+jobs:
+  advance:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+          persist-credentials: true
+      - name: Advance exactly one deployed G phase
+        env:
+          DEPLOY_RUN_ID: ${{ github.event.workflow_run.id }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          path = Path('plans/adaptive-product-state.json')
+          state = json.loads(path.read_text(encoding='utf-8'))
+          current = state['active_phase']
+          mapping = {
+              'G06': ('G07', 'product/g07-work-provenance-simulations'),
+              'G07': ('G08', 'product/g08-readiness-projection'),
+              'G08': ('G09', 'product/g09-integration-hardening'),
+          }
+          if current not in mapping:
+              print(f'No automatic successor for {current}; no branch created.')
+              raise SystemExit(0)
+          phase = next(item for item in state['phases'] if item['id'] == current)
+          if phase['status'] not in {'VALIDATING', 'IMPLEMENTING'}:
+              print(f'{current} already advanced; no-op.')
+              raise SystemExit(0)
+
+          parents = subprocess.check_output(['git', 'show', '-s', '--format=%P', 'HEAD'], text=True).strip().split()
+          if len(parents) < 2:
+              raise SystemExit('deployed main head is not a merge commit; refusing progression')
+          accepted_head = parents[1]
+          deploy_sha = os.environ['DEPLOY_SHA']
+          run_id = os.environ['DEPLOY_RUN_ID']
+          phase['status'] = 'PASSED'
+          phase['branch'] = 'main'
+          phase['accepted_sha'] = accepted_head
+          phase['production_acceptance'] = [
+              f'Exact-head Quality Gates passed before merge on {accepted_head}',
+              f'Product deployment run {run_id} passed on merged main SHA {deploy_sha}',
+          ]
+          next_id, next_branch = mapping[current]
+          next_phase = next(item for item in state['phases'] if item['id'] == next_id)
+          if next_phase['status'] != 'NOT_STARTED':
+              raise SystemExit(f'{next_id} already started; refusing duplicate progression')
+          state['active_phase'] = next_id
+          next_phase['status'] = 'VALIDATING'
+          next_phase['branch'] = next_branch
+          path.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8')
+          Path('/tmp/next-branch').write_text(next_branch, encoding='utf-8')
+          PY
+          if ! test -s /tmp/next-branch; then
+            exit 0
+          fi
+          next_branch=$(cat /tmp/next-branch)
+          git switch -c "$next_branch"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add plans/adaptive-product-state.json
+          git commit -m "Advance deployed product phase"
+          git push origin "$next_branch"
