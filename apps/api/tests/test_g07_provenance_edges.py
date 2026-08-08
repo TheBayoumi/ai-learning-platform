@@ -128,7 +128,9 @@ def _submission(
     )
 
 
-def _verdict(evidence: EvidenceRecordView, *, artifact_id: str = "edge-artifact") -> TrustedWorkProvenanceVerdict:
+def _verdict(
+    evidence: EvidenceRecordView, *, artifact_id: str = "edge-artifact"
+) -> TrustedWorkProvenanceVerdict:
     return TrustedWorkProvenanceVerdict(
         evidence_id=evidence.evidence_id,
         artifact_id=artifact_id,
@@ -295,7 +297,9 @@ def test_reviewed_record_is_idempotent_only_for_the_exact_same_verdict() -> None
         ],
     ],
 )
-def test_malformed_checkpoint_history_is_rejected(checkpoints: list[ArtifactCheckpointView]) -> None:
+def test_malformed_checkpoint_history_is_rejected(
+    checkpoints: list[ArtifactCheckpointView],
+) -> None:
     _, issued, evidence = _issued_state()
     with pytest.raises(InvalidCheckpointChainError):
         capture_work_provenance(
