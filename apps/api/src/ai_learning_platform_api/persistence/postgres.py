@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
@@ -336,7 +337,7 @@ async def _write_task_exposures(
     for exposure in active.task_exposures:
         if exposure.plan_version_id != active.plan_version_id:
             continue
-        statement = (
+        statement: Any = (
             postgresql_insert(task_exposures)
             .values(
                 id=uuid5(NAMESPACE_URL, f"task-exposure:{exposure.instance_id}"),
