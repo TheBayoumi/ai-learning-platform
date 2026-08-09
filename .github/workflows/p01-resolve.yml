@@ -1,0 +1,309 @@
+name: P01 identity integration resolver
+
+on:
+  push:
+    branches: [product/p01-identity-account-sessions]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: p01-identity-resolver
+  cancel-in-progress: true
+
+jobs:
+  resolve:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ai_learning_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ai_learning_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AI_PLATFORM_DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ai_learning_platform
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: product/p01-identity-account-sessions
+          persist-credentials: true
+
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Pin canonical npm
+        run: |
+          npm install --global npm@11.18.0
+          test "$(npm --version)" = "11.18.0"
+
+      - name: Wire authenticated ownership and cross-device resume
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f"P01 marker missing: {label}")
+              return text.replace(old, new, 1)
+
+          postgres = Path("apps/api/src/ai_learning_platform_api/identity/postgres.py")
+          text = postgres.read_text(encoding="utf-8")
+          text = text.replace("        identity: PlatformIdentity,\n", "        target_account_id: str,\n", 1)
+          text = text.replace("        if anonymous_account_id == identity.account_id:\n", "        if anonymous_account_id == target_account_id:\n", 1)
+          text = text.replace("accounts.c.id == identity.account_id", "accounts.c.id == target_account_id")
+          text = text.replace(".values(account_id=identity.account_id)", ".values(account_id=target_account_id)")
+          text = text.replace("target_account_id=identity.account_id", "target_account_id=target_account_id")
+          postgres.write_text(text, encoding="utf-8")
+
+          middleware_test = Path("apps/api/tests/test_p01_identity_middleware.py")
+          text = middleware_test.read_text(encoding="utf-8")
+          text = text.replace(
+              "        identity: PlatformIdentity,\n        anonymous_account_id: str,\n",
+              "        target_account_id: str,\n        anonymous_account_id: str,\n",
+              1,
+          )
+          text = text.replace("        del identity, anonymous_account_id\n", "        del target_account_id, anonymous_account_id\n", 1)
+          middleware_test.write_text(text, encoding="utf-8")
+
+          postgres_test = Path("apps/api/tests/test_p01_identity_postgres.py")
+          text = postgres_test.read_text(encoding="utf-8")
+          text = text.replace("identity=identity,", "target_account_id=identity.account_id,")
+          postgres_test.write_text(text, encoding="utf-8")
+
+          oidc_test = Path("apps/api/tests/test_p01_oidc_verifier.py")
+          text = oidc_test.read_text(encoding="utf-8")
+          text = text.replace("import json\n", "import asyncio\nimport json\n", 1)
+          text = text.replace("@pytest.mark.asyncio\nasync def test_valid_token_is_verified_and_jwks_is_cached() -> None:\n", "def test_valid_token_is_verified_and_jwks_is_cached() -> None:\n")
+          text = text.replace("    first = await verifier.verify(_token())\n    second = await verifier.verify(_token())\n", "    first = asyncio.run(verifier.verify(_token()))\n    second = asyncio.run(verifier.verify(_token()))\n")
+          text = text.replace("    await client.aclose()\n", "    asyncio.run(client.aclose())\n")
+          text = text.replace("@pytest.mark.asyncio\nasync def test_wrong_audience_and_unknown_key_fail_closed() -> None:\n", "def test_wrong_audience_and_unknown_key_fail_closed() -> None:\n")
+          text = text.replace("        await verifier.verify(_token(audience=\"https://wrong.example\"))\n", "        asyncio.run(verifier.verify(_token(audience=\"https://wrong.example\")))\n")
+          text = text.replace("        await verifier.verify(_token(kid=\"unknown\"))\n", "        asyncio.run(verifier.verify(_token(kid=\"unknown\")))\n")
+          text = text.replace("@pytest.mark.asyncio\nasync def test_non_rs256_token_is_rejected_before_key_lookup() -> None:\n", "def test_non_rs256_token_is_rejected_before_key_lookup() -> None:\n")
+          text = text.replace("        await verifier.verify(token)\n", "        asyncio.run(verifier.verify(token))\n")
+          text = text.replace("@pytest.mark.asyncio\nasync def test_discovery_issuer_mismatch_is_identity_outage_not_token_acceptance() -> None:\n", "def test_discovery_issuer_mismatch_is_identity_outage_not_token_acceptance() -> None:\n")
+          text = text.replace("        await verifier.verify(_token())\n", "        asyncio.run(verifier.verify(_token()))\n")
+          oidc_test.write_text(text, encoding="utf-8")
+
+          service = Path("apps/api/src/ai_learning_platform_api/persistence/service.py")
+          text = service.read_text(encoding="utf-8")
+          if "async def list_account_plans(" not in text:
+              marker = '''    async def resume_plan(self, *, account_id: str, learner_id: UUID) -> PersistentPlanView:\n        stored = await self._load(account_id=account_id, learner_id=learner_id)\n        return self._view(stored)\n\n'''
+              addition = marker + '''    async def list_account_plans(self, *, account_id: str) -> list[PlanView]:\n        """Return current owned plans for authenticated cross-device resume."""\n        if self._export_repository is None:\n            raise PersistenceUnavailableError\n        stored_states = await self._export_repository.list_account_states(account_id=account_id)\n        ordered = sorted(\n            stored_states,\n            key=lambda item: (item.updated_at, str(item.learner_id)),\n            reverse=True,\n        )\n        return [self._view(stored).plan for stored in ordered]\n\n'''
+              text = replace_once(text, marker, addition, "account plan listing")
+          service.write_text(text, encoding="utf-8")
+
+          app = Path("apps/api/src/ai_learning_platform_api/app.py")
+          text = app.read_text(encoding="utf-8")
+          if "from ai_learning_platform_api.identity import" not in text:
+              text = replace_once(
+                  text,
+                  "from fastapi import FastAPI\n\n",
+                  "from fastapi import FastAPI\n\n"
+                  "from ai_learning_platform_api.identity import (\n"
+                  "    ManagedOidcVerifier,\n"
+                  "    OidcAccountMiddleware,\n"
+                  "    PostgresIdentityRepository,\n"
+                  ")\n"
+                  "from ai_learning_platform_api.identity.claim import AnonymousAccountClaimProof\n",
+                  "identity imports",
+              )
+          if "create_identity_router" not in text:
+              text = replace_once(
+                  text,
+                  "from ai_learning_platform_api.transport.http.health import create_health_router\n",
+                  "from ai_learning_platform_api.transport.http.health import create_health_router\n"
+                  "from ai_learning_platform_api.transport.http.identity import create_identity_router\n",
+                  "identity router import",
+              )
+          if "identity_repository: PostgresIdentityRepository | None" not in text:
+              text = replace_once(
+                  text,
+                  "    tutor_limiter: TutorTurnLimiter | None = None\n",
+                  "    tutor_limiter: TutorTurnLimiter | None = None\n"
+                  "    identity_repository: PostgresIdentityRepository | None = None\n"
+                  "    identity_verifier: ManagedOidcVerifier | None = None\n"
+                  "    claim_proof: AnonymousAccountClaimProof | None = None\n",
+                  "identity runtime variables",
+              )
+          if "identity_repository = PostgresIdentityRepository" not in text:
+              marker = "        postgres_repository = PostgresLearnerStateRepository(database_runtime.engine)\n"
+              addition = marker + '''        if resolved_settings.auth_mode == "oidc":\n            assert resolved_settings.oidc_issuer is not None\n            assert resolved_settings.oidc_audience is not None\n            assert resolved_settings.anonymous_claim_secret is not None\n            identity_repository = PostgresIdentityRepository(database_runtime.engine)\n            identity_verifier = ManagedOidcVerifier(\n                issuer=resolved_settings.oidc_issuer,\n                audience=resolved_settings.oidc_audience,\n                timeout_seconds=resolved_settings.oidc_timeout_seconds,\n                cache_seconds=resolved_settings.oidc_jwks_cache_seconds,\n            )\n            claim_proof = AnonymousAccountClaimProof(\n                resolved_settings.anonymous_claim_secret.get_secret_value()\n            )\n'''
+              text = replace_once(text, marker, addition, "identity repository runtime")
+          if "await identity_verifier.aclose()" not in text:
+              text = replace_once(
+                  text,
+                  "            if tutor_service is not None:\n                await tutor_service.aclose()\n",
+                  "            if tutor_service is not None:\n                await tutor_service.aclose()\n"
+                  "            if identity_verifier is not None:\n                await identity_verifier.aclose()\n",
+                  "identity verifier shutdown",
+              )
+          if "OidcAccountMiddleware" in text and "app.add_middleware(\n            OidcAccountMiddleware" not in text:
+              marker = '''    app.add_middleware(\n        ApiHealthDiagnosticsMiddleware,\n        runtime=runtime,\n        event_sink=diagnostic_event_sink,\n    )\n'''
+              addition = marker + '''    if identity_verifier is not None and identity_repository is not None:\n        app.add_middleware(\n            OidcAccountMiddleware,\n            verifier=identity_verifier,\n            repository=identity_repository,\n        )\n'''
+              text = replace_once(text, marker, addition, "identity ASGI middleware")
+          if "async def list_owned_plans(" not in text:
+              marker = '''        app.include_router(create_privacy_router(delete_current_account, export_current_account))\n        assert tutor_service is not None\n'''
+              replacement = '''        app.include_router(create_privacy_router(delete_current_account, export_current_account))\n        if identity_repository is not None and claim_proof is not None:\n            assert persistent_service is not None\n\n            async def list_owned_plans(account_id: str) -> list[PlanView]:\n                return await persistent_service.list_account_plans(account_id=account_id)\n\n            async def claim_anonymous(target_account_id: str, anonymous_account_id: str) -> bool:\n                return await identity_repository.claim_anonymous_account(\n                    target_account_id=target_account_id,\n                    anonymous_account_id=anonymous_account_id,\n                )\n\n            app.include_router(\n                create_identity_router(\n                    list_plans=list_owned_plans,\n                    claim_anonymous=claim_anonymous,\n                    claim_proof=claim_proof,\n                )\n            )\n        assert tutor_service is not None\n'''
+              text = replace_once(text, marker, replacement, "identity routes")
+          text = text.replace('version="0.5.0" if include_product_routes else "0.0.0"', 'version="0.6.0" if include_product_routes else "0.0.0"')
+          app.write_text(text, encoding="utf-8")
+
+          bff = Path("apps/web/app/api/platform/[...path]/route.ts")
+          text = bff.read_text(encoding="utf-8")
+          text = text.replace('import { randomUUID } from "node:crypto";\n', 'import { createHmac, randomUUID } from "node:crypto";\n', 1)
+          if 'from "../../../../lib/auth0"' not in text:
+              text = replace_once(
+                  text,
+                  'import { readApiBaseUrl } from "../../../../server/config/api-base";\n',
+                  'import { auth0Client, oidcEnabled } from "../../../../lib/auth0";\n'
+                  'import { readApiBaseUrl } from "../../../../server/config/api-base";\n',
+                  "BFF auth import",
+              )
+          if 'const ACCOUNT_PLANS_PATH = "account/plans";' not in text:
+              text = replace_once(
+                  text,
+                  'const ACCOUNT_EXPORT_PATH = "account/export";\n',
+                  'const ACCOUNT_EXPORT_PATH = "account/export";\n'
+                  'const ACCOUNT_PLANS_PATH = "account/plans";\n'
+                  'const ACCOUNT_CLAIM_PATH = "account/claim-anonymous";\n'
+                  'const IDENTITY_ME_PATH = "identity/me";\n',
+                  "BFF identity paths",
+              )
+              text = replace_once(
+                  text,
+                  "  ACCOUNT_EXPORT_PATH,\n",
+                  "  ACCOUNT_EXPORT_PATH,\n  ACCOUNT_PLANS_PATH,\n  ACCOUNT_CLAIM_PATH,\n  IDENTITY_ME_PATH,\n",
+                  "BFF identity allowlist",
+              )
+              text = text.replace(
+                  'const GET_PATHS = new Set(["roles", "career-tracks", ACCOUNT_EXPORT_PATH]);',
+                  'const GET_PATHS = new Set([\n  "roles",\n  "career-tracks",\n  ACCOUNT_EXPORT_PATH,\n  ACCOUNT_PLANS_PATH,\n  IDENTITY_ME_PATH\n]);',
+                  1,
+              )
+          if "const protectedByOidc" not in text:
+              marker = '''  const isAccountDeletion = relativePath === ACCOUNT_DELETE_PATH && method === "DELETE";\n  const isAccountExport = relativePath === ACCOUNT_EXPORT_PATH && method === "GET";\n'''
+              replacement = marker + '''  const isAnonymousClaim = relativePath === ACCOUNT_CLAIM_PATH && method === "POST";\n  const protectedByOidc = oidcEnabled() && !["roles", "career-tracks"].includes(relativePath);\n  let accessToken: string | null = null;\n  if (protectedByOidc) {\n    try {\n      const access = await auth0Client().getAccessToken();\n      accessToken = typeof access === "string" ? access : access.token;\n    } catch {\n      return errorResponse(401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");\n    }\n  }\n'''
+              text = replace_once(text, marker, replacement, "BFF token acquisition")
+          old_context = '''  const accountContext = isAccountExport\n    ? resolveExistingAccountContext(request)\n    : method === "GET"\n      ? null\n      : isAccountDeletion\n        ? resolveExistingAccountContext(request)\n        : resolveAccountContext(request);\n\n  if (isAccountExport && accountContext === null) {\n'''
+          if old_context in text:
+              new_context = '''  const accountContext = oidcEnabled()\n    ? isAnonymousClaim\n      ? resolveExistingAccountContext(request)\n      : null\n    : isAccountExport\n      ? resolveExistingAccountContext(request)\n      : method === "GET"\n        ? null\n        : isAccountDeletion\n          ? resolveExistingAccountContext(request)\n          : resolveAccountContext(request);\n\n  if (!oidcEnabled() && isAccountExport && accountContext === null) {\n'''
+              text = text.replace(old_context, new_context, 1)
+          if "anonymousClaimHeaders" not in text:
+              marker = "  const isTutorStream = relativePath === TUTOR_STREAM_PATH;\n"
+              addition = '''  let anonymousClaimHeaders: Record<string, string> = {};\n  if (isAnonymousClaim) {\n    if (accountContext === null) {\n      return errorResponse(404, "ANONYMOUS_ACCOUNT_NOT_FOUND", "No anonymous learner account is available to claim.");\n    }\n    const secret = process.env.AI_PLATFORM_ANONYMOUS_CLAIM_SECRET?.trim();\n    if (!secret || Buffer.byteLength(secret, "utf8") < 32) {\n      return errorResponse(503, "IDENTITY_UNAVAILABLE", "Account migration is not configured.");\n    }\n    anonymousClaimHeaders = {\n      "x-platform-anonymous-account-id": accountContext.accountId,\n      "x-platform-anonymous-claim": createHmac("sha256", secret).update(accountContext.accountId).digest("hex")\n    };\n  }\n\n  const isTutorStream = relativePath === TUTOR_STREAM_PATH;\n'''
+              text = replace_once(text, marker, addition, "BFF anonymous claim proof")
+          header_marker = '''        ...(accountContext === null\n          ? {}\n          : {\n              "x-platform-account-id": accountContext.accountId,\n              "x-platform-command-id": randomUUID()\n            })\n'''
+          if header_marker in text:
+              header_replacement = '''        ...(accessToken === null ? {} : { authorization: `Bearer ${accessToken}` }),\n        ...anonymousClaimHeaders,\n        ...(!oidcEnabled() && accountContext !== null\n          ? {\n              "x-platform-account-id": accountContext.accountId,\n              "x-platform-command-id": randomUUID()\n            }\n          : method === "GET" ? {} : { "x-platform-command-id": randomUUID() })\n'''
+              text = text.replace(header_marker, header_replacement, 1)
+          if "isAnonymousClaim && upstream.ok" not in text:
+              text = replace_once(
+                  text,
+                  "    if (isAccountDeletion && upstream.ok) {\n",
+                  "    if (isAnonymousClaim && upstream.ok) {\n"
+                  "      headers.set(\"set-cookie\", expiredAccountCookie(request.url));\n"
+                  "    } else if (isAccountDeletion && upstream.ok) {\n",
+                  "BFF claim cookie cleanup",
+              )
+          bff.write_text(text, encoding="utf-8")
+
+          client = Path("apps/web/lib/platform-client.ts")
+          text = client.read_text(encoding="utf-8")
+          if "export async function loadOwnedPlans" not in text:
+              text += '''\n\nexport interface IdentityView {\n  readonly authenticated: true;\n  readonly roles: readonly string[];\n}\n\nexport async function loadIdentity(): Promise<IdentityView> {\n  const value = await platformRequest("identity/me");\n  if (\n    typeof value !== "object" ||\n    value === null ||\n    !("authenticated" in value) ||\n    value.authenticated !== true ||\n    !("roles" in value) ||\n    !Array.isArray(value.roles)\n  ) {\n    throw new Error("The account identity response did not match the expected contract.");\n  }\n  return { authenticated: true, roles: value.roles.filter((role): role is string => typeof role === "string") };\n}\n\nexport async function loadOwnedPlans(): Promise<readonly PlanView[]> {\n  const value = await platformRequest("account/plans");\n  if (!Array.isArray(value) || !value.every(isPlanView)) {\n    throw new Error("The owned learning plans did not match the expected contract.");\n  }\n  return value;\n}\n\nexport async function claimAnonymousAccount(): Promise<boolean> {\n  const value = await platformRequest("account/claim-anonymous", { method: "POST" });\n  if (typeof value !== "object" || value === null || !("claimed" in value) || typeof value.claimed !== "boolean") {\n    throw new Error("The anonymous account migration response did not match the expected contract.");\n  }\n  return value.claimed;\n}\n'''
+          client.write_text(text, encoding="utf-8")
+
+          provider = Path("apps/web/components/app/app-provider.tsx")
+          text = provider.read_text(encoding="utf-8")
+          text = text.replace(
+              'import { loadRoles, resumePlan } from "../../lib/platform-client";\n',
+              'import { claimAnonymousAccount, loadOwnedPlans, loadRoles, resumePlan } from "../../lib/platform-client";\n',
+              1,
+          )
+          old = '''      const token = window.localStorage.getItem(LEARNING_SESSION_STORAGE_KEY);\n      if (token !== null) {\n        const resumed = await resumePlan(token);\n        setPlan(resumed);\n        window.localStorage.setItem(LEARNING_SESSION_STORAGE_KEY, resumed.state_token);\n      }\n'''
+          if old in text:
+              new = '''      const token = window.localStorage.getItem(LEARNING_SESSION_STORAGE_KEY);\n      if (token !== null) {\n        try {\n          await claimAnonymousAccount();\n        } catch {\n          // Anonymous mode or an already-migrated session does not require a claim.\n        }\n        const resumed = await resumePlan(token);\n        setPlan(resumed);\n        window.localStorage.setItem(LEARNING_SESSION_STORAGE_KEY, resumed.state_token);\n      } else {\n        try {\n          const owned = await loadOwnedPlans();\n          const resumed = owned[0];\n          if (resumed !== undefined) {\n            setPlan(resumed);\n            window.localStorage.setItem(LEARNING_SESSION_STORAGE_KEY, resumed.state_token);\n          }\n        } catch {\n          // A signed-out or anonymous visitor legitimately has no authenticated account plans.\n        }\n      }\n'''
+              text = text.replace(old, new, 1)
+          provider.write_text(text, encoding="utf-8")
+
+          account = Path("apps/web/components/app/account-session.tsx")
+          account.write_text('''"use client";\n\nimport { useEffect, useState } from "react";\n\ntype SessionState =\n  | { readonly status: "loading" }\n  | { readonly status: "anonymous" }\n  | { readonly status: "authenticated"; readonly name: string };\n\nexport function AccountSession() {\n  const [state, setState] = useState<SessionState>({ status: "loading" });\n\n  useEffect(() => {\n    let active = true;\n    void fetch("/auth/profile", { cache: "no-store", credentials: "same-origin" })\n      .then(async (response) => {\n        if (!active) return;\n        if (!response.ok) {\n          setState({ status: "anonymous" });\n          return;\n        }\n        const value: unknown = await response.json();\n        const name =\n          typeof value === "object" && value !== null && "name" in value && typeof value.name === "string"\n            ? value.name\n            : "Signed-in learner";\n        setState({ status: "authenticated", name });\n      })\n      .catch(() => {\n        if (active) setState({ status: "anonymous" });\n      });\n    return () => { active = false; };\n  }, []);\n\n  if (state.status === "loading") {\n    return <p>Checking account session…</p>;\n  }\n  if (state.status === "anonymous") {\n    return (\n      <div>\n        <p>Sign in to keep this career plan available across devices.</p>\n        <p><a className="button button-primary" href="/auth/login">Sign in</a>{" "}<a className="button button-quiet" href="/auth/login?screen_hint=signup">Create account</a></p>\n      </div>\n    );\n  }\n  return (\n    <div>\n      <p>Signed in as <strong>{state.name}</strong>. This account owns the durable learner state.</p>\n      <a className="button button-quiet" href="/auth/logout">Sign out</a>\n    </div>\n  );\n}\n''', encoding="utf-8")
+
+          profile = Path("apps/web/components/app/profile-view.tsx")
+          text = profile.read_text(encoding="utf-8")
+          if 'import { AccountSession } from "./account-session";' not in text:
+              text = replace_once(
+                  text,
+                  'import { useCareerApp } from "./app-provider";\n',
+                  'import { AccountSession } from "./account-session";\nimport { useCareerApp } from "./app-provider";\n',
+                  "profile session import",
+              )
+          if "<AccountSession />" not in text:
+              marker = '      <section className={styles.grid2}>\n'
+              block = '''      <section className={styles.grid2}>\n        <article className={styles.card}>\n          <span className={styles.label}>Account session</span>\n          <h2>Keep this career plan across devices</h2>\n          <AccountSession />\n        </article>\n'''
+              text = replace_once(text, marker, block, "profile account session")
+          text = text.replace("Delete this anonymous learner account", "Delete this learner account")
+          profile.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Refresh locked dependencies
+        run: |
+          uv lock --project apps/api
+          cd apps/web
+          npm install --package-lock-only
+
+      - name: Verify API identity slice
+        working-directory: apps/api
+        run: |
+          uv sync --locked --all-groups
+          uv run --locked ruff format src tests
+          uv run --locked ruff check --fix src tests
+          uv run --locked ruff format src tests
+          uv run --locked ruff check src tests ../../scripts
+          uv run --locked mypy src tests ../../scripts
+          uv run --locked alembic upgrade head
+          uv run --locked alembic downgrade base
+          uv run --locked alembic upgrade head
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
+
+      - name: Verify Web identity slice
+        working-directory: apps/web
+        run: |
+          npm run verify:build-toolchain
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Commit verified P01 source
+        run: |
+          git add apps/api apps/web
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Implement P01 managed identity ownership slice'
+          git push origin HEAD:product/p01-identity-account-sessions
