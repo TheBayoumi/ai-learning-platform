@@ -39,7 +39,8 @@ def main(arguments: list[str] | None = None) -> int:
         return result
 
     head_ref = os.environ.get("GITHUB_HEAD_REF", "").strip()
-    if not head_ref.startswith("product/p") or not effective_arguments or effective_arguments[0] != "validate":
+    is_validation = bool(effective_arguments) and effective_arguments[0] == "validate"
+    if not head_ref.startswith("product/p") or not is_validation:
         return 0
     expected_sha = _argument_value(effective_arguments, "--expected-sha")
     if expected_sha is None:
