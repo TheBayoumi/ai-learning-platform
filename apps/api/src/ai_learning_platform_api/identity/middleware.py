@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 
-from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ai_learning_platform_api.identity.contracts import (
     IdentityRepository,
@@ -84,20 +84,22 @@ class OidcAccountMiddleware:
 
 
 async def _error(send: Send, status: int, code: str, message: str) -> None:
-    response = JSONResponse(
-        status_code=status,
-        content={"detail": {"code": code, "message": message}},
-        headers={"cache-control": "no-store", "x-content-type-options": "nosniff"},
+    body = json.dumps({"detail": {"code": code, "message": message}}, separators=(",", ":")).encode(
+        "utf-8"
     )
-
-    async def receive() -> dict[str, object]:
-        return {"type": "http.request", "body": b"", "more_body": False}
-
-    await response(
-        {"type": "http", "http_version": "1.1", "method": "GET", "path": "/"},
-        receive,
-        send,
-    )
+    start: Message = {
+        "type": "http.response.start",
+        "status": status,
+        "headers": [
+            (b"cache-control", b"no-store"),
+            (b"content-type", b"application/json; charset=utf-8"),
+            (b"content-length", str(len(body)).encode("ascii")),
+            (b"x-content-type-options", b"nosniff"),
+        ],
+    }
+    response_body: Message = {"type": "http.response.body", "body": body}
+    await send(start)
+    await send(response_body)
 
 
 def _bearer_token(headers: Iterable[tuple[bytes, bytes]]) -> str | None:
