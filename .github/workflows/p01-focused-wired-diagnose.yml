@@ -1,0 +1,75 @@
+name: P01 focused wired diagnostic
+
+on:
+  push:
+    branches: [product/p01-identity-account-sessions]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p01-focused-wired-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ai_learning_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ai_learning_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AI_PLATFORM_DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ai_learning_platform
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          working-directory: apps/api
+      - name: Reproduce exact P01 wired checkout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/p01-resolve.yml').read_text(encoding='utf-8')
+          start = '      - name: Wire authenticated ownership and cross-device resume\n        run: |\n'
+          end = '\n      - name: Refresh locked dependencies\n'
+          body = source.split(start, 1)[1].split(end, 1)[0]
+          lines = []
+          for line in body.splitlines():
+              if line.startswith('          '):
+                  lines.append(line[10:])
+              elif line.strip():
+                  raise SystemExit('unexpected P01 wiring indentation')
+              else:
+                  lines.append('')
+          Path('/tmp/p01-wire.sh').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          bash /tmp/p01-wire.sh
+          uv lock --project apps/api
+      - name: Run exact focused P01 tests
+        working-directory: apps/api
+        run: |
+          uv sync --locked --all-groups
+          uv run --locked alembic upgrade head
+          uv run --locked pytest -q -vv --tb=short \
+            tests/test_p01_identity_core.py \
+            tests/test_p01_oidc_verifier.py \
+            tests/test_p01_identity_middleware.py \
+            tests/test_p01_identity_postgres.py \
+            tests/test_full_stack_gate.py \
+            tests/test_product_gate.py \
+            tests/test_product_gate_full_stack_bridge.py \
+            tests/test_settings.py

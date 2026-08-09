@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   merge:
-    if: startsWith(github.head_ref, 'product/g')
+    if: startsWith(github.head_ref, 'product/g') || startsWith(github.head_ref, 'product/p')
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
