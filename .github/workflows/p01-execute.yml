@@ -1,0 +1,121 @@
+name: P01 identity canonical executor
+
+on:
+  push:
+    branches: [product/p01-identity-account-sessions]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: p01-identity-canonical-executor
+  cancel-in-progress: true
+
+jobs:
+  execute:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ai_learning_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ai_learning_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AI_PLATFORM_DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ai_learning_platform
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: product/p01-identity-account-sessions
+          persist-credentials: true
+
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: '0.11.18'
+          python-version: '3.13.13'
+          enable-cache: true
+          working-directory: apps/api
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Pin canonical npm
+        run: |
+          npm install --global npm@11.18.0
+          test "$(npm --version)" = "11.18.0"
+
+      - name: Reuse P01 integration wiring
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/p01-resolve.yml').read_text(encoding='utf-8')
+          start = '      - name: Wire authenticated ownership and cross-device resume\n        run: |\n'
+          end = '\n      - name: Refresh locked dependencies\n'
+          if start not in source or end not in source:
+              raise SystemExit('P01 wiring block could not be located')
+          body = source.split(start, 1)[1].split(end, 1)[0]
+          lines = []
+          for line in body.splitlines():
+              if line.startswith('          '):
+                  lines.append(line[10:])
+              elif line.strip():
+                  raise SystemExit('unexpected P01 wiring indentation')
+              else:
+                  lines.append('')
+          Path('/tmp/p01-wire.sh').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          bash /tmp/p01-wire.sh
+
+      - name: Refresh locked dependencies without lifecycle scripts
+        run: |
+          uv lock --project apps/api
+          cd apps/web
+          npm install --package-lock-only --ignore-scripts
+
+      - name: Verify API identity slice
+        working-directory: apps/api
+        run: |
+          uv sync --locked --all-groups
+          uv run --locked ruff format src tests
+          uv run --locked ruff check --fix src tests
+          uv run --locked ruff format src tests
+          uv run --locked ruff check src tests ../../scripts
+          uv run --locked mypy src tests ../../scripts
+          uv run --locked alembic upgrade head
+          uv run --locked alembic downgrade base
+          uv run --locked alembic upgrade head
+          uv run --locked coverage erase
+          uv run --locked coverage run -m pytest
+          uv run --locked coverage report --fail-under=95
+
+      - name: Verify Web identity slice
+        working-directory: apps/web
+        run: |
+          npm run verify:build-toolchain
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Commit verified P01 source
+        run: |
+          git add apps/api apps/web
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Implement P01 managed identity ownership slice'
+          git push origin HEAD:product/p01-identity-account-sessions
