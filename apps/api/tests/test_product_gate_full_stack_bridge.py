@@ -49,7 +49,9 @@ def _state() -> dict[str, object]:
     }
 
 
-def _write(root: Path, state: dict[str, object] | None = None, *, full_stack: bool = True) -> dict[str, object]:
+def _write(
+    root: Path, state: dict[str, object] | None = None, *, full_stack: bool = True
+) -> dict[str, object]:
     effective = _state() if state is None else state
     plans = root / "plans"
     evidence = root / "evidence"
@@ -94,7 +96,9 @@ def test_full_stack_handoff_accepts_only_exact_g09_to_p01_bridge(tmp_path: Path)
     assert phases[-1].branch == _HEAD_REF
 
 
-@pytest.mark.parametrize("pointer", [123, "plans/other-state.json", "../full-stack-product-state.json"])
+@pytest.mark.parametrize(
+    "pointer", [123, "plans/other-state.json", "../full-stack-product-state.json"]
+)
 def test_full_stack_pointer_is_exact_and_typed(tmp_path: Path, pointer: object) -> None:
     state = _write(tmp_path)
     state["full_stack_product_state"] = pointer
@@ -116,7 +120,9 @@ def test_g09_cannot_handoff_to_p01_without_full_stack_state_pointer(tmp_path: Pa
     state.pop("full_stack_product_state")
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(product_gate.ProductGateViolation, match="product_full_stack_handoff_invalid"):
+    with pytest.raises(
+        product_gate.ProductGateViolation, match="product_full_stack_handoff_invalid"
+    ):
         _validate(tmp_path)
 
 
@@ -125,7 +131,9 @@ def test_full_stack_pointer_requires_g09_p01_handoff(tmp_path: Path) -> None:
     _g09(state)["next_phase"] = None
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(product_gate.ProductGateViolation, match="product_full_stack_handoff_invalid"):
+    with pytest.raises(
+        product_gate.ProductGateViolation, match="product_full_stack_handoff_invalid"
+    ):
         _validate(tmp_path)
 
 
@@ -135,7 +143,9 @@ def test_g09_rejects_unknown_next_phase_even_without_bridge_pointer(tmp_path: Pa
     _g09(state)["next_phase"] = "P02"
     (tmp_path / product_gate.STATE_PATH).write_text(json.dumps(state), encoding="utf-8")
 
-    with pytest.raises(product_gate.ProductGateViolation, match="product_full_stack_handoff_invalid"):
+    with pytest.raises(
+        product_gate.ProductGateViolation, match="product_full_stack_handoff_invalid"
+    ):
         _validate(tmp_path)
 
 

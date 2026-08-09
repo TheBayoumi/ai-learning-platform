@@ -114,6 +114,31 @@ class PostgresLearnerStateRepository(LearnerStateRepository):
             for row in rows
         )
 
+    async def list_account_states(
+        self,
+        *,
+        account_id: str,
+    ) -> tuple[StoredLearnerState, ...]:
+        """Return all current learner aggregates owned by one account."""
+        validate_account_id(account_id)
+        statement = (
+            select(
+                learner_states.c.account_id,
+                learner_states.c.learner_id,
+                learner_states.c.version,
+                learner_states.c.state,
+                learner_states.c.updated_at,
+            )
+            .where(learner_states.c.account_id == account_id)
+            .order_by(learner_states.c.learner_id)
+        )
+        try:
+            async with self._engine.connect() as connection:
+                rows = (await connection.execute(statement)).mappings().all()
+        except SQLAlchemyError as error:
+            raise PersistenceUnavailableError from error
+        return tuple(_stored_state(row) for row in rows)
+
     async def delete_account(self, *, account_id: str) -> bool:
         """Delete personal account history while retaining unlinkable collision tombstones."""
         validate_account_id(account_id)

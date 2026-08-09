@@ -400,6 +400,31 @@ jq -e '
   and .verified_readiness_percent == null
 ' "$progressed_resume_response" >/dev/null
 
+phase="deployed-account-export"
+account_export="$RUNNER_TEMP/deployed-account-export.json"
+account_export_status=$(curl -sS "${frontend_access_headers[@]}" \
+  --cookie "$cookie_jar" \
+  --cookie-jar "$cookie_jar" \
+  -o "$account_export" -w '%{http_code}' \
+  "$frontend_url/api/platform/account/export")
+require_json_http_status "account-export" "200" "$account_export_status" "$account_export"
+jq -e --arg learner_id "$(jq -r '.learner_id' "$progress")" '
+  .schema_version == 1
+  and (.learners | length) >= 1
+  and any(.learners[];
+      .learner_id == $learner_id
+      and .audit.replay_verified == true
+      and .audit.within_resource_bounds == true
+      and .audit.claim_integrity_verified == true)
+  and (.redactions | index("server_secrets")) != null
+  and (.redactions | index("provider_credentials")) != null
+  and (.retention_notes | index("unlinkable_task_collision_fingerprints")) != null
+' "$account_export" >/dev/null
+if grep -F 'ai_platform_account' "$account_export" >/dev/null; then
+  echo "Account export leaked browser account-cookie material" >&2
+  exit 1
+fi
+
 phase="deployed-account-deletion"
 # Account deletion is part of the release contract, not an optional UI-only control.
 deleted="$RUNNER_TEMP/deployed-deletion.json"
@@ -425,6 +450,16 @@ post_delete_status=$(curl -sS "${frontend_access_headers[@]}" \
   -w '%{http_code}')
 require_json_http_status "post-delete-resume" "404" "$post_delete_status" "$post_delete_resume"
 jq -e '.detail.code == "LEARNER_STATE_NOT_FOUND"' "$post_delete_resume" >/dev/null
+
+phase="deployed-post-delete-export"
+post_delete_export="$RUNNER_TEMP/post-delete-export.json"
+post_delete_export_status=$(curl -sS "${frontend_access_headers[@]}" \
+  --cookie "$cookie_jar" \
+  --cookie-jar "$cookie_jar" \
+  -o "$post_delete_export" -w '%{http_code}' \
+  "$frontend_url/api/platform/account/export")
+require_json_http_status "post-delete-export" "404" "$post_delete_export_status" "$post_delete_export"
+jq -e '.detail.code == "ACCOUNT_DATA_NOT_FOUND"' "$post_delete_export" >/dev/null
 
 phase="evidence-publication"
 trap - ERR
@@ -463,8 +498,10 @@ jq -n \
       resume:"ok",
       progress:"ok",
       post_progress_resume:"ok",
+      account_export:"ok",
       deletion:"ok",
       post_delete_resume:"blocked",
+      post_delete_export:"blocked",
       target_role:$target_role,
       claim_state:$claim_state,
       verified_readiness:"locked",

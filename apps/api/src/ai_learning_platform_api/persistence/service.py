@@ -19,15 +19,22 @@ from ai_learning_platform_api.learning.schemas import (
 )
 from ai_learning_platform_api.learning.service import SignedStateCodec
 from ai_learning_platform_api.persistence.contracts import (
+    AccountStateExportRepository,
     LearnerStateCommit,
     LearnerStateConflictError,
     LearnerStateNotFoundError,
+    LearnerStateReplayRepository,
     LearnerStateRepository,
+    PersistenceUnavailableError,
+    ReplayDivergenceError,
     StoredLearnerState,
     TaskExposureConflictError,
     TaskExposureIndexRepository,
 )
+from ai_learning_platform_api.persistence.operational import audit_stored_state
 from ai_learning_platform_api.persistence.schemas import (
+    AccountDataExportView,
+    LearnerDataExportView,
     PersistentAssessmentAttemptView,
     PersistentAssessmentStartRequest,
     PersistentAssessmentSubmissionView,
@@ -57,12 +64,16 @@ class PersistentLearningService:
         secret: str,
         repository: LearnerStateRepository,
         exposure_repository: TaskExposureIndexRepository | None = None,
+        export_repository: AccountStateExportRepository | None = None,
+        replay_repository: LearnerStateReplayRepository | None = None,
         clock: Clock | None = None,
     ) -> None:
         self._core = LearningPlanService(secret)
         self._codec = SignedStateCodec(secret)
         self._repository = repository
         self._exposure_repository = exposure_repository
+        self._export_repository = export_repository
+        self._replay_repository = replay_repository
         self._clock = clock if clock is not None else lambda: datetime.now(UTC)
 
     async def create_plan(
@@ -121,6 +132,43 @@ class PersistentLearningService:
     async def resume_plan(self, *, account_id: str, learner_id: UUID) -> PersistentPlanView:
         stored = await self._load(account_id=account_id, learner_id=learner_id)
         return self._view(stored)
+
+    async def export_account(self, *, account_id: str) -> AccountDataExportView:
+        """Export owned learners only after append-only replay verification."""
+        if self._export_repository is None or self._replay_repository is None:
+            raise PersistenceUnavailableError
+        stored_states = await self._export_repository.list_account_states(account_id=account_id)
+        if not stored_states:
+            raise LearnerStateNotFoundError
+        learners: list[LearnerDataExportView] = []
+        for stored in stored_states:
+            replay = await self._replay_repository.replay(
+                account_id=account_id,
+                learner_id=stored.learner_id,
+            )
+            audit = audit_stored_state(stored, replay=replay)
+            if not audit.replay_verified:
+                raise ReplayDivergenceError
+            learners.append(
+                LearnerDataExportView(
+                    learner_id=stored.learner_id,
+                    aggregate_version=stored.version,
+                    updated_at=stored.updated_at.isoformat(),
+                    state=stored.state,
+                    audit=audit,
+                )
+            )
+        return AccountDataExportView(
+            generated_at=self._now().isoformat(),
+            learners=learners,
+            redactions=[
+                "server_secrets",
+                "provider_credentials",
+                "account_cookie",
+                "raw_transport_headers",
+            ],
+            retention_notes=["unlinkable_task_collision_fingerprints"],
+        )
 
     async def delete_account(self, *, account_id: str) -> bool:
         """Delete personal history; repository-owned unlinkable collision tombstones remain."""

@@ -14,6 +14,7 @@ const ACCOUNT_COOKIE = "ai_platform_account";
 const ACCOUNT_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACCOUNT_DELETE_PATH = "account";
+const ACCOUNT_EXPORT_PATH = "account/export";
 const TUTOR_STREAM_PATH = "tutor/stream";
 const ALLOWED_PATHS = new Set([
   "roles",
@@ -25,10 +26,11 @@ const ALLOWED_PATHS = new Set([
   "assessments/start",
   "assessments/submit",
   ACCOUNT_DELETE_PATH,
+  ACCOUNT_EXPORT_PATH,
   TUTOR_STREAM_PATH
 ]);
 
-const GET_PATHS = new Set(["roles", "career-tracks"]);
+const GET_PATHS = new Set(["roles", "career-tracks", ACCOUNT_EXPORT_PATH]);
 const DELETE_PATHS = new Set([ACCOUNT_DELETE_PATH]);
 
 type RouteContext = Readonly<{
@@ -74,12 +76,18 @@ async function proxyRequest(
   }
 
   const isAccountDeletion = relativePath === ACCOUNT_DELETE_PATH && method === "DELETE";
-  const accountContext =
-    method === "GET"
+  const isAccountExport = relativePath === ACCOUNT_EXPORT_PATH && method === "GET";
+  const accountContext = isAccountExport
+    ? resolveExistingAccountContext(request)
+    : method === "GET"
       ? null
       : isAccountDeletion
         ? resolveExistingAccountContext(request)
         : resolveAccountContext(request);
+
+  if (isAccountExport && accountContext === null) {
+    return errorResponse(404, "ACCOUNT_DATA_NOT_FOUND", "No durable learner data exists for this account.");
+  }
 
   if (isAccountDeletion && accountContext === null) {
     const headers = responseHeaders("application/json; charset=utf-8");

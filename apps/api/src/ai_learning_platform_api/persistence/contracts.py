@@ -105,6 +105,16 @@ class LearnerStateRepository(Protocol):
     async def delete_account(self, *, account_id: str) -> bool: ...
 
 
+class AccountStateExportRepository(Protocol):
+    """List all durable learner aggregates owned by one account for privacy export."""
+
+    async def list_account_states(
+        self,
+        *,
+        account_id: str,
+    ) -> tuple[StoredLearnerState, ...]: ...
+
+
 class TaskExposureIndexRepository(Protocol):
     """Complete unlinkable cohort collision history used before serving new instances."""
 

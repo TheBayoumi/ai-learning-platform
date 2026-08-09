@@ -47,9 +47,9 @@ def audit_stored_state(
         None,
     )
     active_exposure_count = len(active.task_exposures) if active is not None else 0
-    claim_integrity_verified = (
-        state.target is not None
-        and all(item.status in {"unverified", "partial", "independent"} for item in state.competency_evidence.values())
+    claim_integrity_verified = state.target is not None and all(
+        item.status in {"unverified", "partial", "independent"}
+        for item in state.competency_evidence.values()
     )
     within_resource_bounds = (
         raw_state_bytes <= _MAX_RAW_STATE_BYTES

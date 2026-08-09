@@ -248,9 +248,7 @@ def validate_product_state(
     state_fields = set(state)
     full_stack_bridge = "full_stack_product_state" in state
     expected_fields = (
-        base_state_fields | {"full_stack_product_state"}
-        if full_stack_bridge
-        else base_state_fields
+        base_state_fields | {"full_stack_product_state"} if full_stack_bridge else base_state_fields
     )
     if state_fields != expected_fields:
         raise _violation("product_state_fields_invalid")

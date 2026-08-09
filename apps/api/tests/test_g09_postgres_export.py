@@ -47,8 +47,10 @@ def migrated_database() -> Iterator[None]:
 def _state(name: str) -> LearnerState:
     core = LearningPlanService(_SECRET, clock=lambda: _NOW)
     plan = core.create_plan(PlanRequest(learner_name=name, ratings=[]))
-    return SignedStateCodec(_SECRET).decode(plan.state_token).model_copy(
-        update={"storage_mode": "durable"}
+    return (
+        SignedStateCodec(_SECRET)
+        .decode(plan.state_token)
+        .model_copy(update={"storage_mode": "durable"})
     )
 
 
@@ -91,7 +93,10 @@ def test_list_account_states_is_complete_owned_and_deterministically_ordered() -
         repository.list_account_states(account_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
     )
 
-    assert {item.learner_id for item in exported} == {UUID(first.learner_id), UUID(second.learner_id)}
+    assert {item.learner_id for item in exported} == {
+        UUID(first.learner_id),
+        UUID(second.learner_id),
+    }
     assert [item.learner_id for item in exported] == sorted(item.learner_id for item in exported)
     assert all(item.account_id == _ACCOUNT for item in exported)
     assert UUID(outsider.learner_id) not in {item.learner_id for item in exported}
