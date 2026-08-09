@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "program": "full-stack-product-completion",
+  "definition_of_done": "plans/full-stack-product-definition-of-done.md",
+  "engineering_kernel": {
+    "program": "G01-G09",
+    "status": "BRIDGING",
+    "active_phase": "G09",
+    "terminal_for_product": false
+  },
+  "external_validation_remains_separate": true,
+  "full_stack_product_complete": false,
+  "required_checks": [
+    "API quality",
+    "Web quality",
+    "Runtime smoke",
+    "Phase gate",
+    "Gate projection"
+  ],
+  "active_phase": "G09",
+  "phases": [
+    {
+      "id": "P01",
+      "name": "Identity, account, and session ownership",
+      "status": "BLOCKED_ON_G09_DEPLOYMENT",
+      "branch": null,
+      "dependencies": ["G09"]
+    },
+    {
+      "id": "P02",
+      "name": "Persisted role graph, blueprint, and review administration",
+      "status": "LOCKED",
+      "branch": null,
+      "dependencies": ["P01"]
+    },
+    {
+      "id": "P03",
+      "name": "Diagnostic and trusted assessment product loop",
+      "status": "LOCKED",
+      "branch": null,
+      "dependencies": ["P02"]
+    },
+    {
+      "id": "P04",
+      "name": "Complete adaptive learning runtime",
+      "status": "LOCKED",
+      "branch": null,
+      "dependencies": ["P03"]
+    },
+    {
+      "id": "P05",
+      "name": "Project, artifact, and work-simulation workspace",
+      "status": "LOCKED",
+      "branch": null,
+      "dependencies": ["P04"]
+    },
+    {
+      "id": "P06",
+      "name": "Evidence, disputes, human review, and readiness surfaces",
+      "status": "LOCKED",
+      "branch": null,
+      "dependencies": ["P05"]
+    },
+    {
+      "id": "P07",
+      "name": "Jobs, LLM routing, observability, and retention controls",
+      "status": "LOCKED",
+      "branch": null,
+      "dependencies": ["P06"]
+    },
+    {
+      "id": "P08",
+      "name": "Commercial-quality integrated web product and production acceptance",
+      "status": "LOCKED",
+      "branch": null,
+      "dependencies": ["P07"]
+    }
+  ],
+  "terminal_acceptance": {
+    "state": "NOT_ELIGIBLE",
+    "requires": [
+      "P01-P08 all passed",
+      "full-stack production acceptance journey passed",
+      "no temporary automation or diagnostic payloads",
+      "branch hygiene verified",
+      "external validation claims unchanged unless separately evidenced"
+    ]
+  }
+}

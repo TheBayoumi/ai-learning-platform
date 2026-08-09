@@ -145,3 +145,34 @@ export async function deleteAccount(): Promise<void> {
     throw new Error("The account deletion response did not match the expected contract.");
   }
 }
+
+
+export interface AccountDataExport {
+  readonly schema_version: 1;
+  readonly generated_at: string;
+  readonly learners: readonly unknown[];
+  readonly redactions: readonly string[];
+  readonly retention_notes: readonly string[];
+}
+
+function isAccountDataExport(value: unknown): value is AccountDataExport {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<AccountDataExport>;
+  return (
+    candidate.schema_version === 1 &&
+    typeof candidate.generated_at === "string" &&
+    Array.isArray(candidate.learners) &&
+    Array.isArray(candidate.redactions) &&
+    Array.isArray(candidate.retention_notes)
+  );
+}
+
+export async function exportAccount(): Promise<AccountDataExport> {
+  const value = await platformRequest("account/export");
+  if (!isAccountDataExport(value)) {
+    throw new Error("The account export response did not match the expected contract.");
+  }
+  return value;
+}

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Final, cast
 
 STATE_PATH: Final = Path("plans/adaptive-product-state.json")
+FULL_STACK_STATE_PATH: Final = Path("plans/full-stack-product-state.json")
 PHASE_IDS: Final = tuple(f"G{index:02d}" for index in range(1, 10))
 REQUIRED_CHECKS: Final = (
     "API quality",
@@ -158,9 +159,13 @@ def _parse_phase(
     personas = _strings(raw["human_simulations"], "product_phase_human_invalid")
     human_evidence = _strings(raw["human_simulation_evidence"], "product_phase_human_invalid")
     production = _strings(raw["production_acceptance"], "product_phase_production_invalid")
-    expected_next = None if identifier == "G09" else PHASE_IDS[PHASE_IDS.index(identifier) + 1]
-    if raw["next_phase"] != expected_next:
-        raise _violation("product_phase_next_invalid")
+    if identifier == "G09":
+        if raw["next_phase"] not in {None, "P01"}:
+            raise _violation("product_phase_next_invalid")
+    else:
+        expected_next = PHASE_IDS[PHASE_IDS.index(identifier) + 1]
+        if raw["next_phase"] != expected_next:
+            raise _violation("product_phase_next_invalid")
 
     if status == "PASSED":
         if branch is None or accepted_sha is None or SHA_PATTERN.fullmatch(accepted_sha) is None:
@@ -229,21 +234,36 @@ def validate_product_state(
     branch_phase = branch_match.group("phase").upper()
 
     state = _load_json(root / STATE_PATH)
-    _exact_keys(
-        state,
-        {
-            "schema_version",
-            "program",
-            "mission_dod",
-            "execution_dod",
-            "active_phase",
-            "engineering_claim_only",
-            "validation_track_remains_external",
-            "required_checks",
-            "phases",
-        },
-        "product_state_fields_invalid",
+    base_state_fields = {
+        "schema_version",
+        "program",
+        "mission_dod",
+        "execution_dod",
+        "active_phase",
+        "engineering_claim_only",
+        "validation_track_remains_external",
+        "required_checks",
+        "phases",
+    }
+    state_fields = set(state)
+    full_stack_bridge = "full_stack_product_state" in state
+    expected_fields = (
+        base_state_fields | {"full_stack_product_state"} if full_stack_bridge else base_state_fields
     )
+    if state_fields != expected_fields:
+        raise _violation("product_state_fields_invalid")
+    if full_stack_bridge:
+        full_stack_state = _string(
+            state["full_stack_product_state"],
+            "product_full_stack_state_invalid",
+        )
+        if full_stack_state != FULL_STACK_STATE_PATH.as_posix():
+            raise _violation("product_full_stack_state_invalid")
+        _validate_evidence_paths(
+            root,
+            [full_stack_state],
+            "product_full_stack_state_invalid",
+        )
     if state["schema_version"] != 1 or state["program"] != "mission-aligned-product-completion":
         raise _violation("product_state_schema_invalid")
     if (
@@ -266,6 +286,12 @@ def validate_product_state(
     phase_values = _sequence(state["phases"], "product_phases_invalid")
     if len(phase_values) != len(PHASE_IDS):
         raise _violation("product_phase_set_invalid")
+    g09_raw = _mapping(phase_values[-1], "product_phase_invalid")
+    if full_stack_bridge:
+        if g09_raw.get("next_phase") != "P01":
+            raise _violation("product_full_stack_handoff_invalid")
+    elif g09_raw.get("next_phase") is not None:
+        raise _violation("product_full_stack_handoff_invalid")
     phases = tuple(
         _parse_phase(
             _mapping(raw, "product_phase_invalid"),

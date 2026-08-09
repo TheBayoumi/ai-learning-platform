@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import Field
@@ -12,6 +12,7 @@ from ai_learning_platform_api.learning.schemas import (
     AssessmentAttemptView,
     AssessmentSubmissionView,
     CompetencyRating,
+    LearnerState,
     PlanView,
     StrictModel,
     TargetRequest,
@@ -135,3 +136,38 @@ class PersistentAssessmentAttemptView(StrictModel):
     """Compatibility envelope for a non-mutating durable assessment start."""
 
     attempt: AssessmentAttemptView
+
+
+class LearnerOperationalAuditView(StrictModel):
+    """Bounded replay/resource/claim audit attached to an exported learner."""
+
+    raw_state_bytes: Annotated[int, Field(ge=0, le=262_144)]
+    evidence_records: Annotated[int, Field(ge=0, le=24)]
+    evaluation_records: Annotated[int, Field(ge=0, le=64)]
+    retained_plan_versions: Annotated[int, Field(ge=0, le=3)]
+    verification_probes: Annotated[int, Field(ge=0, le=96)]
+    work_provenance_records: Annotated[int, Field(ge=0, le=32)]
+    active_task_exposures: Annotated[int, Field(ge=0, le=16)]
+    replay_verified: bool
+    claim_integrity_verified: bool
+    within_resource_bounds: bool
+
+
+class LearnerDataExportView(StrictModel):
+    """One owned learner snapshot with no account cookie or server secrets."""
+
+    learner_id: UUID
+    aggregate_version: Annotated[int, Field(ge=0)]
+    updated_at: str
+    state: LearnerState
+    audit: LearnerOperationalAuditView
+
+
+class AccountDataExportView(StrictModel):
+    """Redacted current-account export with replay and retention disclosures."""
+
+    schema_version: Literal[1] = 1
+    generated_at: str
+    learners: list[LearnerDataExportView]
+    redactions: list[str]
+    retention_notes: list[str]

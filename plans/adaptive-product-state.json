@@ -3,7 +3,7 @@
   "program": "mission-aligned-product-completion",
   "mission_dod": "plans/product-completion-definition-of-done.md",
   "execution_dod": "plans/adaptive-product-definition-of-done.md",
-  "active_phase": "G08",
+  "active_phase": "G09",
   "engineering_claim_only": true,
   "validation_track_remains_external": true,
   "required_checks": [
@@ -384,8 +384,8 @@
     {
       "id": "G08",
       "name": "Readiness projection",
-      "status": "VALIDATING",
-      "branch": "product/g08-readiness-projection",
+      "status": "PASSED",
+      "branch": "main",
       "dependencies": [
         "G07"
       ],
@@ -424,15 +424,18 @@
       "human_simulation_evidence": [
         "apps/api/tests/test_g08_human_simulation.py"
       ],
-      "accepted_sha": null,
-      "production_acceptance": [],
+      "accepted_sha": "e19e780be347eeb4e7cab9d56173ed59246b2808",
+      "production_acceptance": [
+        "Quality Gates run 31275217479 passed on exact PR head e19e780be347eeb4e7cab9d56173ed59246b2808",
+        "Product deployment run 31275315312 passed on merged main SHA 003ebe8ff6818d97797b11aba69ee55826eeb09f"
+      ],
       "next_phase": "G09"
     },
     {
       "id": "G09",
       "name": "Integration hardening",
-      "status": "NOT_STARTED",
-      "branch": null,
+      "status": "VALIDATING",
+      "branch": "product/g09-integration-hardening",
       "dependencies": [
         "G08"
       ],
@@ -448,8 +451,29 @@
         "D",
         "E"
       ],
-      "implementation_evidence": [],
-      "test_evidence": [],
+      "implementation_evidence": [
+        "apps/api/src/ai_learning_platform_api/persistence/operational.py",
+        "apps/api/src/ai_learning_platform_api/persistence/contracts.py",
+        "apps/api/src/ai_learning_platform_api/persistence/schemas.py",
+        "apps/api/src/ai_learning_platform_api/persistence/postgres.py",
+        "apps/api/src/ai_learning_platform_api/persistence/service.py",
+        "apps/api/src/ai_learning_platform_api/transport/http/privacy.py",
+        "apps/api/src/ai_learning_platform_api/app.py",
+        "apps/web/app/api/platform/[...path]/route.ts",
+        "apps/web/lib/platform-client.ts",
+        "apps/web/components/app/profile-view.tsx",
+        "scripts/deploy-product.sh",
+        "plans/full-stack-product-definition-of-done.md",
+        "plans/full-stack-product-state.json"
+      ],
+      "test_evidence": [
+        "apps/api/tests/test_g09_account_export.py",
+        "apps/api/tests/test_g09_privacy_export.py",
+        "apps/api/tests/test_g09_human_simulation.py",
+        "apps/api/tests/test_product_gate.py",
+        ".github/workflows/ci.yml",
+        ".github/workflows/product-deployment.yml"
+      ],
       "human_simulations": [
         "returning learner",
         "provider-outage learner",
@@ -457,10 +481,13 @@
         "deletion learner",
         "concurrency-retry learner"
       ],
-      "human_simulation_evidence": [],
+      "human_simulation_evidence": [
+        "apps/api/tests/test_g09_human_simulation.py"
+      ],
       "accepted_sha": null,
       "production_acceptance": [],
-      "next_phase": null
+      "next_phase": "P01"
     }
-  ]
+  ],
+  "full_stack_product_state": "plans/full-stack-product-state.json"
 }

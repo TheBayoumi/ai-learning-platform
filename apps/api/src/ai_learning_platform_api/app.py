@@ -15,6 +15,7 @@ from ai_learning_platform_api.learning.schemas import PlanView
 from ai_learning_platform_api.logging import configure_logging
 from ai_learning_platform_api.persistence.database import DatabaseRuntime
 from ai_learning_platform_api.persistence.postgres import PostgresLearnerStateRepository
+from ai_learning_platform_api.persistence.schemas import AccountDataExportView
 from ai_learning_platform_api.persistence.service import PersistentLearningService
 from ai_learning_platform_api.settings import Settings
 from ai_learning_platform_api.transport.http.diagnostics import ApiHealthDiagnosticsMiddleware
@@ -65,6 +66,8 @@ def create_app(
             secret=secret,
             repository=postgres_repository,
             exposure_repository=postgres_repository,
+            export_repository=postgres_repository,
+            replay_repository=postgres_repository,
         )
         compatibility_service = PersistentCompatibilityService(
             secret=secret,
@@ -143,7 +146,12 @@ def create_app(
                 return False
             return await persistent_service.delete_account(account_id=account_id)
 
-        app.include_router(create_privacy_router(delete_current_account))
+        async def export_current_account(account_id: str) -> AccountDataExportView:
+            if persistent_service is None:
+                raise RuntimeError("persistent account export is unavailable")
+            return await persistent_service.export_account(account_id=account_id)
+
+        app.include_router(create_privacy_router(delete_current_account, export_current_account))
         assert tutor_service is not None
         assert tutor_limiter is not None
         app.include_router(create_tutoring_router(tutor_service, tutor_limiter))
