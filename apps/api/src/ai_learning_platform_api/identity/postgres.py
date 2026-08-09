@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
+from typing import cast
 from uuid import uuid4
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
@@ -114,11 +116,11 @@ class PostgresIdentityRepository(IdentityRepository):
     async def claim_anonymous_account(
         self,
         *,
-        identity: PlatformIdentity,
+        target_account_id: str,
         anonymous_account_id: str,
     ) -> bool:
-        """Move one unbound anonymous account into the authenticated account exactly once."""
-        if anonymous_account_id == identity.account_id:
+        """Move one unbound anonymous account into an authenticated account exactly once."""
+        if anonymous_account_id == target_account_id:
             return False
         source_hash = hashlib.sha256(anonymous_account_id.encode("utf-8")).hexdigest()
         now = datetime.now(UTC)
@@ -140,7 +142,7 @@ class PostgresIdentityRepository(IdentityRepository):
                 ).scalar_one_or_none()
                 target_exists = (
                     await connection.execute(
-                        select(accounts.c.id).where(accounts.c.id == identity.account_id)
+                        select(accounts.c.id).where(accounts.c.id == target_account_id)
                     )
                 ).scalar_one_or_none()
                 if source_exists is None or target_exists is None:
@@ -159,14 +161,14 @@ class PostgresIdentityRepository(IdentityRepository):
                     await connection.execute(
                         update(table)
                         .where(table.c.account_id == anonymous_account_id)
-                        .values(account_id=identity.account_id)
+                        .values(account_id=target_account_id)
                     )
                 await connection.execute(
                     postgresql_insert(identity_claims)
                     .values(
                         id=uuid4(),
                         source_account_sha256=source_hash,
-                        target_account_id=identity.account_id,
+                        target_account_id=target_account_id,
                         claimed_at=now,
                     )
                     .on_conflict_do_nothing(index_elements=[identity_claims.c.source_account_sha256])
@@ -186,7 +188,7 @@ async def _identity_row(
     *,
     issuer: str,
     subject: str,
-):
+) -> RowMapping | None:
     result = await connection.execute(
         select(account_identities.c.account_id).where(
             account_identities.c.issuer == issuer,
@@ -206,7 +208,7 @@ async def _roles(connection: AsyncConnection, *, account_id: str) -> tuple[Accou
     ).scalars().all()
     if not values or any(value not in _ALLOWED_ROLES for value in values):
         raise IdentityUnavailableError
-    return tuple(values)  # type: ignore[return-value]
+    return tuple(cast(AccountRole, value) for value in values)
 
 
 def _platform_identity(
