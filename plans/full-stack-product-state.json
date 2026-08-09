@@ -4,8 +4,10 @@
   "definition_of_done": "plans/full-stack-product-definition-of-done.md",
   "engineering_kernel": {
     "program": "G01-G09",
-    "status": "BRIDGING",
-    "active_phase": "G09",
+    "status": "PASSED",
+    "accepted_g09_sha": "8ea90902ad3655e0bb1a3f353efde801b65b6917",
+    "production_main_sha": "ebea4e2c0e70e474f433e4aa67cf9c52401793f4",
+    "production_run_id": 31289255308,
     "terminal_for_product": false
   },
   "external_validation_remains_separate": true,
@@ -17,13 +19,13 @@
     "Phase gate",
     "Gate projection"
   ],
-  "active_phase": "G09",
+  "active_phase": "P01",
   "phases": [
     {
       "id": "P01",
       "name": "Identity, account, and session ownership",
-      "status": "BLOCKED_ON_G09_DEPLOYMENT",
-      "branch": null,
+      "status": "IMPLEMENTING",
+      "branch": "product/p01-identity-account-sessions",
       "dependencies": ["G09"]
     },
     {
