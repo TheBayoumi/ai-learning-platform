@@ -75,6 +75,6 @@ class IdentityRepository(Protocol):
     async def claim_anonymous_account(
         self,
         *,
-        identity: PlatformIdentity,
+        target_account_id: str,
         anonymous_account_id: str,
     ) -> bool: ...
