@@ -11,6 +11,7 @@ Environment = Literal["development", "test", "production"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 PersistenceMode = Literal["signed_state", "postgres"]
 TutorMode = Literal["disabled", "vercel_ai_gateway"]
+AuthMode = Literal["anonymous", "oidc"]
 
 _DEVELOPMENT_STATE_SECRET = "development-only-learner-state-secret-change-me"
 _POSTGRESQL_URL_PREFIX = "postgresql+psycopg://"
@@ -30,6 +31,12 @@ class Settings(BaseSettings):
     learner_state_secret: SecretStr = SecretStr(_DEVELOPMENT_STATE_SECRET)
     persistence_mode: PersistenceMode = "signed_state"
     database_url: SecretStr | None = None
+    auth_mode: AuthMode = "anonymous"
+    oidc_issuer: Annotated[str | None, Field(max_length=512)] = None
+    oidc_audience: Annotated[str | None, Field(max_length=512)] = None
+    oidc_timeout_seconds: Annotated[float, Field(ge=1.0, le=15.0)] = 5.0
+    oidc_jwks_cache_seconds: Annotated[int, Field(ge=30, le=3_600)] = 300
+    anonymous_claim_secret: SecretStr | None = None
     tutor_mode: TutorMode = "disabled"
     tutor_model: Annotated[
         str,
@@ -57,7 +64,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def require_runtime_secrets(self) -> Self:
-        """Reject unsafe signing and PostgreSQL configuration."""
+        """Reject unsafe signing, PostgreSQL, identity, and tutoring configuration."""
         secret = self.learner_state_secret.get_secret_value()
         if len(secret.encode("utf-8")) < 32:
             raise ValueError("learner_state_secret must contain at least 32 UTF-8 bytes")
@@ -73,6 +80,21 @@ class Settings(BaseSettings):
             if not database_url.startswith(_POSTGRESQL_URL_PREFIX):
                 raise ValueError("database_url must use the postgresql+psycopg driver")
             self.database_url = SecretStr(database_url)
+
+        if self.auth_mode == "oidc":
+            issuer = (self.oidc_issuer or "").strip()
+            audience = (self.oidc_audience or "").strip()
+            if not issuer.startswith("https://") or not audience:
+                raise ValueError("oidc issuer and audience are required in OIDC mode")
+            if self.persistence_mode != "postgres":
+                raise ValueError("OIDC mode requires postgres persistence")
+            if self.anonymous_claim_secret is None:
+                raise ValueError("anonymous_claim_secret is required in OIDC mode")
+            claim_secret = self.anonymous_claim_secret.get_secret_value()
+            if len(claim_secret.encode("utf-8")) < 32:
+                raise ValueError("anonymous_claim_secret must contain at least 32 UTF-8 bytes")
+            self.oidc_issuer = issuer if issuer.endswith("/") else f"{issuer}/"
+            self.oidc_audience = audience
 
         if self.tutor_mode == "vercel_ai_gateway" and self.tutor_gateway_token() is None:
             raise ValueError(
